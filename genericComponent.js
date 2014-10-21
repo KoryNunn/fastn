@@ -1,4 +1,5 @@
 var crel = require('crel'),
+    containerComponent = require('./containerComponent'),
     EventEmitter = require('events').EventEmitter;
 
 function createPropertyUpdater(generic, key){
@@ -23,7 +24,7 @@ function createPropertyUpdater(generic, key){
 }
 
 module.exports = function(type, fastn, settings, children){
-    var generic = new EventEmitter();
+    var generic = containerComponent(type, fastn);
 
     for(var key in settings){
         fastn.property(generic, key);
@@ -31,7 +32,6 @@ module.exports = function(type, fastn, settings, children){
 
     generic.render = function(){
         this.element = crel(type);
-        this.emit('render');
 
         for(var key in this){
             if(fastn.isProperty(this[key])){
@@ -39,9 +39,7 @@ module.exports = function(type, fastn, settings, children){
             }
         }
 
-        for (var i = 0; i < children.length; i++) {
-            crel(this.element, crel.isNode(children[i]) ? children[i] : children[i].element);
-        };
+        this.emit('render');
     };
 
     return generic;

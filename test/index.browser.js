@@ -1,5 +1,53 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/home/kory/dev/fastn/containerComponent.js":[function(require,module,exports){
 var crel = require('crel'),
+    EventEmitter = require('events').EventEmitter;
+
+module.exports = function(type, fastn){
+    var container = new EventEmitter();
+
+    container.insert = function(component, index){
+        if(crel.isNode(component)){
+            var element = component;
+            component = new EventEmitter();
+            component.element = element;
+        }
+
+        if(isNaN(index)){
+            index = this._children.length;
+        }
+        this._children.splice(index, 0, component);
+        this._insert(component.element, index);
+    };
+
+    container._insert = function(element, index){
+        if(this.element){
+            this.element.insertBefore(element, this.element.childNodes[index-1]);
+        }
+    };
+
+    container.on('render', function(){
+        for(var i = 0; i < container._children.length; i++){
+            if(fastn.isComponent(container._children[i])){
+                container._children[i].render();
+            }
+
+            container._insert(container._children[i].element);
+        }
+    });
+
+    container.on('attach', function(data){
+        for(var i = 0; i < container._children.length; i++){
+            if(fastn.isComponent(container._children[i])){
+                container._children[i].attach(data);
+            }
+        }
+    });
+
+    return container;
+};
+},{"crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
+var crel = require('crel'),
+    containerComponent = require('./containerComponent'),
     EventEmitter = require('events').EventEmitter;
 
 function createPropertyUpdater(generic, key){
@@ -24,7 +72,7 @@ function createPropertyUpdater(generic, key){
 }
 
 module.exports = function(type, fastn, settings, children){
-    var generic = new EventEmitter();
+    var generic = containerComponent(type, fastn);
 
     for(var key in settings){
         fastn.property(generic, key);
@@ -32,7 +80,6 @@ module.exports = function(type, fastn, settings, children){
 
     generic.render = function(){
         this.element = crel(type);
-        this.emit('render');
 
         for(var key in this){
             if(fastn.isProperty(this[key])){
@@ -40,16 +87,13 @@ module.exports = function(type, fastn, settings, children){
             }
         }
 
-        for (var i = 0; i < children.length; i++) {
-            crel(this.element, crel.isNode(children[i]) ? children[i] : children[i].element);
-        };
+        this.emit('render');
     };
 
     return generic;
 };
-},{"crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/index.js":[function(require,module,exports){
-var Enti = require('enti'),
-    genericComponent = require('./genericComponent');
+},{"./containerComponent":"/home/kory/dev/fastn/containerComponent.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/index.js":[function(require,module,exports){
+var Enti = require('enti');
 
 function isComponent(thing){
     return thing && typeof thing === 'object' && '_fastn_component' in thing;
@@ -69,17 +113,22 @@ function createAttachCallback(component, key){
     }
 }
 
-function createComponent(fastn, type, settings, children, componets){
+function createComponent(fastn, type, settings, children, components){
     var component;
 
-    if(!(type in componets)){
-        component = genericComponent(type, fastn, settings, children);
+    if(!(type in components)){
+        if(!('_generic' in components)){
+            throw 'No component of type "' + type + '" is loaded';
+        }
+        component = components._generic(type, fastn, settings, children);
     }else{
-        component = componets[type](fastn, settings, children);
+        component = components[type](type, fastn, settings, children);
     }
 
-
+    component._type = type;
+    component._settings = settings;
     component._fastn_component = true;
+    component._children = children.slice();
 
     for(var key in settings){
         if(isBinding(settings[key])){
@@ -87,7 +136,11 @@ function createComponent(fastn, type, settings, children, componets){
             fastn.property(component, key);
             component[key].bind(binding);
             component.on('attach', createAttachCallback(component, key));
-        }else if(isProperty(component[key])){
+
+            settings[key] = settings[key].value;
+        }
+
+        if(isProperty(component[key])){
             component[key](settings[key]);
         }
     }
@@ -96,28 +149,10 @@ function createComponent(fastn, type, settings, children, componets){
         this.emit('attach', data);
     };
 
-    component._children = children.slice();
-
-    component.on('render', function(){
-        for(var i = 0; i < component._children.length; i++){
-            if(isComponent(component._children[i])){
-                component._children[i].render();
-            }
-        }
-    });
-
-    component.on('attach', function(data){
-        for(var i = 0; i < component._children.length; i++){
-            if(isComponent(component._children[i])){
-                component._children[i].attach(data);
-            }
-        }
-    });
-
     return component;
 }
 
-module.exports = function(componets){
+module.exports = function(components){
 
     function fastn(type){
         var settings = arguments[1],
@@ -128,7 +163,7 @@ module.exports = function(componets){
             settings = null;
         }
 
-        return createComponent(fastn, type, settings, Array.prototype.slice.call(arguments, childrenIndex), componets);
+        return createComponent(fastn, type, settings, Array.prototype.slice.call(arguments, childrenIndex), components);
     }
 
     fastn.property = function(instance, propertyName){
@@ -149,6 +184,9 @@ module.exports = function(componets){
         }
         property.attach = function(data){
             model.attach(data);
+            if(binding){
+                instance.emit(propertyName, model.get(binding));
+            }
         };
         property.bind = function(key){
             binding = key;
@@ -162,9 +200,10 @@ module.exports = function(componets){
         instance[propertyName] = property;
     };
 
-    fastn.binding = function(key){
+    fastn.binding = function(key, defaultValue){
         return {
-            _fastn_binding: key
+            _fastn_binding: key,
+            value: defaultValue
         };
     };
 
@@ -175,7 +214,7 @@ module.exports = function(componets){
     return fastn;
 
 };
-},{"./genericComponent":"/home/kory/dev/fastn/genericComponent.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/node_modules/crel/crel.js":[function(require,module,exports){
+},{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/node_modules/crel/crel.js":[function(require,module,exports){
 //Copyright (C) 2012 Kory Nunn
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -1303,6 +1342,7 @@ WM || (WM = require('weak-map'));
 module.exports = WM;
 },{"leak-map":"/home/kory/dev/fastn/node_modules/enti/node_modules/leak-map/index.js","weak-map":"/home/kory/dev/fastn/node_modules/enti/node_modules/weak-map/weak-map.js"}],"/home/kory/dev/fastn/test/index.js":[function(require,module,exports){
 var components = {
+    _generic: require('../genericComponent'),
     textbox: require('./textbox')
 };
 
@@ -1314,26 +1354,44 @@ var model = {};
 
 window.onload = function(){
     var app = fastn('div',
-        fastn('a', {href:fastn.binding('y'), innerText:fastn.binding('x')}),
+        fastn('a', {href:fastn.binding('y'), innerText:fastn.binding('x', 'hello world')}),
         fastn('textbox', {
-            value: fastn.binding('x')
+            value: fastn.binding('x', 15)
         }),
         fastn('textbox', {
             value: fastn.binding('y')
         })
+        // ,
+        // fastn('list', {
+        //     items: fastn.binding('items'),
+        //     template: fastn('div')
+        // })
     );
 
     app.attach(model);
     app.render();
 
+    setTimeout(function(){
+        app.attach({
+            x:5,
+            y:10
+        });
+    },1000);
+
     crel(document.body, app.element);
 };
-},{"../":"/home/kory/dev/fastn/index.js","./textbox":"/home/kory/dev/fastn/test/textbox.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/test/textbox.js":[function(require,module,exports){
+},{"../":"/home/kory/dev/fastn/index.js","../genericComponent":"/home/kory/dev/fastn/genericComponent.js","./textbox":"/home/kory/dev/fastn/test/textbox.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/test/textbox.js":[function(require,module,exports){
 var crel = require('crel'),
     EventEmitter = require('events').EventEmitter;
 
-module.exports = function(fastn, settings, children){
+module.exports = function(type, fastn, settings, children){
     var textbox = new EventEmitter();
+
+    function updateValue(value){
+        if(value !== textbox.element.value){
+            textbox.element.value = value == null ? '' : value;
+        }
+    }
 
     textbox.render = function(){
         this.element = crel('input');
@@ -1343,11 +1401,8 @@ module.exports = function(fastn, settings, children){
             }
         });
 
-        this.on('value', function(value){
-            if(value !== textbox.element.value){
-                textbox.element.value = value;
-            }
-        });
+        this.on('value', updateValue);
+        updateValue(this.value());
 
         this.emit('render');
     };

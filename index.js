@@ -1,5 +1,4 @@
-var Enti = require('enti'),
-    genericComponent = require('./genericComponent');
+var Enti = require('enti');
 
 function isComponent(thing){
     return thing && typeof thing === 'object' && '_fastn_component' in thing;
@@ -19,17 +18,22 @@ function createAttachCallback(component, key){
     }
 }
 
-function createComponent(fastn, type, settings, children, componets){
+function createComponent(fastn, type, settings, children, components){
     var component;
 
-    if(!(type in componets)){
-        component = genericComponent(type, fastn, settings, children);
+    if(!(type in components)){
+        if(!('_generic' in components)){
+            throw 'No component of type "' + type + '" is loaded';
+        }
+        component = components._generic(type, fastn, settings, children);
     }else{
-        component = componets[type](fastn, settings, children);
+        component = components[type](type, fastn, settings, children);
     }
 
-
+    component._type = type;
+    component._settings = settings;
     component._fastn_component = true;
+    component._children = children.slice();
 
     for(var key in settings){
         if(isBinding(settings[key])){
@@ -37,7 +41,11 @@ function createComponent(fastn, type, settings, children, componets){
             fastn.property(component, key);
             component[key].bind(binding);
             component.on('attach', createAttachCallback(component, key));
-        }else if(isProperty(component[key])){
+
+            settings[key] = settings[key].value;
+        }
+
+        if(isProperty(component[key])){
             component[key](settings[key]);
         }
     }
@@ -46,28 +54,10 @@ function createComponent(fastn, type, settings, children, componets){
         this.emit('attach', data);
     };
 
-    component._children = children.slice();
-
-    component.on('render', function(){
-        for(var i = 0; i < component._children.length; i++){
-            if(isComponent(component._children[i])){
-                component._children[i].render();
-            }
-        }
-    });
-
-    component.on('attach', function(data){
-        for(var i = 0; i < component._children.length; i++){
-            if(isComponent(component._children[i])){
-                component._children[i].attach(data);
-            }
-        }
-    });
-
     return component;
 }
 
-module.exports = function(componets){
+module.exports = function(components){
 
     function fastn(type){
         var settings = arguments[1],
@@ -78,7 +68,7 @@ module.exports = function(componets){
             settings = null;
         }
 
-        return createComponent(fastn, type, settings, Array.prototype.slice.call(arguments, childrenIndex), componets);
+        return createComponent(fastn, type, settings, Array.prototype.slice.call(arguments, childrenIndex), components);
     }
 
     fastn.property = function(instance, propertyName){
@@ -99,6 +89,9 @@ module.exports = function(componets){
         }
         property.attach = function(data){
             model.attach(data);
+            if(binding){
+                instance.emit(propertyName, model.get(binding));
+            }
         };
         property.bind = function(key){
             binding = key;
@@ -112,9 +105,10 @@ module.exports = function(componets){
         instance[propertyName] = property;
     };
 
-    fastn.binding = function(key){
+    fastn.binding = function(key, defaultValue){
         return {
-            _fastn_binding: key
+            _fastn_binding: key,
+            value: defaultValue
         };
     };
 

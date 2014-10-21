@@ -1,8 +1,14 @@
 var crel = require('crel'),
     EventEmitter = require('events').EventEmitter;
 
-module.exports = function(fastn, settings, children){
+module.exports = function(type, fastn, settings, children){
     var textbox = new EventEmitter();
+
+    function updateValue(value){
+        if(value !== textbox.element.value){
+            textbox.element.value = value == null ? '' : value;
+        }
+    }
 
     textbox.render = function(){
         this.element = crel('input');
@@ -12,11 +18,8 @@ module.exports = function(fastn, settings, children){
             }
         });
 
-        this.on('value', function(value){
-            if(value !== textbox.element.value){
-                textbox.element.value = value;
-            }
-        });
+        this.on('value', updateValue);
+        updateValue(this.value());
 
         this.emit('render');
     };
