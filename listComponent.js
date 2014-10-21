@@ -87,6 +87,16 @@ module.exports = function(type, fastn, settings, children){
 
             if(key === false){
                 child = fastn.apply(fastn, [template._type, template._settings].concat(template._children));
+
+                if(item && typeof item === 'object'){
+                    child.attach(item);
+                }else{
+                    child.attach({
+                        item: item,
+                        key: key  
+                    });
+                }
+                
                 newItems.push(item);
                 newComponents.push(child);
             }else{

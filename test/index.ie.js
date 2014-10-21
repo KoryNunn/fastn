@@ -326,6 +326,10 @@ module.exports = function(type, fastn, settings, children){
 
             if(key === false){
                 child = fastn.apply(fastn, [template._type, template._settings].concat(template._children));
+                child.attach({
+                    item: item,
+                    key: key  
+                });
                 newItems.push(item);
                 newComponents.push(child);
             }else{
@@ -2224,6 +2228,7 @@ var components = {
 };
 
 var fastn = require('../')(components),
+    binding = fastn.binding,
     Enti = require('enti'),
     crel = require('crel');
 
@@ -2231,16 +2236,12 @@ var model = {};
 
 window.onload = function(){
     var app = fastn('div',
-        fastn('a', {href:fastn.binding('y'), innerText:fastn.binding('x', 'hello world')}),
-        fastn('textbox', {
-            value: fastn.binding('x', 15)
-        }),
-        fastn('textbox', {
-            value: fastn.binding('y')
-        }),
+        fastn('a', {href: binding('y'), innerText: binding('x', 'hello world')}),
+        fastn('textbox', {value: binding('x', 15)}),
+        fastn('textbox', {value: binding('y')}),
         fastn('list', {
-            items: fastn.binding('items'),
-            template: fastn('div')
+            items: binding('items'),
+            template: fastn('span', {innerText: binding('a')})
         })
     );
 
