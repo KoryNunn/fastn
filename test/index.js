@@ -1,6 +1,7 @@
 var components = {
     _generic: require('../genericComponent'),
-    textbox: require('./textbox')
+    textbox: require('./textbox'),
+    list: require('../listComponent')
 };
 
 var fastn = require('../')(components),
@@ -17,12 +18,11 @@ window.onload = function(){
         }),
         fastn('textbox', {
             value: fastn.binding('y')
+        }),
+        fastn('list', {
+            items: fastn.binding('items'),
+            template: fastn('div')
         })
-        // ,
-        // fastn('list', {
-        //     items: fastn.binding('items'),
-        //     template: fastn('div')
-        // })
     );
 
     app.attach(model);
@@ -31,9 +31,16 @@ window.onload = function(){
     setTimeout(function(){
         app.attach({
             x:5,
-            y:10
+            y:10,
+            items:[
+                {'a':1},
+                {'a':2},
+                {'a':3}
+            ]
         });
     },1000);
+
+    window.app = app;
 
     crel(document.body, app.element);
 };

@@ -1,6 +1,5 @@
 var crel = require('crel'),
-    containerComponent = require('./containerComponent'),
-    EventEmitter = require('events').EventEmitter;
+    containerComponent = require('./containerComponent');
 
 function createPropertyUpdater(generic, key){
     generic.on(key, function(value){

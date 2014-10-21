@@ -1,6 +1,6 @@
 var crel = require('crel'),
     WM = require('./weakmap'),
-    EventEmitter = require('events').EventEmitter;
+    containerComponent = require('./containerComponent');
 
 function each(value, fn){
     if(!value || typeof value !== 'object'){
@@ -18,23 +18,38 @@ function each(value, fn){
     }
 }
 
-function contains(object, value){
-    if(!value || typeof value !== 'object'){
-        return;
+function keyFor(object, value){
+    if(!object || typeof object !== 'object'){
+        return false;
     }
 
     for(var key in object){
         if(object[key] === value){
-            return true;
+            return key;
         }
     }
+
+    return false;
 }
 
-module.exports = function(fastn, settings, children){
-    var list = new EventEmitter(),
-        currentItems = [],
-        childComponents = [];
-        itemsMap = new WM();
+function values(object){
+    if(Array.isArray(object)){
+        return object.slice();
+    }
+
+    var result = [];
+
+    for(var key in object){
+        result.push(object[key]);
+    }
+
+    return result;
+}
+
+module.exports = function(type, fastn, settings, children){
+    var list = containerComponent(type, fastn);
+        lastItems = [],
+        lastComponents = [];
 
     function updateItems(value){
         var template = list._settings.template;
@@ -42,43 +57,60 @@ module.exports = function(fastn, settings, children){
             return;
         }
 
-        each(currentItems, function(item, index){
-            if(!contains(value, item)){
-                currentItems.splice(index, 1);
-                var oldComponent = childComponents[index];
-                childComponents.splice(index, 1);
-                oldComponent.emit('destroy');
-                if(oldComponent.element && oldComponent.element.parentNode === list.element){
-                    list.element.removeChild(oldComponent.element);
+        var currentItems = values(value);
+
+        for(var i = 0; i < lastItems.length; i++){
+            var item = lastItems[i],
+                component = lastComponents[i],
+                currentIndex = currentItems.indexOf(item);
+
+            if(~currentIndex){
+                currentItems.splice(currentIndex,1);
+            }else{
+                lastItems.splice(i, 1);
+                lastComponents.splice(i, 1);
+                i--;
+                component.emit('destroy');
+                if(component.element && component.element.parentNode === list.element){
+                    list.remove(component);
                 }
             }
-        })
+        }
 
-        var index = 0;
+        var index = 0,
+            newItems = [],
+            newComponents = [];
+
         each(value, function(item){
-            var newChild;
+            var child,
+                key = keyFor(lastItems, item);
 
-            if(!itemsMap.has(item)){
-                newChild = fastn.apply(fastn, [template.type, template._settings].concat(template._children);
-                itemsMap.set(item, newChild);
+            if(key === false){
+                child = fastn.apply(fastn, [template._type, template._settings].concat(template._children));
+                newItems.push(item);
+                newComponents.push(child);
             }else{
-                newChild = itemsMap.get(item);
+                newItems.push(lastItems[key]);
+                lastItems.splice(key,1)
+
+                child = lastComponents[key];
+                lastComponents.splice(key,1);
+                newComponents.push(child);
             }
 
-            list.insert(newChild, index);
+            list.insert(child, index);
 
             index++;
         });
 
-        if(value !== list.element.value){
-            list.element.value = value == null ? '' : value;
-        }
+        lastItems = newItems;
+        lastComponents = newComponents;
     }
 
     list.render = function(){
-        this.element = document.createDocumentFragment();
+        this.element = crel('div');
         this.on('items', updateItems);
-        updateItems(this.value());
+        updateItems(this.items());
         this.emit('render');
     };
 
