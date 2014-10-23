@@ -93,10 +93,10 @@ module.exports = function(type, fastn, settings, children){
                 }else{
                     child.attach({
                         item: item,
-                        key: key  
+                        key: key
                     });
                 }
-                
+
                 newItems.push(item);
                 newComponents.push(child);
             }else{

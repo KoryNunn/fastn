@@ -153,17 +153,23 @@ function createComponent(fastn, type, settings, children, components){
     component._children = children.slice();
 
     for(var key in settings){
-        if(isBinding(settings[key])){
+        if(isBinding(settings[key]) && isProperty(component[key])){
             var binding = settings[key]._fastn_binding;
-            fastn.property(component, key);
             component[key].bind(binding);
             component.on('attach', createAttachCallback(component, key));
 
-            settings[key] = settings[key].value;
+            function update(){
+                if(component.element){
+                    component.emit('update');
+                }
+            }
+
+            component.on('attach', update);
+            component.on('render', update);
         }
 
         if(isProperty(component[key])){
-            component[key](settings[key]);
+            component[key](isBinding(settings[key]) ? settings[key].value : settings[key]);
         }
     }
 
@@ -193,9 +199,17 @@ module.exports = function(components){
             binding,
             model = new Enti();
 
+        instance.on('update', function(){
+            property._update();
+        });
+
         function property(newValue){
             if(!arguments.length){
                 return value;
+            }
+
+            if(value === newValue){
+                return
             }
 
             value = newValue;
@@ -206,16 +220,20 @@ module.exports = function(components){
         }
         property.attach = function(data){
             model.attach(data);
-            if(binding){
-                instance.emit(propertyName, model.get(binding));
-            }
+            property._update();
         };
         property.bind = function(key){
             binding = key;
-            model._events = {}
+            model._events = {};
             model._events[key] = function(){
                 property.apply(instance, arguments);
             };
+        };
+        property._update = function(){
+            if(binding){
+                value = model.get(binding);
+            }
+            instance.emit(propertyName, value);
         };
         property._fastn_property = true;
 
@@ -326,10 +344,16 @@ module.exports = function(type, fastn, settings, children){
 
             if(key === false){
                 child = fastn.apply(fastn, [template._type, template._settings].concat(template._children));
-                child.attach({
-                    item: item,
-                    key: key  
-                });
+
+                if(item && typeof item === 'object'){
+                    child.attach(item);
+                }else{
+                    child.attach({
+                        item: item,
+                        key: key
+                    });
+                }
+
                 newItems.push(item);
                 newComponents.push(child);
             }else{
@@ -2241,6 +2265,7 @@ window.onload = function(){
         fastn('textbox', {value: binding('y')}),
         fastn('list', {
             items: binding('items'),
+            template: fastn('span', {innerText: binding('item')}),
             template: fastn('span', {innerText: binding('a')})
         })
     );

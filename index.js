@@ -36,17 +36,23 @@ function createComponent(fastn, type, settings, children, components){
     component._children = children.slice();
 
     for(var key in settings){
-        if(isBinding(settings[key])){
+        if(isBinding(settings[key]) && isProperty(component[key])){
             var binding = settings[key]._fastn_binding;
-            fastn.property(component, key);
             component[key].bind(binding);
             component.on('attach', createAttachCallback(component, key));
 
-            settings[key] = settings[key].value;
+            function update(){
+                if(component.element){
+                    component.emit('update');
+                }
+            }
+
+            component.on('attach', update);
+            component.on('render', update);
         }
 
         if(isProperty(component[key])){
-            component[key](settings[key]);
+            component[key](isBinding(settings[key]) ? settings[key].value : settings[key]);
         }
     }
 
@@ -76,9 +82,17 @@ module.exports = function(components){
             binding,
             model = new Enti();
 
+        instance.on('update', function(){
+            property._update();
+        });
+
         function property(newValue){
             if(!arguments.length){
                 return value;
+            }
+
+            if(value === newValue){
+                return
             }
 
             value = newValue;
@@ -89,16 +103,20 @@ module.exports = function(components){
         }
         property.attach = function(data){
             model.attach(data);
-            if(binding){
-                instance.emit(propertyName, model.get(binding));
-            }
+            property._update();
         };
         property.bind = function(key){
             binding = key;
-            model._events = {}
+            model._events = {};
             model._events[key] = function(){
                 property.apply(instance, arguments);
             };
+        };
+        property._update = function(){
+            if(binding){
+                value = model.get(binding);
+            }
+            instance.emit(propertyName, value);
         };
         property._fastn_property = true;
 

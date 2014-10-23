@@ -18,7 +18,8 @@ window.onload = function(){
         fastn('textbox', {value: binding('y')}),
         fastn('list', {
             items: binding('items'),
-            template: fastn('span', {innerText: binding('item')})
+            template: fastn('span', {innerText: binding('item')}),
+            template: fastn('span', {innerText: binding('a')})
         })
     );
 
