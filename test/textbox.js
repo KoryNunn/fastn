@@ -1,8 +1,9 @@
 var crel = require('crel'),
+    genericComponent = require('../genericComponent'),
     EventEmitter = require('events').EventEmitter;
 
 module.exports = function(type, fastn, settings, children){
-    var textbox = new EventEmitter();
+    var textbox = genericComponent(type, fastn, settings, children);
 
     function updateValue(value){
         if(value !== textbox.element.value){

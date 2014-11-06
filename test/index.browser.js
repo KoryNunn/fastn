@@ -28,9 +28,7 @@ module.exports = function(type, fastn){
     };
 
     container._insert = function(element, index){
-        if(this.element){
-            this.element.insertBefore(element, this.element.childNodes[index]);
-        }
+        this.element.insertBefore(element, this.element.childNodes[index]);
     };
 
     container.remove = function(component){
@@ -77,6 +75,9 @@ var crel = require('crel'),
 
 function createPropertyUpdater(generic, key){
     generic.on(key, function(value){
+        if(!generic.element){
+            return;
+        }
         var element = generic.element,
             isProperty = key in element,
             previous = isProperty ? element[key] : element.getAttribute(key);
@@ -88,12 +89,14 @@ function createPropertyUpdater(generic, key){
         if(value !== previous){
             if(isProperty){
                 element[key] = value;
-            }else{ 
+            }else{
                 element.setAttribute(key, value);
             }
         }
     });
-    generic.emit(key, generic[key]());
+    generic.on('render', function(){
+        generic.emit(key, generic[key]());
+    });
 }
 
 module.exports = function(type, fastn, settings, children){
@@ -101,16 +104,11 @@ module.exports = function(type, fastn, settings, children){
 
     for(var key in settings){
         fastn.property(generic, key);
+        createPropertyUpdater(generic, key);
     }
 
     generic.render = function(){
         this.element = crel(type);
-
-        for(var key in this){
-            if(fastn.isProperty(this[key])){
-                createPropertyUpdater(generic, key);
-            }
-        }
 
         this.emit('render');
     };
@@ -175,25 +173,29 @@ function createComponent(fastn, type, settings, children, components){
     component._children = children;
 
     for(var key in settings){
-        if(isBinding(settings[key]) && isProperty(component[key])){
-            var binding = settings[key]._fastn_binding;
-            component[key].bind(binding);
-            if(settings[key].model){
-                component[key].attach(settings[key].model);
-            }
-            component.on('attach', createAttachCallback(component, key));
-
-            function update(){
-                if(component.element){
-                    // <DEBUG
-                    component.element.component = component;
-                    // DEBUG>
-                    component.emit('update');
+        if(isProperty(component[key])){
+            if(isBinding(settings[key])){
+                var binding = settings[key]._fastn_binding;
+                component[key].bind(binding);
+                if(settings[key]._model){
+                    component[key].attach(settings[key]._model);
                 }
-            }
+                component.on('attach', createAttachCallback(component, key));
 
-            component.on('attach', update);
-            component.on('render', update);
+                function update(){
+                    if(component.element){
+                        // <DEBUG
+                        component.element.component = component;
+                        // DEBUG>
+                        component.emit('update');
+                    }
+                }
+
+                component.on('attach', update);
+                component.on('render', update);
+            }else{
+                component[key](settings[key]);
+            }
         }
     }
 
@@ -224,7 +226,7 @@ module.exports = function(components){
         return createComponent(fastn, type, settings, Array.prototype.slice.call(arguments, childrenIndex), components);
     }
 
-    fastn.property = function(instance, propertyName){
+    fastn.property = function(instance, propertyName, transform){
         var binding,
             model = new Enti(),
             attachType;
@@ -269,6 +271,9 @@ module.exports = function(components){
             binding = key;
             model._events = {};
             model._events[key] = function(){
+                if(instance._settings[propertyName].transform){
+                    return property.apply(instance, [instance._settings[propertyName].transform(arguments[0])].concat(Array.prototype.slice(arguments, 1)));
+                }
                 property.apply(instance, arguments);
             };
         };
@@ -278,6 +283,10 @@ module.exports = function(components){
             }else{
                 this._value = isBinding(instance._settings[propertyName]) ? instance._settings[propertyName].value : instance._settings[propertyName];
             }
+            var transform = instance._settings[propertyName].transform;
+            if(transform){
+                this._value = transform(this._value);
+            }
             instance.emit(propertyName, this._value);
         };
         property._fastn_property = true;
@@ -285,11 +294,19 @@ module.exports = function(components){
         instance[propertyName] = property;
     };
 
-    fastn.binding = function(key, defaultValue, model){
+    fastn.binding = function(key, transform, defaultValue){
+        if(typeof transform !== 'function'){
+            defaultValue = transform;
+            transform = null;
+        }
         return {
             _fastn_binding: key,
             value: defaultValue,
-            model: model
+            transform: transform,
+            attach: function(model){
+                this._model = model;
+                return this;
+            }
         };
     };
 
@@ -2351,8 +2368,17 @@ window.onload = function(){
         }),
         fastn('div',
             fastn('textbox', {value: binding('filter')}),
-            fastn('span', {innerText: binding('foo', null, x)})
-        ).attach({filter: 'bob'})
+            fastn('span', {innerText: binding('foo', null).attach(x)})
+        ).attach({filter: 'bob'}),
+        fastn('form',
+            fastn('h1',
+                fastn('span', {innerText: 'hello '}),
+                fastn('span', {innerText: binding('name', function(value){
+                    return value == null ? 'User' : value;
+                })})
+            ),
+            fastn('textbox', {value: binding('name'), 'class': 'majigger'})
+        ).attach({name: null})
     );
 
     // app.attach(model);
@@ -2376,10 +2402,11 @@ window.onload = function(){
 };
 },{"../":"/home/kory/dev/fastn/index.js","../genericComponent":"/home/kory/dev/fastn/genericComponent.js","../listComponent":"/home/kory/dev/fastn/listComponent.js","./textbox":"/home/kory/dev/fastn/test/textbox.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/test/textbox.js":[function(require,module,exports){
 var crel = require('crel'),
+    genericComponent = require('../genericComponent'),
     EventEmitter = require('events').EventEmitter;
 
 module.exports = function(type, fastn, settings, children){
-    var textbox = new EventEmitter();
+    var textbox = genericComponent(type, fastn, settings, children);
 
     function updateValue(value){
         if(value !== textbox.element.value){
@@ -2405,7 +2432,7 @@ module.exports = function(type, fastn, settings, children){
 
     return textbox;
 };
-},{"crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/weakmap.js":[function(require,module,exports){
+},{"../genericComponent":"/home/kory/dev/fastn/genericComponent.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/weakmap.js":[function(require,module,exports){
 var WM;
 
 if(typeof WeakMap !== 'undefined'){

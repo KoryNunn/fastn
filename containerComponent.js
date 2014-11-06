@@ -27,9 +27,7 @@ module.exports = function(type, fastn){
     };
 
     container._insert = function(element, index){
-        if(this.element){
-            this.element.insertBefore(element, this.element.childNodes[index]);
-        }
+        this.element.insertBefore(element, this.element.childNodes[index]);
     };
 
     container.remove = function(component){

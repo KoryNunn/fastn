@@ -32,8 +32,17 @@ window.onload = function(){
         }),
         fastn('div',
             fastn('textbox', {value: binding('filter')}),
-            fastn('span', {innerText: binding('foo', null, x)})
-        ).attach({filter: 'bob'})
+            fastn('span', {innerText: binding('foo', null).attach(x)})
+        ).attach({filter: 'bob'}),
+        fastn('form',
+            fastn('h1',
+                fastn('span', {innerText: 'hello '}),
+                fastn('span', {innerText: binding('name', function(value){
+                    return value == null ? 'User' : value;
+                })})
+            ),
+            fastn('textbox', {value: binding('name'), 'class': 'majigger'})
+        ).attach({name: null})
     );
 
     // app.attach(model);

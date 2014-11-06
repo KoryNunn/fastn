@@ -3,6 +3,9 @@ var crel = require('crel'),
 
 function createPropertyUpdater(generic, key){
     generic.on(key, function(value){
+        if(!generic.element){
+            return;
+        }
         var element = generic.element,
             isProperty = key in element,
             previous = isProperty ? element[key] : element.getAttribute(key);
@@ -14,12 +17,14 @@ function createPropertyUpdater(generic, key){
         if(value !== previous){
             if(isProperty){
                 element[key] = value;
-            }else{ 
+            }else{
                 element.setAttribute(key, value);
             }
         }
     });
-    generic.emit(key, generic[key]());
+    generic.on('render', function(){
+        generic.emit(key, generic[key]());
+    });
 }
 
 module.exports = function(type, fastn, settings, children){
@@ -27,16 +32,11 @@ module.exports = function(type, fastn, settings, children){
 
     for(var key in settings){
         fastn.property(generic, key);
+        createPropertyUpdater(generic, key);
     }
 
     generic.render = function(){
         this.element = crel(type);
-
-        for(var key in this){
-            if(fastn.isProperty(this[key])){
-                createPropertyUpdater(generic, key);
-            }
-        }
 
         this.emit('render');
     };
