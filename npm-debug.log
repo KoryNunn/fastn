@@ -1,27 +1,88 @@
 0 info it worked if it ends with ok
-1 verbose cli [ '/usr/bin/node', '/usr/bin/npm', 'run', 'ie' ]
+1 verbose cli [ '/usr/bin/node', '/usr/bin/npm', 'i', 'enti' ]
 2 info using npm@1.4.28
-3 info using node@v0.10.32
+3 info using node@v0.10.33
 4 verbose node symlink /usr/bin/node
-5 verbose run-script [ 'preie', 'ie', 'postie' ]
-6 info preie fastn@1.0.0
-7 info ie fastn@1.0.0
-8 verbose unsafe-perm in lifecycle true
-9 info fastn@1.0.0 Failed to exec ie script
-10 error fastn@1.0.0 ie: `cat test/index.js | ieify > test/index.ie.js`
-10 error Exit status 127
-11 error Failed at the fastn@1.0.0 ie script.
-11 error This is most likely a problem with the fastn package,
-11 error not with npm itself.
-11 error Tell the author that this fails on your system:
-11 error     cat test/index.js | ieify > test/index.ie.js
-11 error You can get their info via:
-11 error     npm owner ls fastn
-11 error There is likely additional logging output above.
-12 error System Linux 3.13.0-37-generic
-13 error command "/usr/bin/node" "/usr/bin/npm" "run" "ie"
-14 error cwd /home/kory/dev/fastn
-15 error node -v v0.10.32
-16 error npm -v 1.4.28
-17 error code ELIFECYCLE
-18 verbose exit [ 1, true ]
+5 warn package.json fastn@1.0.0 No description
+6 warn package.json fastn@1.0.0 No repository field.
+7 warn package.json fastn@1.0.0 No README data
+8 verbose readDependencies using package.json deps
+9 verbose cache add [ 'enti', null ]
+10 verbose cache add name=undefined spec="enti" args=["enti",null]
+11 verbose parsed url { protocol: null,
+11 verbose parsed url   slashes: null,
+11 verbose parsed url   auth: null,
+11 verbose parsed url   host: null,
+11 verbose parsed url   port: null,
+11 verbose parsed url   hostname: null,
+11 verbose parsed url   hash: null,
+11 verbose parsed url   search: null,
+11 verbose parsed url   query: null,
+11 verbose parsed url   pathname: 'enti',
+11 verbose parsed url   path: 'enti',
+11 verbose parsed url   href: 'enti' }
+12 silly lockFile 90d86ad9-enti enti
+13 verbose lock enti /home/kory/.npm/90d86ad9-enti.lock
+14 silly lockFile 90d86ad9-enti enti
+15 silly lockFile 90d86ad9-enti enti
+16 verbose addNamed [ 'enti', '' ]
+17 verbose addNamed [ null, '*' ]
+18 silly lockFile eb6ce3ac-enti enti@
+19 verbose lock enti@ /home/kory/.npm/eb6ce3ac-enti.lock
+20 silly addNameRange { name: 'enti', range: '*', hasData: false }
+21 verbose request where is /enti
+22 verbose request registry https://registry.npmjs.org/
+23 verbose request id 66280b66243dc29c
+24 verbose url raw /enti
+25 verbose url resolving [ 'https://registry.npmjs.org/', './enti' ]
+26 verbose url resolved https://registry.npmjs.org/enti
+27 verbose request where is https://registry.npmjs.org/enti
+28 info trying registry request attempt 1 at 17:48:00
+29 http GET https://registry.npmjs.org/enti
+30 http 404 https://registry.npmjs.org/enti
+31 verbose headers { date: 'Thu, 06 Nov 2014 07:48:00 GMT',
+31 verbose headers   server: 'CouchDB/1.5.0 (Erlang OTP/R16B03)',
+31 verbose headers   'content-type': 'application/json',
+31 verbose headers   'cache-control': 'max-age=0',
+31 verbose headers   'content-length': '52',
+31 verbose headers   'accept-ranges': 'bytes',
+31 verbose headers   via: '1.1 varnish',
+31 verbose headers   age: '0',
+31 verbose headers   'x-served-by': 'cache-syd1620-SYD',
+31 verbose headers   'x-cache': 'MISS',
+31 verbose headers   'x-cache-hits': '0',
+31 verbose headers   'x-timer': 'S1415260080.792203,VS0,VE187',
+31 verbose headers   'keep-alive': 'timeout=10, max=50',
+31 verbose headers   connection: 'Keep-Alive' }
+32 silly registry.get cb [ 404,
+32 silly registry.get   { date: 'Thu, 06 Nov 2014 07:48:00 GMT',
+32 silly registry.get     server: 'CouchDB/1.5.0 (Erlang OTP/R16B03)',
+32 silly registry.get     'content-type': 'application/json',
+32 silly registry.get     'cache-control': 'max-age=0',
+32 silly registry.get     'content-length': '52',
+32 silly registry.get     'accept-ranges': 'bytes',
+32 silly registry.get     via: '1.1 varnish',
+32 silly registry.get     age: '0',
+32 silly registry.get     'x-served-by': 'cache-syd1620-SYD',
+32 silly registry.get     'x-cache': 'MISS',
+32 silly registry.get     'x-cache-hits': '0',
+32 silly registry.get     'x-timer': 'S1415260080.792203,VS0,VE187',
+32 silly registry.get     'keep-alive': 'timeout=10, max=50',
+32 silly registry.get     connection: 'Keep-Alive' } ]
+33 silly lockFile eb6ce3ac-enti enti@
+34 silly lockFile eb6ce3ac-enti enti@
+35 error 404 404 Not Found: enti
+35 error 404
+35 error 404 'enti' is not in the npm registry.
+35 error 404 You should bug the author to publish it
+35 error 404 It was specified as a dependency of 'fastn'
+35 error 404
+35 error 404 Note that you can also install from a
+35 error 404 tarball, folder, or http url, or git url.
+36 error System Linux 3.13.0-39-generic
+37 error command "/usr/bin/node" "/usr/bin/npm" "i" "enti"
+38 error cwd /home/kory/dev/fastn
+39 error node -v v0.10.33
+40 error npm -v 1.4.28
+41 error code E404
+42 verbose exit [ 1, true ]

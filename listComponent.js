@@ -71,9 +71,7 @@ module.exports = function(type, fastn, settings, children){
                 lastComponents.splice(i, 1);
                 i--;
                 component.emit('destroy');
-                if(component.element && component.element.parentNode === list.element){
-                    list.remove(component);
-                }
+                list.remove(component);
             }
         }
 
@@ -86,15 +84,17 @@ module.exports = function(type, fastn, settings, children){
                 key = keyFor(lastItems, item);
 
             if(key === false){
-                child = fastn.apply(fastn, [template._type, template._settings].concat(template._children));
+                child = template(item, key);
 
-                if(item && typeof item === 'object'){
-                    child.attach(item);
-                }else{
-                    child.attach({
-                        item: item,
-                        key: key
-                    });
+                if(fastn.isComponent(child)){
+                    if(item && typeof item === 'object'){
+                        child.attach(item);
+                    }else{
+                        child.attach({
+                            item: item,
+                            key: key
+                        });
+                    }
                 }
 
                 newItems.push(item);

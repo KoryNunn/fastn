@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "crel": "^2.1.5",
+    "flat-merge": "^1.0.0",
     "leak-map": "^1.0.2",
     "weak-map": "^1.0.5"
   },

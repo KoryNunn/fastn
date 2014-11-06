@@ -11,6 +11,11 @@ var fastn = require('../')(components),
 
 var model = {};
 
+var x = {foo:'bar'},
+    y = new Enti(x);
+
+window.y = y;
+
 window.onload = function(){
     var app = fastn('div',
         fastn('a', {href: binding('y'), innerText: binding('x', 'hello world')}),
@@ -18,12 +23,20 @@ window.onload = function(){
         fastn('textbox', {value: binding('y')}),
         fastn('list', {
             items: binding('items'),
-            template: fastn('span', {innerText: binding('item')}),
-            template: fastn('span', {innerText: binding('a')})
-        })
+            template: function(item, key){
+                return fastn('div',
+                    fastn('span', {innerText: binding('item')}),
+                    fastn('span', {innerText: binding('a')})
+                );
+            }
+        }),
+        fastn('div',
+            fastn('textbox', {value: binding('filter')}),
+            fastn('span', {innerText: binding('foo', null, x)})
+        ).attach({filter: 'bob'})
     );
 
-    app.attach(model);
+    // app.attach(model);
     app.render();
 
     setTimeout(function(){

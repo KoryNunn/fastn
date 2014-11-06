@@ -45,6 +45,9 @@ module.exports = function(type, fastn){
     };
 
     container._remove = function(element){
+        if(!element || !container.element || !element.parentNode === container.element){
+            return;
+        }
         container.element.removeChild(element);
     }
 
@@ -58,10 +61,10 @@ module.exports = function(type, fastn){
         }
     });
 
-    container.on('attach', function(data){
+    container.on('attach', function(data, type){
         for(var i = 0; i < container._children.length; i++){
             if(fastn.isComponent(container._children[i])){
-                container._children[i].attach(data);
+                container._children[i].attach(data, type === true ? 'parent' : type);
             }
         }
     });
@@ -115,7 +118,8 @@ module.exports = function(type, fastn, settings, children){
     return generic;
 };
 },{"./containerComponent":"/home/kory/dev/fastn/containerComponent.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js"}],"/home/kory/dev/fastn/index.js":[function(require,module,exports){
-var Enti = require('enti');
+var Enti = require('enti'),
+    merge = require('flat-merge');
 
 function isComponent(thing){
     return thing && typeof thing === 'object' && '_fastn_component' in thing;
@@ -130,13 +134,31 @@ function isProperty(thing){
 }
 
 function createAttachCallback(component, key){
-    return function(data){
-        component[key].attach(data);
+    return function(data, type){
+        component[key].attach(data, type);
     }
+}
+
+function dereferenceSettings(settings){
+    var result = {},
+        keys = Object.keys(settings);
+
+    for(var i = 0; i < keys.length; i++){
+        var key = keys[i];
+        result[key] = settings[key];
+        if(isBinding(result[key])){
+            result[key] = merge(null, result[key]);
+        }
+    }
+
+    return result;
 }
 
 function createComponent(fastn, type, settings, children, components){
     var component;
+
+    settings = dereferenceSettings(settings || {});
+    children = children.slice();
 
     if(!(type in components)){
         if(!('_generic' in components)){
@@ -150,16 +172,22 @@ function createComponent(fastn, type, settings, children, components){
     component._type = type;
     component._settings = settings;
     component._fastn_component = true;
-    component._children = children.slice();
+    component._children = children;
 
     for(var key in settings){
         if(isBinding(settings[key]) && isProperty(component[key])){
             var binding = settings[key]._fastn_binding;
             component[key].bind(binding);
+            if(settings[key].model){
+                component[key].attach(settings[key].model);
+            }
             component.on('attach', createAttachCallback(component, key));
 
             function update(){
                 if(component.element){
+                    // <DEBUG
+                    component.element.component = component;
+                    // DEBUG>
                     component.emit('update');
                 }
             }
@@ -167,14 +195,16 @@ function createComponent(fastn, type, settings, children, components){
             component.on('attach', update);
             component.on('render', update);
         }
-
-        if(isProperty(component[key])){
-            component[key](isBinding(settings[key]) ? settings[key].value : settings[key]);
-        }
     }
 
-    component.attach = function(data){
-        this.emit('attach', data);
+    var attachType;
+    component.attach = function(data, type){
+        if(type && type !== attachType && attachType === true){
+            return;
+        }
+        attachType = type || true;
+        this.emit('attach', data, type || true);
+        return this;
     };
 
     return component;
@@ -195,9 +225,13 @@ module.exports = function(components){
     }
 
     fastn.property = function(instance, propertyName){
-        var value,
-            binding,
-            model = new Enti();
+        var binding,
+            model = new Enti(),
+            attachType;
+
+        // <DEBUG
+        this.model = model;
+        // DEBUG>
 
         instance.on('update', function(){
             property._update();
@@ -205,21 +239,30 @@ module.exports = function(components){
 
         function property(newValue){
             if(!arguments.length){
-                return value;
+                return this._value;
             }
 
-            if(value === newValue){
+            if(this._value === newValue){
                 return
             }
 
-            value = newValue;
-            instance.emit(propertyName, value);
+            this._value = newValue;
+            instance.emit(propertyName, this._value);
             if(binding){
-                model.set(binding, value);
+                model.set(binding, this._value);
             }
         }
-        property.attach = function(data){
+        property.attach = function(data, type){
+            if(type && type !== attachType && attachType === true){
+                return;
+            }
+            attachType = type || true;
             model.attach(data);
+            property._update();
+        };
+        property.detach = function(){
+            attachType = null;
+            model.detach();
             property._update();
         };
         property.bind = function(key){
@@ -230,20 +273,23 @@ module.exports = function(components){
             };
         };
         property._update = function(){
-            if(binding){
-                value = model.get(binding);
+            if(binding && attachType){
+                this._value = model.get(binding);
+            }else{
+                this._value = isBinding(instance._settings[propertyName]) ? instance._settings[propertyName].value : instance._settings[propertyName];
             }
-            instance.emit(propertyName, value);
+            instance.emit(propertyName, this._value);
         };
         property._fastn_property = true;
 
         instance[propertyName] = property;
     };
 
-    fastn.binding = function(key, defaultValue){
+    fastn.binding = function(key, defaultValue, model){
         return {
             _fastn_binding: key,
-            value: defaultValue
+            value: defaultValue,
+            model: model
         };
     };
 
@@ -254,7 +300,7 @@ module.exports = function(components){
     return fastn;
 
 };
-},{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/listComponent.js":[function(require,module,exports){
+},{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js","flat-merge":"/home/kory/dev/fastn/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/listComponent.js":[function(require,module,exports){
 var crel = require('crel'),
     WM = require('./weakmap'),
     containerComponent = require('./containerComponent');
@@ -328,9 +374,7 @@ module.exports = function(type, fastn, settings, children){
                 lastComponents.splice(i, 1);
                 i--;
                 component.emit('destroy');
-                if(component.element && component.element.parentNode === list.element){
-                    list.remove(component);
-                }
+                list.remove(component);
             }
         }
 
@@ -343,15 +387,17 @@ module.exports = function(type, fastn, settings, children){
                 key = keyFor(lastItems, item);
 
             if(key === false){
-                child = fastn.apply(fastn, [template._type, template._settings].concat(template._children));
+                child = template(item, key);
 
-                if(item && typeof item === 'object'){
-                    child.attach(item);
-                }else{
-                    child.attach({
-                        item: item,
-                        key: key
-                    });
+                if(fastn.isComponent(child)){
+                    if(item && typeof item === 'object'){
+                        child.attach(item);
+                    }else{
+                        child.attach({
+                            item: item,
+                            key: key
+                        });
+                    }
                 }
 
                 newItems.push(item);
@@ -1511,7 +1557,33 @@ if(typeof WeakMap !== 'undefined'){
 WM || (WM = require('weak-map'));
 
 module.exports = WM;
-},{"leak-map":"/home/kory/dev/fastn/node_modules/enti/node_modules/leak-map/index.js","weak-map":"/home/kory/dev/fastn/node_modules/enti/node_modules/weak-map/weak-map.js"}],"/home/kory/dev/fastn/node_modules/leak-map/index.js":[function(require,module,exports){
+},{"leak-map":"/home/kory/dev/fastn/node_modules/enti/node_modules/leak-map/index.js","weak-map":"/home/kory/dev/fastn/node_modules/enti/node_modules/weak-map/weak-map.js"}],"/home/kory/dev/fastn/node_modules/flat-merge/index.js":[function(require,module,exports){
+function flatMerge(a,b){
+    if(!b || typeof b !== 'object'){
+        b = {};
+    }
+
+    if(!a || typeof a !== 'object'){
+        a = new b.constructor();
+    }
+
+    var result = new a.constructor(),
+        aKeys = Object.keys(a),
+        bKeys = Object.keys(b);
+
+    for(var i = 0; i < aKeys.length; i++){
+        result[aKeys[i]] = a[aKeys[i]];
+    }
+
+    for(var i = 0; i < bKeys.length; i++){
+        result[bKeys[i]] = b[bKeys[i]];
+    }
+
+    return result;
+}
+
+module.exports = flatMerge;
+},{}],"/home/kory/dev/fastn/node_modules/leak-map/index.js":[function(require,module,exports){
 function validateKey(key){
     if(!key || !(typeof key === 'object' || typeof key === 'function')){
         throw key + " is not a valid WeakMap key.";
@@ -2258,6 +2330,11 @@ var fastn = require('../')(components),
 
 var model = {};
 
+var x = {foo:'bar'},
+    y = new Enti(x);
+
+window.y = y;
+
 window.onload = function(){
     var app = fastn('div',
         fastn('a', {href: binding('y'), innerText: binding('x', 'hello world')}),
@@ -2265,12 +2342,20 @@ window.onload = function(){
         fastn('textbox', {value: binding('y')}),
         fastn('list', {
             items: binding('items'),
-            template: fastn('span', {innerText: binding('item')}),
-            template: fastn('span', {innerText: binding('a')})
-        })
+            template: function(item, key){
+                return fastn('div',
+                    fastn('span', {innerText: binding('item')}),
+                    fastn('span', {innerText: binding('a')})
+                );
+            }
+        }),
+        fastn('div',
+            fastn('textbox', {value: binding('filter')}),
+            fastn('span', {innerText: binding('foo', null, x)})
+        ).attach({filter: 'bob'})
     );
 
-    app.attach(model);
+    // app.attach(model);
     app.render();
 
     setTimeout(function(){
@@ -2398,8 +2483,10 @@ EventEmitter.prototype.emit = function(type) {
       er = arguments[1];
       if (er instanceof Error) {
         throw er; // Unhandled 'error' event
+      } else {
+        throw TypeError('Uncaught, unspecified "error" event.');
       }
-      throw TypeError('Uncaught, unspecified "error" event.');
+      return false;
     }
   }
 

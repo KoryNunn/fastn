@@ -1,4 +1,5 @@
-var Enti = require('enti');
+var Enti = require('enti'),
+    merge = require('flat-merge');
 
 function isComponent(thing){
     return thing && typeof thing === 'object' && '_fastn_component' in thing;
@@ -13,13 +14,31 @@ function isProperty(thing){
 }
 
 function createAttachCallback(component, key){
-    return function(data){
-        component[key].attach(data);
+    return function(data, type){
+        component[key].attach(data, type);
     }
+}
+
+function dereferenceSettings(settings){
+    var result = {},
+        keys = Object.keys(settings);
+
+    for(var i = 0; i < keys.length; i++){
+        var key = keys[i];
+        result[key] = settings[key];
+        if(isBinding(result[key])){
+            result[key] = merge(null, result[key]);
+        }
+    }
+
+    return result;
 }
 
 function createComponent(fastn, type, settings, children, components){
     var component;
+
+    settings = dereferenceSettings(settings || {});
+    children = children.slice();
 
     if(!(type in components)){
         if(!('_generic' in components)){
@@ -33,16 +52,22 @@ function createComponent(fastn, type, settings, children, components){
     component._type = type;
     component._settings = settings;
     component._fastn_component = true;
-    component._children = children.slice();
+    component._children = children;
 
     for(var key in settings){
         if(isBinding(settings[key]) && isProperty(component[key])){
             var binding = settings[key]._fastn_binding;
             component[key].bind(binding);
+            if(settings[key].model){
+                component[key].attach(settings[key].model);
+            }
             component.on('attach', createAttachCallback(component, key));
 
             function update(){
                 if(component.element){
+                    // <DEBUG
+                    component.element.component = component;
+                    // DEBUG>
                     component.emit('update');
                 }
             }
@@ -50,14 +75,16 @@ function createComponent(fastn, type, settings, children, components){
             component.on('attach', update);
             component.on('render', update);
         }
-
-        if(isProperty(component[key])){
-            component[key](isBinding(settings[key]) ? settings[key].value : settings[key]);
-        }
     }
 
-    component.attach = function(data){
-        this.emit('attach', data);
+    var attachType;
+    component.attach = function(data, type){
+        if(type && type !== attachType && attachType === true){
+            return;
+        }
+        attachType = type || true;
+        this.emit('attach', data, type || true);
+        return this;
     };
 
     return component;
@@ -78,9 +105,13 @@ module.exports = function(components){
     }
 
     fastn.property = function(instance, propertyName){
-        var value,
-            binding,
-            model = new Enti();
+        var binding,
+            model = new Enti(),
+            attachType;
+
+        // <DEBUG
+        this.model = model;
+        // DEBUG>
 
         instance.on('update', function(){
             property._update();
@@ -88,21 +119,30 @@ module.exports = function(components){
 
         function property(newValue){
             if(!arguments.length){
-                return value;
+                return this._value;
             }
 
-            if(value === newValue){
+            if(this._value === newValue){
                 return
             }
 
-            value = newValue;
-            instance.emit(propertyName, value);
+            this._value = newValue;
+            instance.emit(propertyName, this._value);
             if(binding){
-                model.set(binding, value);
+                model.set(binding, this._value);
             }
         }
-        property.attach = function(data){
+        property.attach = function(data, type){
+            if(type && type !== attachType && attachType === true){
+                return;
+            }
+            attachType = type || true;
             model.attach(data);
+            property._update();
+        };
+        property.detach = function(){
+            attachType = null;
+            model.detach();
             property._update();
         };
         property.bind = function(key){
@@ -113,20 +153,23 @@ module.exports = function(components){
             };
         };
         property._update = function(){
-            if(binding){
-                value = model.get(binding);
+            if(binding && attachType){
+                this._value = model.get(binding);
+            }else{
+                this._value = isBinding(instance._settings[propertyName]) ? instance._settings[propertyName].value : instance._settings[propertyName];
             }
-            instance.emit(propertyName, value);
+            instance.emit(propertyName, this._value);
         };
         property._fastn_property = true;
 
         instance[propertyName] = property;
     };
 
-    fastn.binding = function(key, defaultValue){
+    fastn.binding = function(key, defaultValue, model){
         return {
             _fastn_binding: key,
-            value: defaultValue
+            value: defaultValue,
+            model: model
         };
     };
 
