@@ -22,15 +22,20 @@ function createPropertyUpdater(generic, key){
             }
         }
     });
-    generic.on('render', function(){
-        generic.emit(key, generic[key]());
-    });
 }
 
 function createProperties(fastn, generic, settings){
     for(var key in settings){
         fastn.property(generic, key);
         createPropertyUpdater(generic, key);
+    }
+}
+
+function addUpdateHandler(generic, eventName, settings){
+    if(typeof settings[eventName] === 'string' && settings[eventName] in settings){
+        generic.element.addEventListener(eventName.slice(2), function(event){
+            generic[settings[eventName]](generic.element[settings[eventName]]);
+        });
     }
 }
 
@@ -46,11 +51,9 @@ module.exports = function(type, fastn, settings, children){
     };
 
     generic.on('render', function(){
-        for(key in generic._events){
-            if('on' + key in generic.element){
-                generic.element.addEventListener(key, function(event){
-                    generic.emit(key, event, generic.scope());
-                });
+        for(key in settings){
+            if(key.match(/^on/) && key in generic.element){
+                addUpdateHandler(generic, key, settings);
             }
         }
     });

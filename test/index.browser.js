@@ -99,19 +99,33 @@ function createPropertyUpdater(generic, key){
     });
 }
 
-module.exports = function(type, fastn, settings, children){
-    var generic = containerComponent(type, fastn);
-
+function createProperties(fastn, generic, settings){
     for(var key in settings){
         fastn.property(generic, key);
         createPropertyUpdater(generic, key);
     }
+}
+
+module.exports = function(type, fastn, settings, children){
+    var generic = containerComponent(type, fastn);
+
+    createProperties(fastn, generic, settings);
 
     generic.render = function(){
         this.element = crel(type);
 
         this.emit('render');
     };
+
+    generic.on('render', function(){
+        for(key in generic._events){
+            if('on' + key in generic.element){
+                generic.element.addEventListener(key, function(event){
+                    generic.emit(key, event, generic.scope());
+                });
+            }
+        }
+    });
 
     return generic;
 };
@@ -176,17 +190,14 @@ function createComponent(fastn, type, settings, children, components){
         if(isProperty(component[key])){
             if(isBinding(settings[key])){
                 var binding = settings[key]._fastn_binding;
-                component[key].bind(binding);
-                if(settings[key]._model){
-                    component[key].attach(settings[key]._model);
+                if(settings[key]._scope){
+                    component[key].attach(settings[key]._scope);
                 }
+                component[key].bind(binding);
                 component.on('attach', createAttachCallback(component, key));
 
                 function update(){
                     if(component.element){
-                        // <DEBUG
-                        component.element.component = component;
-                        // DEBUG>
                         component.emit('update');
                     }
                 }
@@ -205,8 +216,13 @@ function createComponent(fastn, type, settings, children, components){
             return;
         }
         attachType = type || true;
+        this._scope = data;
         this.emit('attach', data, type || true);
         return this;
+    };
+
+    component.scope = function(){
+        return this._scope;
     };
 
     return component;
@@ -215,25 +231,26 @@ function createComponent(fastn, type, settings, children, components){
 module.exports = function(components){
 
     function fastn(type){
-        var settings = arguments[1],
+        var args = [];
+        for(var i = 0; i < arguments.length; i++){
+            args[i] = arguments[i];
+        }
+
+        var settings = args[1],
             childrenIndex = 2;
 
-        if(isComponent(arguments[1])){
+        if(isComponent(args[1])){
             childrenIndex--;
             settings = null;
         }
 
-        return createComponent(fastn, type, settings, Array.prototype.slice.call(arguments, childrenIndex), components);
+        return createComponent(fastn, type, settings, args.slice(childrenIndex), components);
     }
 
     fastn.property = function(instance, propertyName, transform){
         var binding,
             model = new Enti(),
             attachType;
-
-        // <DEBUG
-        this.model = model;
-        // DEBUG>
 
         instance.on('update', function(){
             property._update();
@@ -254,6 +271,14 @@ module.exports = function(components){
                 model.set(binding, this._value);
             }
         }
+
+        var handler = function(){
+            if(instance._settings[propertyName].transform){
+                return property.apply(instance, [instance._settings[propertyName].transform(arguments[0])].concat(Array.prototype.slice(arguments, 1)));
+            }
+            property.apply(instance, arguments);
+        };
+
         property.attach = function(data, type){
             if(type && type !== attachType && attachType === true){
                 return;
@@ -267,15 +292,10 @@ module.exports = function(components){
             model.detach();
             property._update();
         };
-        property.bind = function(key){
-            binding = key;
+        property.bind = function(newBinding){
+            binding = newBinding;
             model._events = {};
-            model._events[key] = function(){
-                if(instance._settings[propertyName].transform){
-                    return property.apply(instance, [instance._settings[propertyName].transform(arguments[0])].concat(Array.prototype.slice(arguments, 1)));
-                }
-                property.apply(instance, arguments);
-            };
+            model._events[newBinding] = handler
         };
         property._update = function(){
             if(binding && attachType){
@@ -304,7 +324,7 @@ module.exports = function(components){
             value: defaultValue,
             transform: transform,
             attach: function(model){
-                this._model = model;
+                this._scope = model;
                 return this;
             }
         };
@@ -315,7 +335,6 @@ module.exports = function(components){
     fastn.isProperty = isProperty;
 
     return fastn;
-
 };
 },{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js","flat-merge":"/home/kory/dev/fastn/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/listComponent.js":[function(require,module,exports){
 var crel = require('crel'),
@@ -404,16 +423,16 @@ module.exports = function(type, fastn, settings, children){
                 key = keyFor(lastItems, item);
 
             if(key === false){
-                child = template(item, key);
+                child = template(item, key, list.scope());
 
                 if(fastn.isComponent(child)){
                     if(item && typeof item === 'object'){
-                        child.attach(item);
+                        child.attach(item, 'parent');
                     }else{
                         child.attach({
                             item: item,
                             key: key
-                        });
+                        }, 'parent');
                     }
                 }
 
@@ -2510,10 +2529,8 @@ EventEmitter.prototype.emit = function(type) {
       er = arguments[1];
       if (er instanceof Error) {
         throw er; // Unhandled 'error' event
-      } else {
-        throw TypeError('Uncaught, unspecified "error" event.');
       }
-      return false;
+      throw TypeError('Uncaught, unspecified "error" event.');
     }
   }
 

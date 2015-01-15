@@ -10,6 +10,7 @@ module.exports = function(fastn){
         fastn('div', {'class': 'details'},
             fastn('p', {'class':'primary'},
                 fastn('label', {textContent: fastn.binding('firstName')}),
+                fastn('input', {value: fastn.binding('firstName')}),
                 fastn('label', {textContent: fastn.binding('surname')})
             ),
             fastn('p', {'class':'extra'},
