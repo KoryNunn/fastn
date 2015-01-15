@@ -84,16 +84,16 @@ module.exports = function(type, fastn, settings, children){
                 key = keyFor(lastItems, item);
 
             if(key === false){
-                child = template(item, key);
+                child = template(item, key, list.scope());
 
                 if(fastn.isComponent(child)){
                     if(item && typeof item === 'object'){
-                        child.attach(item);
+                        child.attach(item, 'parent');
                     }else{
                         child.attach({
                             item: item,
                             key: key
-                        });
+                        }, 'parent');
                     }
                 }
 

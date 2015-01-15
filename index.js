@@ -58,17 +58,14 @@ function createComponent(fastn, type, settings, children, components){
         if(isProperty(component[key])){
             if(isBinding(settings[key])){
                 var binding = settings[key]._fastn_binding;
-                component[key].bind(binding);
-                if(settings[key]._model){
-                    component[key].attach(settings[key]._model);
+                if(settings[key]._scope){
+                    component[key].attach(settings[key]._scope);
                 }
+                component[key].bind(binding);
                 component.on('attach', createAttachCallback(component, key));
 
                 function update(){
                     if(component.element){
-                        // <DEBUG
-                        component.element.component = component;
-                        // DEBUG>
                         component.emit('update');
                     }
                 }
@@ -87,8 +84,13 @@ function createComponent(fastn, type, settings, children, components){
             return;
         }
         attachType = type || true;
+        this._scope = data;
         this.emit('attach', data, type || true);
         return this;
+    };
+
+    component.scope = function(){
+        return this._scope;
     };
 
     return component;
@@ -97,25 +99,26 @@ function createComponent(fastn, type, settings, children, components){
 module.exports = function(components){
 
     function fastn(type){
-        var settings = arguments[1],
+        var args = [];
+        for(var i = 0; i < arguments.length; i++){
+            args[i] = arguments[i];
+        }
+
+        var settings = args[1],
             childrenIndex = 2;
 
-        if(isComponent(arguments[1])){
+        if(isComponent(args[1])){
             childrenIndex--;
             settings = null;
         }
 
-        return createComponent(fastn, type, settings, Array.prototype.slice.call(arguments, childrenIndex), components);
+        return createComponent(fastn, type, settings, args.slice(childrenIndex), components);
     }
 
     fastn.property = function(instance, propertyName, transform){
         var binding,
             model = new Enti(),
             attachType;
-
-        // <DEBUG
-        this.model = model;
-        // DEBUG>
 
         instance.on('update', function(){
             property._update();
@@ -136,6 +139,14 @@ module.exports = function(components){
                 model.set(binding, this._value);
             }
         }
+
+        var handler = function(){
+            if(instance._settings[propertyName].transform){
+                return property.apply(instance, [instance._settings[propertyName].transform(arguments[0])].concat(Array.prototype.slice(arguments, 1)));
+            }
+            property.apply(instance, arguments);
+        };
+
         property.attach = function(data, type){
             if(type && type !== attachType && attachType === true){
                 return;
@@ -149,15 +160,10 @@ module.exports = function(components){
             model.detach();
             property._update();
         };
-        property.bind = function(key){
-            binding = key;
+        property.bind = function(newBinding){
+            binding = newBinding;
             model._events = {};
-            model._events[key] = function(){
-                if(instance._settings[propertyName].transform){
-                    return property.apply(instance, [instance._settings[propertyName].transform(arguments[0])].concat(Array.prototype.slice(arguments, 1)));
-                }
-                property.apply(instance, arguments);
-            };
+            model._events[newBinding] = handler
         };
         property._update = function(){
             if(binding && attachType){
@@ -186,7 +192,7 @@ module.exports = function(components){
             value: defaultValue,
             transform: transform,
             attach: function(model){
-                this._model = model;
+                this._scope = model;
                 return this;
             }
         };
@@ -197,5 +203,4 @@ module.exports = function(components){
     fastn.isProperty = isProperty;
 
     return fastn;
-
 };

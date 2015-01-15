@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "watchify test/index.js -o test/index.browser.js",
+    "watchexample": "watchify example/index.js -o example/index.browser.js",
     "ie": "cat test/index.browser.js | ieify > test/index.ie.js"
   },
   "author": "",

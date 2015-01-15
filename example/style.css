@@ -1,0 +1,57 @@
+@import url(http://fonts.googleapis.com/css?family=Roboto:400,300,100);
+
+body{
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    color: #222;
+    margin:0;
+    background: #fbfafa;
+}
+
+a{
+    color: #36f;
+    text-decoration: none;
+}
+
+.user{
+    margin: 10px;
+    box-shadow: 0 2px 7px -2px rgba(0,0,0,0.5);
+    border-radius: 1px;
+    background: white;
+    transition: all 0.25s cubic-bezier(.29,.7,0,.99);
+}
+
+.user.selected{
+    margin: 5px 0;
+    padding: 10px;
+    padding-bottom: 50px;
+}
+
+.user img{
+    height:80px;
+    vertical-align: middle;
+}
+
+.user label{
+    padding-right: 3px;
+}
+
+.user .details{
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 5px;
+}
+
+.user p{
+    margin: 3px 0;
+}
+
+.user .primary label{
+    text-transform: capitalize;
+    font-size: 1.2em;
+}
+
+.user .extra{
+    color: gray;
+    font-size: 0.9em;
+}
