@@ -1,48 +1,53 @@
-var Enti = require('enti');    
+var Enti = require('enti'),
+    is = require('./is');
 
-module.exports = function property(component, propertyName, transform){
-    var binding;
+function getInitialBindingsAndUpdater(args){
+    var bindingsIndex = 0,
+        bindingsEndIndex = args
+}
 
-    component.on('update', function(){
-        property._update();
-    });
-    component.on('attach', function(object){
-        if(binding){
-            binding.attach(object, true);
+module.exports = function property(){
+    var firstBindingIndex = is.binding(arguments[0]) ? 0 : 1,
+        lastBindingIndex = arguments.length - is.binding(arguments[arguments.length - 1]) ? 2 : 1,
+        currentValue = arguments[firstBindingIndex - 1],
+        bindings = Array.prototype.slice.call(arguments, firstBindingIndex, lastBindingIndex);
+
+    function defaultGetSet(value){
+        if(!arguments.length){
+            return bindings[0] && bindings[0]() || currentValue;
         }
-    });
 
-    function property(newValue){
-        if(binding){
-            binding(newValue);
-            component.emit(propertyName, binding());
-            return;
-        }
-        component.emit(propertyName, newValue);
+        currentValue = value;
+        bindings[0] && bindings[0](value);
     }
 
-    property.attach = function(newBinding){
-        if(binding){
-            binding.removeListener(property);
+    function property(){
+        var result = defaultGetSet.call(this, arguments);
+
+        if(arguments.length){
+            this.emit('change', result);
         }
-        binding = newBinding;
-        binding.on('change', property);
-        property._update();
+
+        return this;
+    }
+
+    property.attach = function(object){
+        bindings.forEach(function(binding){
+            binding.attach(object);
+            binding.on('change', property);
+        });
+        property.update();
     };
     property.detach = function(){
-        binding = null;
-        property._update();
+        bindings.forEach(function(binding){
+            binding.removeListener('change', property);
+        });
+        property.update();
     };
-    property._update = function(){
-        var value;
-
-        if(binding){
-            value = binding();
-        }
-
-        component.emit(propertyName, value);
+    property.update = function(){
+        property.emit('update');
     };
     property._fastn_property = true;
 
-    component[propertyName] = property;
+    return property;
 };

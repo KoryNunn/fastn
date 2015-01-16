@@ -78,7 +78,8 @@ module.exports = function createBinding(key, defaultValue, transform){
     return binding;
 };
 },{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/component.js":[function(require,module,exports){
-var is = require('./is');
+var Enti = require('enti'),
+    is = require('./is');
 
 function dereferenceSettings(settings){
     var result = {},
@@ -100,7 +101,8 @@ function dereferenceSettings(settings){
 }
 
 module.exports = function createComponent(type, fastn, settings, children, components){
-    var component;
+    var component,
+        model = new Enti({});
 
     settings = dereferenceSettings(settings || {});
     children = children.slice();
@@ -130,24 +132,32 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     }
 
     component.attach = function(data){
-        this._scope = data;
+        model.attach(data instanceof Enti ? data._model : data);
         this.emit('attach', data);
         return this;
     };
 
     component.detach = function(){
-        this._scope = null;
+        model.detach();
         this.emit('detach');
         return this;
     };
 
     component.scope = function(){
-        return this._scope;
+        return this.model;
     };
 
     function emitUpdate(){
         component.emit('update');
     }
+
+    component.clone = function(){
+        return createComponent(component._type, fastn, component._settings, component._children.filter(function(child){
+            return !child._templated;
+        }).map(function(child){
+            return child.clone();
+        }), components);
+    };
 
     component.on('attach', emitUpdate);
     component.on('render', emitUpdate);
@@ -155,7 +165,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     return component;
 }
 
-},{"./is":"/home/kory/dev/fastn/is.js"}],"/home/kory/dev/fastn/containerComponent.js":[function(require,module,exports){
+},{"./is":"/home/kory/dev/fastn/is.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/containerComponent.js":[function(require,module,exports){
 var crel = require('crel'),
     EventEmitter = require('events').EventEmitter;
 
@@ -244,98 +254,124 @@ var model = {
     },
     enti = new Enti(model);
 
-// window.onload = function(){
-//     var app = fastn('div',
-//         require('./userList')(fastn)
-//     );
+var users = [];
 
-//     app.attach(model);
-//     app.render();
+for(var i = 0; i < 10; i++){
+    users.push({
+        "profileImage":"http://4.bp.blogspot.com/-pFbPM7ustIw/UcBZpKQfG2I/AAAAAAAAB7E/Cvb61R1P4c0/s1600/profileholder.gif",
+        "firstName": "bob",
+        "surname": "down",
+        "email": "bob@down.com"
+    });
+}
 
-//     window.app = app;
-
-//     enti.set('users', require('./users.json'))
-
-//     crel(document.body, app.element);
-// };
+window.enti = enti;
 
 window.onload = function(){
-    var thing = {
-        foo: 'baz'
-    };
-
-    var app = fastn('div', {
-            scope:{
-                selected: fastn.binding('selected')
-            }
-        },
-        fastn('div', {
-            textContent: fastn.binding('foo')
-        }),
-        fastn('input', {
-            onkeyup: 'value',
-            onclick: function(event, scope){
-                fastn.binding('foo')
-            },
-            value: fastn.binding('foo')
-        }),
-        fastn('div', {
-            textContent: fastn.binding('foo').attach(thing)
-        })
+    var app = fastn('div',
+        require('./userList')(fastn)
     );
 
     app.attach(model);
     app.render();
 
     window.app = app;
-    window.enti = enti;
-    window.thing = thing;
-    window.Enti = Enti;
 
-    enti.set('foo', 'bar');
+    setTimeout(function(){
+        enti.set('users', users);
+    });
 
     crel(document.body, app.element);
 };
-},{"../":"/home/kory/dev/fastn/index.js","../genericComponent":"/home/kory/dev/fastn/genericComponent.js","../listComponent":"/home/kory/dev/fastn/listComponent.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
+},{"../":"/home/kory/dev/fastn/index.js","../genericComponent":"/home/kory/dev/fastn/genericComponent.js","../listComponent":"/home/kory/dev/fastn/listComponent.js","./userList":"/home/kory/dev/fastn/example/userList.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/example/user.js":[function(require,module,exports){
+var Enti = require('enti');
+
+module.exports = function(fastn, selectedUser){
+    return fastn('div', {
+            'class': fastn.binding(fastn.binding('.'), selectedUser, function(user, selectedUser){
+                return ['user', user === selectedUser && 'selected'].join(' ');
+            })
+        },
+        fastn('img', {src: fastn.binding('profileImage')}),
+        fastn('div', {'class': 'details'},
+            fastn('p', {'class':'primary'},
+                fastn('label', {textContent: fastn.binding('firstName')}),
+                fastn('input', {value: fastn.binding('firstName')})
+                .on('keyup', function(event){
+                    this.value(this.element.value);
+                }),
+                fastn('label', {textContent: fastn.binding('surname')})
+            ),
+            fastn('p', {'class':'extra'},
+                fastn('a', {href: fastn.binding('email'), textContent: fastn.binding('email')})
+            )
+        )
+    ).on('click', function(event, user){
+        selectedUser(user);
+    });
+};
+},{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/example/userList.js":[function(require,module,exports){
+module.exports = function(fastn){
+    var selectedUser = fastn.binding('selectedUser').attach({});
+
+    return fastn('list', {items: fastn.binding('users'), template: function(item, key, scope){
+        return require('./user.js')(fastn, selectedUser)
+    }});
+};
+},{"./user.js":"/home/kory/dev/fastn/example/user.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
 var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
-function createPropertyUpdater(generic, key){
-    generic.on(key, function(value){
-        if(!generic.element){
-            return;
-        }
-        var element = generic.element,
-            isProperty = key in element,
-            previous = isProperty ? element[key] : element.getAttribute(key);
+function createPropertyUpdater(fastn, generic, key, settings){
+    var setting = settings[key];
 
-        if(value == null){
-            value = '';
-        }
+    if(isBinding(setting)){
+        setting = fastn.property(setting);
+    }
 
-        if(value !== previous){
-            if(isProperty){
-                element[key] = value;
-            }else{
-                element.setAttribute(key, value);
+    if(isProperty(setting)){
+        component.on('update', function(){
+            setting.update();
+        });
+        component.on('attach', function(object){
+            setting.attach(object);
+        });
+        setting.on('update', function(value){
+            if(!generic.element){
+                return;
             }
-        }
-    });
+            
+            var element = generic.element,
+                isProperty = key in element,
+                previous = isProperty ? element[key] : element.getAttribute(key);
+
+            if(value == null){
+                value = '';
+            }
+
+            if(value !== previous){
+                if(isProperty){
+                    element[key] = value;
+                }else{
+                    element.setAttribute(key, value);
+                }
+            }
+        });
+
+        generic[key] = setting;
+    }
 }
 
 function createProperties(fastn, generic, settings){
     for(var key in settings){
-        fastn.property(generic, key);
-        createPropertyUpdater(generic, key);
+        initialiseProperty(fastn, generic, key, settings);
     }
 }
 
 function addUpdateHandler(generic, eventName, settings){
-    if(typeof settings[eventName] === 'string' && settings[eventName] in settings){
-        generic.element.addEventListener(eventName.slice(2), function(event){
-            generic[settings[eventName]](generic.element[settings[eventName]]);
-        });
-    }
+    generic.element.addEventListener(eventName, function(event){
+        generic.emit(eventName, event, generic.scope());
+    });
 }
 
 module.exports = function(type, fastn, settings, children){
@@ -350,9 +386,9 @@ module.exports = function(type, fastn, settings, children){
     };
 
     generic.on('render', function(){
-        for(key in settings){
-            if(key.match(/^on/) && key in generic.element){
-                addUpdateHandler(generic, key, settings);
+        for(key in this._events){
+            if('on' + key.toLowerCase() in generic.element){
+                addUpdateHandler(generic, key);
             }
         }
     });
@@ -508,6 +544,7 @@ module.exports = function(type, fastn, settings, children){
 
             if(key === false){
                 child = template(item, key, list.scope());
+                child._templated = true;
 
                 if(fastn.isComponent(child)){
                     if(item && typeof item === 'object'){
@@ -547,7 +584,7 @@ module.exports = function(type, fastn, settings, children){
         this.emit('render');
     };
 
-    fastn.property(list, 'items');
+    list.items = fastn.property(settings.items, updateItems);
 
     return list;
 };
@@ -2437,55 +2474,60 @@ module.exports = LeakMap;
 })();
 
 },{}],"/home/kory/dev/fastn/property.js":[function(require,module,exports){
-var Enti = require('enti');    
+var Enti = require('enti'),
+    is = require('./is');
 
-module.exports = function property(component, propertyName, transform){
-    var binding;
+function getInitialBindingsAndUpdater(args){
+    var bindingsIndex = 0,
+        bindingsEndIndex = args
+}
 
-    component.on('update', function(){
-        property._update();
-    });
-    component.on('attach', function(object){
-        if(binding){
-            binding.attach(object, true);
+module.exports = function property(){
+    var firstBindingIndex = is.binding(arguments[0]) ? 0 : 1,
+        lastBindingIndex = arguments.length - is.binding(arguments[arguments.length - 1]) ? 2 : 1,
+        currentValue = arguments[firstBindingIndex - 1],
+        bindings = Array.prototype.slice.call(arguments, firstBindingIndex, lastBindingIndex);
+
+    function defaultGetSet(value){
+        if(!arguments.length){
+            return bindings[0] && bindings[0]() || currentValue;
         }
-    });
 
-    function property(newValue){
-        if(binding){
-            binding(newValue);
-            component.emit(propertyName, binding());
-            return;
-        }
-        component.emit(propertyName, newValue);
+        currentValue = value;
+        bindings[0] && bindings[0](value);
     }
 
-    property.attach = function(newBinding){
-        if(binding){
-            binding.removeListener(property);
+    function property(){
+        var result = defaultGetSet.call(this, arguments);
+
+        if(arguments.length){
+            this.emit('change', result);
         }
-        binding = newBinding;
-        binding.on('change', property);
-        property._update();
+
+        return this;
+    }
+
+    property.attach = function(object){
+        bindings.forEach(function(binding){
+            binding.attach(object);
+            binding.on('change', property);
+        });
+        property.update();
     };
     property.detach = function(){
-        binding = null;
-        property._update();
+        bindings.forEach(function(binding){
+            binding.removeListener('change', property);
+        });
+        property.update();
     };
-    property._update = function(){
-        var value;
-
-        if(binding){
-            value = binding();
-        }
-
-        component.emit(propertyName, value);
+    property.update = function(){
+        property.emit('update');
     };
     property._fastn_property = true;
 
-    component[propertyName] = property;
+    return property;
 };
-},{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/weakmap.js":[function(require,module,exports){
+},{"./is":"/home/kory/dev/fastn/is.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/weakmap.js":[function(require,module,exports){
 var WM;
 
 if(typeof WeakMap !== 'undefined'){

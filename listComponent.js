@@ -85,6 +85,7 @@ module.exports = function(type, fastn, settings, children){
 
             if(key === false){
                 child = template(item, key, list.scope());
+                child._templated = true;
 
                 if(fastn.isComponent(child)){
                     if(item && typeof item === 'object'){
@@ -124,7 +125,7 @@ module.exports = function(type, fastn, settings, children){
         this.emit('render');
     };
 
-    fastn.property(list, 'items');
+    list.items = fastn.property(settings.items, updateItems);
 
     return list;
 };

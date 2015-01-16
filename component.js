@@ -1,4 +1,5 @@
-var is = require('./is');
+var Enti = require('enti'),
+    is = require('./is');
 
 function dereferenceSettings(settings){
     var result = {},
@@ -20,7 +21,8 @@ function dereferenceSettings(settings){
 }
 
 module.exports = function createComponent(type, fastn, settings, children, components){
-    var component;
+    var component,
+        model = new Enti({});
 
     settings = dereferenceSettings(settings || {});
     children = children.slice();
@@ -50,24 +52,32 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     }
 
     component.attach = function(data){
-        this._scope = data;
+        model.attach(data instanceof Enti ? data._model : data);
         this.emit('attach', data);
         return this;
     };
 
     component.detach = function(){
-        this._scope = null;
+        model.detach();
         this.emit('detach');
         return this;
     };
 
     component.scope = function(){
-        return this._scope;
+        return this.model;
     };
 
     function emitUpdate(){
         component.emit('update');
     }
+
+    component.clone = function(){
+        return createComponent(component._type, fastn, component._settings, component._children.filter(function(child){
+            return !child._templated;
+        }).map(function(child){
+            return child.clone();
+        }), components);
+    };
 
     component.on('attach', emitUpdate);
     component.on('render', emitUpdate);

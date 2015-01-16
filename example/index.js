@@ -15,55 +15,32 @@ var model = {
     },
     enti = new Enti(model);
 
-// window.onload = function(){
-//     var app = fastn('div',
-//         require('./userList')(fastn)
-//     );
+var users = [];
 
-//     app.attach(model);
-//     app.render();
+for(var i = 0; i < 10; i++){
+    users.push({
+        "profileImage":"http://4.bp.blogspot.com/-pFbPM7ustIw/UcBZpKQfG2I/AAAAAAAAB7E/Cvb61R1P4c0/s1600/profileholder.gif",
+        "firstName": "bob",
+        "surname": "down",
+        "email": "bob@down.com"
+    });
+}
 
-//     window.app = app;
-
-//     enti.set('users', require('./users.json'))
-
-//     crel(document.body, app.element);
-// };
+window.enti = enti;
 
 window.onload = function(){
-    var thing = {
-        foo: 'baz'
-    };
-
-    var app = fastn('div', {
-            scope:{
-                selected: fastn.binding('selected')
-            }
-        },
-        fastn('div', {
-            textContent: fastn.binding('foo')
-        }),
-        fastn('input', {
-            onkeyup: 'value',
-            onclick: function(event, scope){
-                fastn.binding('foo')
-            },
-            value: fastn.binding('foo')
-        }),
-        fastn('div', {
-            textContent: fastn.binding('foo').attach(thing)
-        })
+    var app = fastn('div',
+        require('./userList')(fastn)
     );
 
     app.attach(model);
     app.render();
 
     window.app = app;
-    window.enti = enti;
-    window.thing = thing;
-    window.Enti = Enti;
 
-    enti.set('foo', 'bar');
+    setTimeout(function(){
+        enti.set('users', users);
+    });
 
     crel(document.body, app.element);
 };
