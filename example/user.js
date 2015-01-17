@@ -2,7 +2,7 @@ var Enti = require('enti');
 
 module.exports = function(fastn, selectedUser){
     return fastn('div', {
-            'class': fastn.binding(fastn.binding('.'), selectedUser, function(user, selectedUser){
+            'class': fastn.fuse(fastn.binding('.'), selectedUser, function(user, selectedUser){
                 return ['user', user === selectedUser && 'selected'].join(' ');
             })
         },
@@ -20,7 +20,7 @@ module.exports = function(fastn, selectedUser){
                 fastn('a', {href: fastn.binding('email'), textContent: fastn.binding('email')})
             )
         )
-    ).on('click', function(event, user){
-        selectedUser(user);
+    ).on('click', function(event, scope){
+        selectedUser(scope._model);
     });
 };

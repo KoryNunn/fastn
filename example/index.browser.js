@@ -2,30 +2,49 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter;
 
-module.exports = function createBinding(key, defaultValue, transform){
-    if(typeof defaultValue === 'function'){
-        transform = defaultValue;
-        defaultValue = undefined;
+function createSelfBinding(){
+    var value;
+
+    var binding = function(newValue){
+        if(!arguments.length){
+            return value;
+        }
+
+        value = newValue;
+    }
+    binding._fastn_binding = key;
+    binding._firm = false;
+    binding.attach = function(object, loose){
+        if(loose && binding._firm){
+            return;
+        }
+
+        binding._firm = !loose;
+
+        value = object;
+    };
+    binding.detach = function(){};
+    for(var emitterKey in EventEmitter.prototype){
+        binding[emitterKey] = EventEmitter.prototype[emitterKey];
     }
 
+    return binding;
+}
+
+module.exports = function createBinding(key){
     var model = new Enti(),
-        value = defaultValue;
+        value;
+
+    if(key === '.'){
+        return createSelfBinding();
+    }
 
     var binding = function binding(newValue){
         if(!arguments.length){
-            if(transform){
-                return transform(value);
-            }else{
-                return value;
-            }
+            return value;
         }
 
-        if(transform){
-            model.set(key, transform(value, newValue));
-        }else{
-            model.set(key, newValue);
-        }
-
+        model.set(key, newValue);
     };
 
     for(var emitterKey in EventEmitter.prototype){
@@ -33,11 +52,7 @@ module.exports = function createBinding(key, defaultValue, transform){
     }
 
     var handler = function(newValue){
-        if(binding.transform){
-            value = binding.transform(newValue);
-        }else{
-            value = newValue;
-        }
+        value = newValue;
         binding.emit('change', value);
     };
     model._events = {};
@@ -45,14 +60,13 @@ module.exports = function createBinding(key, defaultValue, transform){
 
 
     binding._fastn_binding = key;
-    binding._defaultValue = defaultValue;
-    binding.transform = transform;
     binding._firm = false;
     binding.attach = function(object, loose){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
         if(loose && binding._firm){
+            binding.emit('attach', object);
             return;
         }
 
@@ -153,7 +167,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     };
 
     component.scope = function(){
-        return this.model;
+        return model;
     };
 
     function emitUpdate(){
@@ -297,7 +311,7 @@ var Enti = require('enti');
 
 module.exports = function(fastn, selectedUser){
     return fastn('div', {
-            'class': fastn.binding(fastn.binding('.'), selectedUser, function(user, selectedUser){
+            'class': fastn.fuse(fastn.binding('.'), selectedUser, function(user, selectedUser){
                 return ['user', user === selectedUser && 'selected'].join(' ');
             })
         },
@@ -315,8 +329,8 @@ module.exports = function(fastn, selectedUser){
                 fastn('a', {href: fastn.binding('email'), textContent: fastn.binding('email')})
             )
         )
-    ).on('click', function(event, user){
-        selectedUser(user);
+    ).on('click', function(event, scope){
+        selectedUser(scope._model);
     });
 };
 },{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/example/userList.js":[function(require,module,exports){
@@ -327,7 +341,31 @@ module.exports = function(fastn){
         return require('./user.js')(fastn, selectedUser)
     }});
 };
-},{"./user.js":"/home/kory/dev/fastn/example/user.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
+},{"./user.js":"/home/kory/dev/fastn/example/user.js"}],"/home/kory/dev/fastn/fuse.js":[function(require,module,exports){
+var Enti = require('enti'),
+    createBinding = require('./binding'),
+    EventEmitter = require('events').EventEmitter;
+
+module.exports = function fuseBinding(){
+    var bindings = Array.prototype.slice.call(arguments),
+        transform = bindings.pop(),
+        resultBinding = createBinding('result').attach({});
+
+    function change(){
+        resultBinding(transform.apply(null, bindings.map(function(binding){
+            return binding();
+        })));
+    }
+
+    bindings.forEach(function(binding){
+        binding.on('change', change);
+        resultBinding.on('attach', binding.attach);
+        resultBinding.on('detach', binding.detach);
+    });
+
+    return resultBinding;
+};
+},{"./binding":"/home/kory/dev/fastn/binding.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
 var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
@@ -414,6 +452,7 @@ var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
     createBinding = require('./binding');
+    fuseBinding = require('./fuse');
     is = require('./is');
 
 module.exports = function(components){
@@ -439,6 +478,8 @@ module.exports = function(components){
 
     fastn.binding = createBinding;
 
+    fastn.fuse = fuseBinding;
+
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;
     fastn.isBindingObject = is.bindingObject;
@@ -446,7 +487,7 @@ module.exports = function(components){
 
     return fastn;
 };
-},{"./binding":"/home/kory/dev/fastn/binding.js","./component":"/home/kory/dev/fastn/component.js","./is":"/home/kory/dev/fastn/is.js","./property":"/home/kory/dev/fastn/property.js","flat-merge":"/home/kory/dev/fastn/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/is.js":[function(require,module,exports){
+},{"./binding":"/home/kory/dev/fastn/binding.js","./component":"/home/kory/dev/fastn/component.js","./fuse":"/home/kory/dev/fastn/fuse.js","./is":"/home/kory/dev/fastn/is.js","./property":"/home/kory/dev/fastn/property.js","flat-merge":"/home/kory/dev/fastn/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/is.js":[function(require,module,exports){
 
 function isComponent(thing){
     return thing && typeof thing === 'object' && '_fastn_component' in thing;

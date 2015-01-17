@@ -1,30 +1,49 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter;
 
-module.exports = function createBinding(key, defaultValue, transform){
-    if(typeof defaultValue === 'function'){
-        transform = defaultValue;
-        defaultValue = undefined;
+function createSelfBinding(){
+    var value;
+
+    var binding = function(newValue){
+        if(!arguments.length){
+            return value;
+        }
+
+        value = newValue;
+    }
+    binding._fastn_binding = key;
+    binding._firm = false;
+    binding.attach = function(object, loose){
+        if(loose && binding._firm){
+            return;
+        }
+
+        binding._firm = !loose;
+
+        value = object;
+    };
+    binding.detach = function(){};
+    for(var emitterKey in EventEmitter.prototype){
+        binding[emitterKey] = EventEmitter.prototype[emitterKey];
     }
 
+    return binding;
+}
+
+module.exports = function createBinding(key){
     var model = new Enti(),
-        value = defaultValue;
+        value;
+
+    if(key === '.'){
+        return createSelfBinding();
+    }
 
     var binding = function binding(newValue){
         if(!arguments.length){
-            if(transform){
-                return transform(value);
-            }else{
-                return value;
-            }
+            return value;
         }
 
-        if(transform){
-            model.set(key, transform(value, newValue));
-        }else{
-            model.set(key, newValue);
-        }
-
+        model.set(key, newValue);
     };
 
     for(var emitterKey in EventEmitter.prototype){
@@ -32,11 +51,7 @@ module.exports = function createBinding(key, defaultValue, transform){
     }
 
     var handler = function(newValue){
-        if(binding.transform){
-            value = binding.transform(newValue);
-        }else{
-            value = newValue;
-        }
+        value = newValue;
         binding.emit('change', value);
     };
     model._events = {};
@@ -44,14 +59,13 @@ module.exports = function createBinding(key, defaultValue, transform){
 
 
     binding._fastn_binding = key;
-    binding._defaultValue = defaultValue;
-    binding.transform = transform;
     binding._firm = false;
     binding.attach = function(object, loose){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
         if(loose && binding._firm){
+            binding.emit('attach', object);
             return;
         }
 

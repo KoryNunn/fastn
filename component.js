@@ -64,7 +64,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     };
 
     component.scope = function(){
-        return this.model;
+        return model;
     };
 
     function emitUpdate(){
