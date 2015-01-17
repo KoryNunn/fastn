@@ -1,49 +1,54 @@
 var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
-function createPropertyUpdater(fastn, generic, key, settings){
-    var setting = settings[key];
+function createProperty(fastn, generic, key, settings){
+    var setting = settings[key],
+        binding = fastn.isBinding(setting) && setting,
+        property = fastn.isProperty(setting) && setting;
+        value = !binding && !property && setting || null;
 
-    if(isBinding(setting)){
-        setting = fastn.property(setting);
+    if(!property){
+        property = fastn.property(value);
     }
 
-    if(isProperty(setting)){
-        component.on('update', function(){
-            setting.update();
-        });
-        component.on('attach', function(object){
-            setting.attach(object);
-        });
-        setting.on('update', function(value){
-            if(!generic.element){
-                return;
-            }
-            
-            var element = generic.element,
-                isProperty = key in element,
-                previous = isProperty ? element[key] : element.getAttribute(key);
-
-            if(value == null){
-                value = '';
-            }
-
-            if(value !== previous){
-                if(isProperty){
-                    element[key] = value;
-                }else{
-                    element.setAttribute(key, value);
-                }
-            }
-        });
-
-        generic[key] = setting;
+    if(binding){
+        property.binding(binding);
     }
+
+    generic.on('update', function(){
+        property.update();
+    });
+    generic.on('attach', function(object){
+        property.attach(object);
+    });
+    property.on('update', function(value){
+        if(!generic.element){
+            return;
+        }
+
+        var element = generic.element,
+            isProperty = key in element,
+            previous = isProperty ? element[key] : element.getAttribute(key);
+
+        if(value == null){
+            value = '';
+        }
+
+        if(value !== previous){
+            if(isProperty){
+                element[key] = value;
+            }else{
+                element.setAttribute(key, value);
+            }
+        }
+    });
+
+    generic[key] = property;
 }
 
 function createProperties(fastn, generic, settings){
     for(var key in settings){
-        initialiseProperty(fastn, generic, key, settings);
+        createProperty(fastn, generic, key, settings);
     }
 }
 

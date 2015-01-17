@@ -34,7 +34,7 @@ module.exports = function createBinding(key, defaultValue, transform){
     var handler = function(newValue){
         if(binding.transform){
             value = binding.transform(newValue);
-        }else{        
+        }else{
             value = newValue;
         }
         binding.emit('change', value);
@@ -60,13 +60,22 @@ module.exports = function createBinding(key, defaultValue, transform){
         if(object instanceof Enti){
             object = object._model;
         }
+
+        if(!(object instanceof Object)){
+            object = {};
+        }
+
         model.attach(object);
         handler(model.get(key));
         this._scope = object;
         binding.emit('attach', object);
         return this;
     };
-    binding.detach = function(){
+    binding.detach = function(loose){
+        if(loose && binding._firm){
+            return;
+        }
+
         model.detach();
         handler(undefined);
         this._scope = null;

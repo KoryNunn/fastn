@@ -58,10 +58,10 @@ module.exports = function(type, fastn){
         }
     });
 
-    container.on('attach', function(data, type){
+    container.on('attach', function(data, loose){
         for(var i = 0; i < container._children.length; i++){
             if(fastn.isComponent(container._children[i])){
-                container._children[i].attach(data, type === true ? 'parent' : type);
+                container._children[i].attach(data, loose);
             }
         }
     });

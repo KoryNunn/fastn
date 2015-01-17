@@ -35,7 +35,7 @@ module.exports = function createBinding(key, defaultValue, transform){
     var handler = function(newValue){
         if(binding.transform){
             value = binding.transform(newValue);
-        }else{        
+        }else{
             value = newValue;
         }
         binding.emit('change', value);
@@ -61,13 +61,22 @@ module.exports = function createBinding(key, defaultValue, transform){
         if(object instanceof Enti){
             object = object._model;
         }
+
+        if(!(object instanceof Object)){
+            object = {};
+        }
+
         model.attach(object);
         handler(model.get(key));
         this._scope = object;
         binding.emit('attach', object);
         return this;
     };
-    binding.detach = function(){
+    binding.detach = function(loose){
+        if(loose && binding._firm){
+            return;
+        }
+
         model.detach();
         handler(undefined);
         this._scope = null;
@@ -124,7 +133,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     for(var key in settings){
         if(is.property(component[key])){
             if(is.binding(settings[key])){
-                component[key].attach(settings[key]);
+                component[key].binding(settings[key]);
             }else{
                 component[key](settings[key]);
             }
@@ -226,10 +235,10 @@ module.exports = function(type, fastn){
         }
     });
 
-    container.on('attach', function(data, type){
+    container.on('attach', function(data, loose){
         for(var i = 0; i < container._children.length; i++){
             if(fastn.isComponent(container._children[i])){
-                container._children[i].attach(data, type === true ? 'parent' : type);
+                container._children[i].attach(data, loose);
             }
         }
     });
@@ -322,49 +331,54 @@ module.exports = function(fastn){
 var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
-function createPropertyUpdater(fastn, generic, key, settings){
-    var setting = settings[key];
+function createProperty(fastn, generic, key, settings){
+    var setting = settings[key],
+        binding = fastn.isBinding(setting) && setting,
+        property = fastn.isProperty(setting) && setting;
+        value = !binding && !property && setting || null;
 
-    if(isBinding(setting)){
-        setting = fastn.property(setting);
+    if(!property){
+        property = fastn.property(value);
     }
 
-    if(isProperty(setting)){
-        component.on('update', function(){
-            setting.update();
-        });
-        component.on('attach', function(object){
-            setting.attach(object);
-        });
-        setting.on('update', function(value){
-            if(!generic.element){
-                return;
-            }
-            
-            var element = generic.element,
-                isProperty = key in element,
-                previous = isProperty ? element[key] : element.getAttribute(key);
-
-            if(value == null){
-                value = '';
-            }
-
-            if(value !== previous){
-                if(isProperty){
-                    element[key] = value;
-                }else{
-                    element.setAttribute(key, value);
-                }
-            }
-        });
-
-        generic[key] = setting;
+    if(binding){
+        property.binding(binding);
     }
+
+    generic.on('update', function(){
+        property.update();
+    });
+    generic.on('attach', function(object){
+        property.attach(object);
+    });
+    property.on('update', function(value){
+        if(!generic.element){
+            return;
+        }
+
+        var element = generic.element,
+            isProperty = key in element,
+            previous = isProperty ? element[key] : element.getAttribute(key);
+
+        if(value == null){
+            value = '';
+        }
+
+        if(value !== previous){
+            if(isProperty){
+                element[key] = value;
+            }else{
+                element.setAttribute(key, value);
+            }
+        }
+    });
+
+    generic[key] = property;
 }
 
 function createProperties(fastn, generic, settings){
     for(var key in settings){
-        initialiseProperty(fastn, generic, key, settings);
+        createProperty(fastn, generic, key, settings);
     }
 }
 
@@ -579,12 +593,15 @@ module.exports = function(type, fastn, settings, children){
 
     list.render = function(){
         this.element = crel('div');
-        this.on('items', updateItems);
+        this.items.on('update', updateItems);
         updateItems(this.items());
         this.emit('render');
     };
 
-    list.items = fastn.property(settings.items, updateItems);
+    list.items = fastn.property([], updateItems).binding(settings.items);
+    list.on('attach', function(data){
+        list.items.attach(data);
+    });
 
     return list;
 };
@@ -736,8 +753,7 @@ var EventEmitter = require('events').EventEmitter,
     flatMerge = require('flat-merge'),
     deepEqual = require('deep-equal'),
     WM = require('./weakmap'),
-    arrayProto = [],
-    rootKey = '$';
+    arrayProto = [];
 
 var attachedEnties = new WM();
 
@@ -757,7 +773,7 @@ function Enti(object){
     if(!object || (typeof object !== 'object' && typeof object !== 'function')){
         object = {};
     }
-        
+
     this.attach(object);
 }
 Enti.prototype = Object.create(EventEmitter.prototype);
@@ -774,8 +790,6 @@ Enti.prototype.attach = function(model){
 
     references.push(this);
 
-    this._previousModel = flatMerge(null, model);
-
     this._model = model;
 };
 Enti.prototype.detach = function(){
@@ -791,23 +805,27 @@ Enti.prototype.detach = function(){
     references.splice(references.indexOf(this._model),1);
 };
 Enti.prototype.get = function(key){
-    return this._model[key];
+    return Enti.get(this._model, key);
 };
 Enti.prototype.set = function(key, value){
-    var original = this._previousModel[key];
+    Enti.set(this._model, key, value);
+};
+Enti.get = function(model, key){
+    return model[key];
+}
+Enti.set = function(model, key, value){
+    var existing = key in model,
+        original = model[key];
 
-    if(value === original){
+    if(value === original && existing){
         return;
     }
 
-    this._model[key] = value;
-    this._previousModel[key] = value;
-
-    emit(this._model, key, value, original);
-};
+    model[key] = value;
+    emit(model, key, value, original);
+}
 
 module.exports = Enti;
-
 },{"./weakmap":"/home/kory/dev/fastn/node_modules/enti/weakmap.js","deep-equal":"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","flat-merge":"/home/kory/dev/fastn/node_modules/enti/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/index.js":[function(require,module,exports){
 var pSlice = Array.prototype.slice;
 var objectKeys = require('./lib/keys.js');
@@ -2475,6 +2493,7 @@ module.exports = LeakMap;
 
 },{}],"/home/kory/dev/fastn/property.js":[function(require,module,exports){
 var Enti = require('enti'),
+    EventEmitter = require('events').EventEmitter,
     is = require('./is');
 
 function getInitialBindingsAndUpdater(args){
@@ -2482,52 +2501,71 @@ function getInitialBindingsAndUpdater(args){
         bindingsEndIndex = args
 }
 
-module.exports = function property(){
-    var firstBindingIndex = is.binding(arguments[0]) ? 0 : 1,
-        lastBindingIndex = arguments.length - is.binding(arguments[arguments.length - 1]) ? 2 : 1,
-        currentValue = arguments[firstBindingIndex - 1],
-        bindings = Array.prototype.slice.call(arguments, firstBindingIndex, lastBindingIndex);
+module.exports = function property(currentValue, updater){
+    var binding,
+        model;
 
-    function defaultGetSet(value){
+    function property(value){
         if(!arguments.length){
-            return bindings[0] && bindings[0]() || currentValue;
+            return binding && binding() || currentValue;
+        }
+
+        if(value === currentValue){
+            return property;
         }
 
         currentValue = value;
-        bindings[0] && bindings[0](value);
+        binding && binding(value);
+        property.emit('change', value);
+        property.update();
+
+        return property;
     }
 
-    function property(){
-        var result = defaultGetSet.call(this, arguments);
+    for(var emitterKey in EventEmitter.prototype){
+        property[emitterKey] = EventEmitter.prototype[emitterKey];
+    }
 
-        if(arguments.length){
-            this.emit('change', result);
+    property.binding = function(newBinding){
+        if(!arguments.length){
+            return binding;
         }
 
-        return this;
-    }
-
-    property.attach = function(object){
-        bindings.forEach(function(binding){
-            binding.attach(object);
-            binding.on('change', property);
-        });
+        if(binding){
+            binding.removeListener('change', property);
+            binding.detach(true);
+        }
+        binding = newBinding;
+        property.attach(model);
         property.update();
+        return property;
+    };
+    property.attach = function(object){
+        if(binding){
+            model = object;
+            binding.attach(object, true);
+            binding.on('change', property);
+        }
+        property.update();
+        return property;
     };
     property.detach = function(){
-        bindings.forEach(function(binding){
+        if(binding){
             binding.removeListener('change', property);
-        });
+            binding.detach(true);
+            model = null;
+        }
         property.update();
+        return property;
     };
     property.update = function(){
-        property.emit('update');
+        property.emit('update', currentValue);
     };
     property._fastn_property = true;
 
     return property;
 };
-},{"./is":"/home/kory/dev/fastn/is.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/weakmap.js":[function(require,module,exports){
+},{"./is":"/home/kory/dev/fastn/is.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/weakmap.js":[function(require,module,exports){
 var WM;
 
 if(typeof WeakMap !== 'undefined'){
@@ -2605,8 +2643,10 @@ EventEmitter.prototype.emit = function(type) {
       er = arguments[1];
       if (er instanceof Error) {
         throw er; // Unhandled 'error' event
+      } else {
+        throw TypeError('Uncaught, unspecified "error" event.');
       }
-      throw TypeError('Uncaught, unspecified "error" event.');
+      return false;
     }
   }
 

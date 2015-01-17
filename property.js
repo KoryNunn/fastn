@@ -1,4 +1,5 @@
 var Enti = require('enti'),
+    EventEmitter = require('events').EventEmitter,
     is = require('./is');
 
 function getInitialBindingsAndUpdater(args){
@@ -6,46 +7,65 @@ function getInitialBindingsAndUpdater(args){
         bindingsEndIndex = args
 }
 
-module.exports = function property(){
-    var firstBindingIndex = is.binding(arguments[0]) ? 0 : 1,
-        lastBindingIndex = arguments.length - is.binding(arguments[arguments.length - 1]) ? 2 : 1,
-        currentValue = arguments[firstBindingIndex - 1],
-        bindings = Array.prototype.slice.call(arguments, firstBindingIndex, lastBindingIndex);
+module.exports = function property(currentValue, updater){
+    var binding,
+        model;
 
-    function defaultGetSet(value){
+    function property(value){
         if(!arguments.length){
-            return bindings[0] && bindings[0]() || currentValue;
+            return binding && binding() || currentValue;
+        }
+
+        if(value === currentValue){
+            return property;
         }
 
         currentValue = value;
-        bindings[0] && bindings[0](value);
+        binding && binding(value);
+        property.emit('change', value);
+        property.update();
+
+        return property;
     }
 
-    function property(){
-        var result = defaultGetSet.call(this, arguments);
+    for(var emitterKey in EventEmitter.prototype){
+        property[emitterKey] = EventEmitter.prototype[emitterKey];
+    }
 
-        if(arguments.length){
-            this.emit('change', result);
+    property.binding = function(newBinding){
+        if(!arguments.length){
+            return binding;
         }
 
-        return this;
-    }
-
-    property.attach = function(object){
-        bindings.forEach(function(binding){
-            binding.attach(object);
-            binding.on('change', property);
-        });
+        if(binding){
+            binding.removeListener('change', property);
+            binding.detach(true);
+        }
+        binding = newBinding;
+        property.attach(model);
         property.update();
+        return property;
+    };
+    property.attach = function(object){
+        if(binding){
+            model = object;
+            binding.attach(object, true);
+            binding.on('change', property);
+        }
+        property.update();
+        return property;
     };
     property.detach = function(){
-        bindings.forEach(function(binding){
+        if(binding){
             binding.removeListener('change', property);
-        });
+            binding.detach(true);
+            model = null;
+        }
         property.update();
+        return property;
     };
     property.update = function(){
-        property.emit('update');
+        property.emit('update', currentValue);
     };
     property._fastn_property = true;
 

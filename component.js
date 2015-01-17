@@ -44,7 +44,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     for(var key in settings){
         if(is.property(component[key])){
             if(is.binding(settings[key])){
-                component[key].attach(settings[key]);
+                component[key].binding(settings[key]);
             }else{
                 component[key](settings[key]);
             }

@@ -120,12 +120,15 @@ module.exports = function(type, fastn, settings, children){
 
     list.render = function(){
         this.element = crel('div');
-        this.on('items', updateItems);
+        this.items.on('update', updateItems);
         updateItems(this.items());
         this.emit('render');
     };
 
-    list.items = fastn.property(settings.items, updateItems);
+    list.items = fastn.property([], updateItems).binding(settings.items);
+    list.on('attach', function(data){
+        list.items.attach(data);
+    });
 
     return list;
 };
