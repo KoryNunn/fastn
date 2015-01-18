@@ -11,7 +11,7 @@ function createSelfBinding(){
 
         value = newValue;
     }
-    binding._fastn_binding = key;
+    binding._fastn_binding = '.';
     binding._firm = false;
     binding.attach = function(object, loose){
         if(loose && binding._firm){
@@ -31,7 +31,7 @@ function createSelfBinding(){
 }
 
 module.exports = function createBinding(key){
-    var model = new Enti(),
+    var enti = new Enti(),
         value;
 
     if(key === '.'){
@@ -43,19 +43,20 @@ module.exports = function createBinding(key){
             return value;
         }
 
-        model.set(key, newValue);
+        enti.set(key, newValue);
     };
-
     for(var emitterKey in EventEmitter.prototype){
         binding[emitterKey] = EventEmitter.prototype[emitterKey];
     }
+
+    binding.setMaxListeners(1000);
 
     var handler = function(newValue){
         value = newValue;
         binding.emit('change', value);
     };
-    model._events = {};
-    model._events[key] = handler
+    enti._events = {};
+    enti._events[key] = handler
 
 
     binding._fastn_binding = key;
@@ -79,8 +80,8 @@ module.exports = function createBinding(key){
             object = {};
         }
 
-        model.attach(object);
-        handler(model.get(key));
+        enti.attach(object);
+        handler(enti.get(key));
         this._scope = object;
         binding.emit('attach', object);
         return this;
@@ -90,12 +91,14 @@ module.exports = function createBinding(key){
             return;
         }
 
-        model.detach();
+        enti.detach();
         handler(undefined);
         this._scope = null;
         binding.emit('detach');
         return this;
     };
+
+    binding.attach({}, true);
 
     return binding;
 };

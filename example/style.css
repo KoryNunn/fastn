@@ -5,7 +5,7 @@ body{
     font-weight: 400;
     color: #222;
     margin:0;
-    background: #fbfafa;
+    background: #f6f6fa;
 }
 
 a{
@@ -13,22 +13,76 @@ a{
     text-decoration: none;
 }
 
+button{
+    border:none;
+    border-radius: 3px;
+    margin:10px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #3080dd;
+}
+
 .user{
+    position: relative;
     margin: 10px;
     box-shadow: 0 2px 7px -2px rgba(0,0,0,0.5);
     border-radius: 1px;
     background: white;
     transition: all 0.25s cubic-bezier(.29,.7,0,.99);
+    height: 80px;
+    overflow: hidden;
+}
+
+.user button.remove{
+    position: absolute;
+    bottom: 0;
+    right:0;
+}
+
+
+.user .name{
+    font-size: 1.2em;
+    margin: 10px;
 }
 
 .user.selected{
     margin: 5px 0;
     padding: 10px;
-    padding-bottom: 50px;
+    height: calc(100vw + 50px);
+}
+
+.user.deleted{
+    height: 0px;
+    padding: 0px;
+    opacity: 0;
+    margin-top: -10px;
+}
+
+.user.deleted:first-child{
+    margin-top: 0;
+}
+
+.user.selected img{
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.user .extra{
+    opacity: 0;
+    transition: all 0.25s cubic-bezier(.29,.7,0,.99);
+}
+
+.user.selected .extra{
+    opacity: 1;
 }
 
 .user img{
-    height:80px;
+    transition: all 0.25s cubic-bezier(.29,.7,0,.99);
+}
+
+.user img{
+    width:80px;
     vertical-align: middle;
 }
 
@@ -39,7 +93,7 @@ a{
 .user .details{
     display: inline-block;
     vertical-align: middle;
-    margin-left: 5px;
+    margin: 5px;
 }
 
 .user p{

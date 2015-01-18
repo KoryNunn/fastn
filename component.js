@@ -71,6 +71,10 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         component.emit('update');
     }
 
+    component.destroy = function(){
+        this.emit('destroy');
+    };
+
     component.clone = function(){
         return createComponent(component._type, fastn, component._settings, component._children.filter(function(child){
             return !child._templated;

@@ -4,7 +4,6 @@ var components = {
 };
 
 var fastn = require('../')(components),
-    binding = fastn.binding,
     Enti = require('enti'),
     crel = require('crel');
 
@@ -15,28 +14,23 @@ var model = {
     },
     enti = new Enti(model);
 
-var users = [];
-
-for(var i = 0; i < 10; i++){
-    users.push({
-        "profileImage":"http://4.bp.blogspot.com/-pFbPM7ustIw/UcBZpKQfG2I/AAAAAAAAB7E/Cvb61R1P4c0/s1600/profileholder.gif",
-        "firstName": "bob",
-        "surname": "down",
-        "email": "bob@down.com"
-    });
-}
+var users = require('./users.json').map(function(user){
+    return user.user;
+});
 
 window.enti = enti;
 
 window.onload = function(){
     var app = fastn('div',
-        require('./userList')(fastn)
+        // require('./userList')(fastn),
+        require('./header')(fastn)
     );
 
     app.attach(model);
     app.render();
 
     window.app = app;
+    window.enti = enti;
 
     setTimeout(function(){
         enti.set('users', users);

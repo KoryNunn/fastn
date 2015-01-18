@@ -5,9 +5,13 @@ var Enti = require('enti'),
 module.exports = function fuseBinding(){
     var bindings = Array.prototype.slice.call(arguments),
         transform = bindings.pop(),
-        resultBinding = createBinding('result').attach({});
+        resultBinding = createBinding('result').attach({}),
+        attaching;
 
     function change(){
+        if(attaching){
+            return;
+        }
         resultBinding(transform.apply(null, bindings.map(function(binding){
             return binding();
         })));
@@ -15,7 +19,12 @@ module.exports = function fuseBinding(){
 
     bindings.forEach(function(binding){
         binding.on('change', change);
-        resultBinding.on('attach', binding.attach);
+        resultBinding.on('attach', function(object){
+            attaching = true;
+            binding.attach(object, true);
+            attaching = false;
+            change();
+        });
         resultBinding.on('detach', binding.detach);
     });
 

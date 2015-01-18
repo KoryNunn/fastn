@@ -7,31 +7,14 @@ test('simple binding initialisation', function(t){
 
     var binding = createBinding('foo');
 
-    var model = new Enti();
+    var model = {},
+        enti = new Enti(model);
 
     t.equal(binding(), undefined);
 
-    model.set('foo', 'bar');
+    enti.set('foo', 'bar');
 
     t.equal(binding(), undefined);
-
-    binding.attach(model);
-
-    t.equal(binding(), 'bar');
-});
-
-test('simple binding default', function(t){
-    t.plan(3);
-
-    var binding = createBinding('foo', 'baz');
-
-    var model = new Enti();
-
-    t.equal(binding(), 'baz');
-
-    model.set('foo', 'bar');
-
-    t.equal(binding(), 'baz');
 
     binding.attach(model);
 
@@ -39,15 +22,11 @@ test('simple binding default', function(t){
 });
 
 test('simple binding set', function(t){
-    t.plan(3);
+    t.plan(2);
 
-    var binding = createBinding('foo', 'baz');
+    var binding = createBinding('foo');
 
-    var model = new Enti();
-
-    t.equal(binding(), 'baz');
-
-    binding.attach(model);
+    binding.attach({});
 
     t.equal(binding(), undefined);
 
@@ -59,9 +38,10 @@ test('simple binding set', function(t){
 test('simple binding event', function(t){
     t.plan(2);
 
-    var binding = createBinding('foo', 'baz');
+    var binding = createBinding('foo');
 
-    var model = new Enti();
+    var model = {},
+        enti = new Enti(model);
 
     binding.attach(model);
 
@@ -69,7 +49,7 @@ test('simple binding event', function(t){
         t.equal(value, 'bar');
     });
 
-    model.set('foo', 'bar');
+    enti.set('foo', 'bar');
 
     binding.once('change', function(value){
         t.equal(value, undefined);
@@ -77,51 +57,7 @@ test('simple binding event', function(t){
 
     binding.detach();
 
-    model.set('foo', 'baz');
-});
-
-test('transform binding get', function(t){
-    t.plan(1);
-
-    var binding = createBinding('foo', 'baz', function(currentValue, newValue){
-        if(arguments.length < 2){
-            return currentValue + ' - majigger';
-        }
-
-        return newValue + ' - whatsits';
-    });
-
-    var model = new Enti();
-
-    binding.attach(model);
-
-    binding.on('change', function(value){
-        t.equal(value, 'bar - majigger');
-    });
-
-    model.set('foo', 'bar');
-});
-
-test('transform binding set', function(t){
-    t.plan(1);
-
-    var binding = createBinding('foo', 'baz', function(currentValue, newValue){
-        if(arguments.length < 2){
-            return currentValue + ' - majigger';
-        }
-
-        return newValue.split(' - majigger')[0];
-    });
-
-    var model = new Enti();
-
-    binding.attach(model);
-
-    binding.on('change', function(value){
-        t.equal(model.get('foo'), 'bar');
-    });
-
-    binding('bar - majigger');
+    enti.set('foo', 'baz');
 });
 
 test('no model', function(t){

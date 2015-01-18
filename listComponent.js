@@ -1,5 +1,4 @@
 var crel = require('crel'),
-    WM = require('./weakmap'),
     containerComponent = require('./containerComponent');
 
 function each(value, fn){
@@ -70,7 +69,7 @@ module.exports = function(type, fastn, settings, children){
                 lastItems.splice(i, 1);
                 lastComponents.splice(i, 1);
                 i--;
-                component.emit('destroy');
+                component.destroy();
                 list.remove(component);
             }
         }
@@ -89,12 +88,12 @@ module.exports = function(type, fastn, settings, children){
 
                 if(fastn.isComponent(child)){
                     if(item && typeof item === 'object'){
-                        child.attach(item, 'parent');
+                        child.attach(item, true);
                     }else{
                         child.attach({
                             item: item,
                             key: key
-                        }, 'parent');
+                        }, true);
                     }
                 }
 
