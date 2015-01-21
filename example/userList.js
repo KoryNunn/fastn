@@ -1,15 +1,14 @@
-module.exports = function(fastn){
+module.exports = function(fastn, userSearch){
     var selectedUser = fastn.binding('selectedUser').attach({});
-
 
     return fastn('list', {items: fastn.binding('users'), template: function(item, key, scope){
 
         function deleteUser(){
-            scope.set('users', scope.get('users').filter(function(user){
-                return user !== item;
-            }));
+            var deletedUsers = scope.get('deletedUsers') ||[];
+            deletedUsers.push(item);
+            scope.set('deletedUsers', deletedUsers);
         }
 
-        return require('./user.js')(fastn, selectedUser, deleteUser)
+        return require('./user.js')(fastn, userSearch, selectedUser, deleteUser);
     }});
 };

@@ -51,14 +51,14 @@ button{
     height: calc(100vw + 50px);
 }
 
-.user.deleted{
+.user.deleted, .user.hidden{
     height: 0px;
     padding: 0px;
     opacity: 0;
     margin-top: -10px;
 }
 
-.user.deleted:first-child{
+.user.deleted:first-child, .user.hidden:first-child{
     margin-top: 0;
 }
 

@@ -14,16 +14,26 @@ var model = {
     },
     enti = new Enti(model);
 
-var users = require('./users.json').map(function(user){
+var users = require('./users.json');
+
+users = users.map(function(user){
     return user.user;
 });
 
 window.enti = enti;
 
 window.onload = function(){
+    var userSearch = fastn.binding('userSearch').attach({
+        userSearch: ''
+    });
+
     var app = fastn('div',
-        // require('./userList')(fastn),
-        require('./header')(fastn)
+        require('./header')(fastn),
+        fastn('input', {value: userSearch})
+            .on('keyup', function(){
+                this.value(this.element.value);
+            }),
+        require('./userList')(fastn, userSearch)
     );
 
     app.attach(model);

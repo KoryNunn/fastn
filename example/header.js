@@ -1,13 +1,17 @@
 module.exports = function(fastn){
-    var selectedUser = fastn.binding('selectedUser').attach({});
 
+    return fastn('header', {'class':'mainHeader'},
+        fastn('h1', fastn.fuse('users|*.deleted', 'deletedUsers', function(users, deleted){
+            if(!users){
+                users = [];
+            }
+            if(!deleted){
+                deleted = [];
+            }
 
-    return fastn('list', {
-        items: fastn.binding('foo').attach({
-            foo: [1,2,3]
-        }),
-        template: function(){
-            return fastn('label', {textContent: fastn.binding('item')})
-        }
-    });
+            return 'Users (' + users.filter(function(user){
+                return !~deleted.indexOf(user);
+            }).length + ')';
+        }))
+    );
 };

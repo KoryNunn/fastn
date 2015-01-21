@@ -1,32 +1,28 @@
 var Enti = require('enti');
 
-module.exports = function(fastn, selectedUser, deleteUser){
+module.exports = function(fastn, userSearch, selectedUser, deleteUser){
 
     return fastn('div', {
-            'class': fastn.fuse(fastn.binding('.'), selectedUser, fastn.binding('deleted'), function(user, selectedUser, deleted){
+            'class': fastn.fuse('.', userSearch, selectedUser, 'deleted', function(user, search, selectedUser, deleted){
                 return [
                     'user',
+                    (user && (~user.name.first.indexOf(search) || ~user.name.last.indexOf(search))) ? '' : 'hidden',
                     user === selectedUser ? 'selected' : '',
                     deleted ? 'deleted' : ''
-                ].join(' ');
+                ].join(' ').trim();
             })
         },
 
-        fastn('img', {src: fastn.fuse(
-            fastn.binding('picture'), function(picture){
+        fastn('img', {src: fastn.fuse('picture', function(picture){
                 return picture && picture.medium;
             })
         }),
 
         fastn('label', {
             'class': 'name',
-            textContent: fastn.fuse(fastn.binding('name'), function(name){
-                    if(!name){
-                        return 'No name set';
-                    }
-                    return name.first + ' ' + name.last;
-                }
-            )
+            textContent: fastn.fuse('name.first', 'name.last', function(firstName, surname){
+                return firstName + ' ' + surname;
+            })
         }),
 
         fastn('div', {'class': 'details'},
@@ -34,12 +30,12 @@ module.exports = function(fastn, selectedUser, deleteUser){
             fastn('p', {'class':'extra'},
                 fastn('a', {
                     textContent: fastn.binding('email'),
-                    href: fastn.fuse(fastn.binding('email'), function(email){
+                    href: fastn.fuse('email', function(email){
                         return 'mailto:' + email;
                     })
                 }),
                 fastn('p', {
-                    textContent: fastn.fuse(fastn.binding('cell'), function(cell){
+                    textContent: fastn.fuse('cell', function(cell){
                         return 'Mobile: ' + cell;
                     })
                 })
@@ -50,10 +46,7 @@ module.exports = function(fastn, selectedUser, deleteUser){
         fastn('button', {textContent: 'X', 'class': 'remove'})
         .on('click', function(event, scope){
             scope.set('deleted', true);
-
-            setTimeout(function(){
-                deleteUser();
-            }, 500);
+            deleteUser();
         })
 
     ).on('click', function(event, scope){

@@ -4,7 +4,7 @@ var crel = require('crel'),
 function createProperty(fastn, generic, key, settings){
     var setting = settings[key],
         binding = fastn.isBinding(setting) && setting,
-        property = fastn.isProperty(setting) && setting;
+        property = fastn.isProperty(setting) && setting,
         value = !binding && !property && setting || null;
 
     if(!property){
@@ -15,12 +15,8 @@ function createProperty(fastn, generic, key, settings){
         property.binding(binding);
     }
 
-    generic.on('update', function(){
-        property.update();
-    });
-    generic.on('attach', function(object){
-        property.attach(object);
-    });
+    generic.on('update', property.update);
+    generic.on('attach', property.attach);
     property.on('update', function(value){
         if(!generic.element){
             return;
@@ -37,7 +33,7 @@ function createProperty(fastn, generic, key, settings){
         if(value !== previous){
             if(isProperty){
                 element[key] = value;
-            }else{
+            }else if(typeof value !== 'function' && typeof value !== 'object'){
                 element.setAttribute(key, value);
             }
         }
@@ -59,6 +55,10 @@ function addUpdateHandler(generic, eventName, settings){
 }
 
 module.exports = function(type, fastn, settings, children){
+    if(children.length === 1 && !fastn.isComponent(children[0])){
+        settings.textContent = children.pop();
+    }
+
     var generic = containerComponent(type, fastn);
 
     createProperties(fastn, generic, settings);
@@ -70,7 +70,7 @@ module.exports = function(type, fastn, settings, children){
     };
 
     generic.on('render', function(){
-        for(key in this._events){
+        for(var key in this._events){
             if('on' + key.toLowerCase() in generic.element){
                 addUpdateHandler(generic, key);
             }

@@ -17,7 +17,11 @@ module.exports = function fuseBinding(){
         })));
     }
 
-    bindings.forEach(function(binding){
+    bindings.forEach(function(binding, index){
+        if(typeof binding === 'string'){
+            binding = createBinding(binding);
+            bindings.splice(index,1,binding);
+        }
         binding.on('change', change);
         resultBinding.on('attach', function(object){
             attaching = true;

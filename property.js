@@ -1,5 +1,6 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
+    WhatChanged = require('what-changed'),
     is = require('./is');
 
 function getInitialBindingsAndUpdater(args){
@@ -9,14 +10,15 @@ function getInitialBindingsAndUpdater(args){
 
 module.exports = function property(currentValue, updater){
     var binding,
-        model;
+        model,
+        previous = new WhatChanged(currentValue, 'value type reference keys');
 
     function property(value){
         if(!arguments.length){
             return binding && binding() || currentValue;
         }
 
-        if(value === currentValue){
+        if(!Object.keys(previous.update(value)).length){
             return property;
         }
 
@@ -42,23 +44,44 @@ module.exports = function property(currentValue, updater){
             binding.detach(true);
         }
         binding = newBinding;
-        property.attach(model);
+        property.attach(model, !property._firm);
         property.update();
         return property;
     };
-    property.attach = function(object){
+    property.attach = function(object, loose){
+        if(loose && property._firm){
+            property.emit('attach', object, loose);
+            return;
+        }
+
+        property._firm = !loose;
+
+        if(object instanceof Enti){
+            object = object._model;
+        }
+
+        if(!(object instanceof Object)){
+            object = {};
+        }
+
         if(binding){
             model = object;
-            binding.attach(object, true);
+            binding.attach(object, loose);
             binding.on('change', property);
+            property(binding());
         }
         property.update();
         return property;
     };
-    property.detach = function(){
+    property.detach = function(loose){
+        if(loose && component._firm){
+            property.emit('detach', loose);
+            return;
+        }
+
         if(binding){
             binding.removeListener('change', property);
-            binding.detach(true);
+            binding.detach(loose);
             model = null;
         }
         property.update();

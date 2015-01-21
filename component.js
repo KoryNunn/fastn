@@ -51,13 +51,33 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
     }
 
-    component.attach = function(data){
-        model.attach(data instanceof Enti ? data._model : data);
-        this.emit('attach', data);
+    component.attach = function(object, loose){
+        if(loose && component._firm){
+            component.emit('attach', object, loose);
+            return;
+        }
+
+        component._firm = !loose;
+
+        if(object instanceof Enti){
+            object = object._model;
+        }
+
+        if(!(object instanceof Object)){
+            object = {};
+        }
+
+        model.attach(object instanceof Enti ? object._model : object);
+        this.emit('attach', object, loose);
         return this;
     };
 
-    component.detach = function(){
+    component.detach = function(loose){
+        if(loose && component._firm){
+            component.emit('detach', true);
+            return;
+        }
+
         model.detach();
         this.emit('detach');
         return this;
@@ -85,6 +105,14 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.on('attach', emitUpdate);
     component.on('render', emitUpdate);
+
+    if(fastn.debug){
+        component.on('render', function(){
+            if(component.element && typeof component.element === 'object'){
+                component.element._component = component;
+            }
+        });
+    }
 
     return component;
 }

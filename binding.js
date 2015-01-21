@@ -1,6 +1,17 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter;
 
+function bindify(binding, key){
+    for(var emitterKey in EventEmitter.prototype){
+        binding[emitterKey] = EventEmitter.prototype[emitterKey];
+    }
+    binding.setMaxListeners(1000);
+    binding._fastn_binding = key;
+    binding._firm = false;
+
+    return binding;
+}
+
 function createSelfBinding(){
     var value;
 
@@ -11,8 +22,7 @@ function createSelfBinding(){
 
         value = newValue;
     }
-    binding._fastn_binding = '.';
-    binding._firm = false;
+    bindify(binding, '.');
     binding.attach = function(object, loose){
         if(loose && binding._firm){
             return;
@@ -23,19 +33,59 @@ function createSelfBinding(){
         value = object;
     };
     binding.detach = function(){};
-    for(var emitterKey in EventEmitter.prototype){
-        binding[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
 
     return binding;
 }
 
-module.exports = function createBinding(key){
+function drill(sourceKey, targetKey){
+    var drilledBinding = createBinding(targetKey),
+        resultBinding = bindify(function(value, self){
+            return drilledBinding.apply(null, arguments);
+        }, sourceKey + '.' + targetKey);
+
+    resultBinding.attach = function(object, loose){
+        if(loose && resultBinding._firm){
+            return;
+        }
+
+        resultBinding._firm = !loose;
+
+        resultBinding.emit('attach', object);
+    };
+    resultBinding.detach = resultBinding.emit.bind(null, 'attach');
+
+    var internalChange;
+    resultBinding.on('change', function(value){
+        if(internalChange){
+            internalChange = false;
+            return;
+        }
+        drilledBinding.attach(value);
+    });
+    drilledBinding.on('change', function(value){
+        internalChange = true;
+        resultBinding.emit('change', value);
+    });
+    
+    resultBinding.on('attach', function(object){
+        drilledBinding.attach(object && object[sourceKey], true);
+    });
+    resultBinding.on('detach', drilledBinding.detach);
+
+    return resultBinding;
+}
+
+function createBinding(key){
     var enti = new Enti(),
         value;
 
     if(key === '.'){
         return createSelfBinding();
+    }
+
+    var dotIndex = key.indexOf('.');
+    if(~dotIndex){
+        return drill(key.slice(0, dotIndex), key.slice(dotIndex+1));
     }
 
     var binding = function binding(newValue){
@@ -45,11 +95,7 @@ module.exports = function createBinding(key){
 
         enti.set(key, newValue);
     };
-    for(var emitterKey in EventEmitter.prototype){
-        binding[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
-
-    binding.setMaxListeners(1000);
+    bindify(binding, key);
 
     var handler = function(newValue){
         value = newValue;
@@ -58,15 +104,12 @@ module.exports = function createBinding(key){
     enti._events = {};
     enti._events[key] = handler
 
-
-    binding._fastn_binding = key;
-    binding._firm = false;
     binding.attach = function(object, loose){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
         if(loose && binding._firm){
-            binding.emit('attach', object);
+            binding.emit('attach', object, loose);
             return;
         }
 
@@ -88,6 +131,7 @@ module.exports = function createBinding(key){
     };
     binding.detach = function(loose){
         if(loose && binding._firm){
+            binding.emit('detach', loose);
             return;
         }
 
@@ -97,8 +141,13 @@ module.exports = function createBinding(key){
         binding.emit('detach');
         return this;
     };
+    binding.drill = function(drillKey){
+        return drill(key, drillKey);
+    };
 
     binding.attach({}, true);
 
     return binding;
-};
+}
+
+module.exports = createBinding;

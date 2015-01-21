@@ -2,6 +2,17 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter;
 
+function bindify(binding, key){
+    for(var emitterKey in EventEmitter.prototype){
+        binding[emitterKey] = EventEmitter.prototype[emitterKey];
+    }
+    binding.setMaxListeners(1000);
+    binding._fastn_binding = key;
+    binding._firm = false;
+
+    return binding;
+}
+
 function createSelfBinding(){
     var value;
 
@@ -12,8 +23,7 @@ function createSelfBinding(){
 
         value = newValue;
     }
-    binding._fastn_binding = '.';
-    binding._firm = false;
+    bindify(binding, '.');
     binding.attach = function(object, loose){
         if(loose && binding._firm){
             return;
@@ -24,19 +34,59 @@ function createSelfBinding(){
         value = object;
     };
     binding.detach = function(){};
-    for(var emitterKey in EventEmitter.prototype){
-        binding[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
 
     return binding;
 }
 
-module.exports = function createBinding(key){
+function drill(sourceKey, targetKey){
+    var drilledBinding = createBinding(targetKey),
+        resultBinding = bindify(function(value, self){
+            return drilledBinding.apply(null, arguments);
+        });
+
+    resultBinding.attach = function(object, loose){
+        if(loose && resultBinding._firm){
+            return;
+        }
+
+        resultBinding._firm = !loose;
+
+        resultBinding.emit('attach', object);
+    };
+    resultBinding.detach = resultBinding.emit.bind(null, 'attach');
+
+    var internalChange;
+    resultBinding.on('change', function(value){
+        if(internalChange){
+            internalChange = false;
+            return;
+        }
+        drilledBinding.attach(value);
+    });
+    drilledBinding.on('change', function(value){
+        internalChange = true;
+        resultBinding.emit('change', value);
+    });
+    
+    resultBinding.on('attach', function(object){
+        drilledBinding.attach(object && object[sourceKey], true);
+    });
+    resultBinding.on('detach', drilledBinding.detach);
+
+    return resultBinding;
+}
+
+function createBinding(key){
     var enti = new Enti(),
         value;
 
     if(key === '.'){
         return createSelfBinding();
+    }
+
+    var dotIndex = key.indexOf('.');
+    if(~dotIndex){
+        return drill(key.slice(0, dotIndex), key.slice(dotIndex+1));
     }
 
     var binding = function binding(newValue){
@@ -46,11 +96,7 @@ module.exports = function createBinding(key){
 
         enti.set(key, newValue);
     };
-    for(var emitterKey in EventEmitter.prototype){
-        binding[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
-
-    binding.setMaxListeners(1000);
+    bindify(binding, key);
 
     var handler = function(newValue){
         value = newValue;
@@ -59,9 +105,6 @@ module.exports = function createBinding(key){
     enti._events = {};
     enti._events[key] = handler
 
-
-    binding._fastn_binding = key;
-    binding._firm = false;
     binding.attach = function(object, loose){
 
         // If the binding is being asked to attach loosly to an object,
@@ -98,12 +141,17 @@ module.exports = function createBinding(key){
         binding.emit('detach');
         return this;
     };
+    binding.drill = function(drillKey){
+        return drill(key, drillKey);
+    };
 
     binding.attach({}, true);
 
     return binding;
-};
-},{"enti":"/usr/lib/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/component.js":[function(require,module,exports){
+}
+
+module.exports = createBinding;
+},{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/component.js":[function(require,module,exports){
 var Enti = require('enti'),
     is = require('./is');
 
@@ -195,7 +243,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     return component;
 }
 
-},{"./is":"/home/kory/dev/fastn/is.js","enti":"/usr/lib/node_modules/enti/index.js"}],"/home/kory/dev/fastn/containerComponent.js":[function(require,module,exports){
+},{"./is":"/home/kory/dev/fastn/is.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/containerComponent.js":[function(require,module,exports){
 var crel = require('crel'),
     EventEmitter = require('events').EventEmitter;
 
@@ -240,7 +288,7 @@ module.exports = function(type, fastn){
     };
 
     container._remove = function(element){
-        if(!element || !container.element || !element.parentNode === container.element){
+        if(!element || !container.element || element.parentNode !== container.element){
             return;
         }
         container.element.removeChild(element);
@@ -248,7 +296,7 @@ module.exports = function(type, fastn){
 
     container.on('render', function(){
         for(var i = 0; i < container._children.length; i++){
-            if(fastn.isComponent(container._children[i])){
+            if(fastn.isComponent(container._children[i]) && !container._children[i].element){
                 container._children[i].render();
             }
 
@@ -268,17 +316,21 @@ module.exports = function(type, fastn){
 };
 },{"crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/example/header.js":[function(require,module,exports){
 module.exports = function(fastn){
-    var selectedUser = fastn.binding('selectedUser').attach({});
 
+    return fastn('header', {'class':'mainHeader'},
+        fastn('h1', fastn.fuse('users|*.deleted', 'deletedUsers', function(users, deleted){
+            if(!users){
+                users = [];
+            }
+            if(!deleted){
+                deleted = [];
+            }
 
-    return fastn('list', {
-        items: fastn.binding('foo').attach({
-            foo: [1,2,3]
-        }),
-        template: function(){
-            return fastn('label', {textContent: fastn.binding('item')})
-        }
-    });
+            return 'Users (' + users.filter(function(user){
+                return !~deleted.indexOf(user);
+            }).length + ')';
+        }))
+    );
 };
 },{}],"/home/kory/dev/fastn/example/index.js":[function(require,module,exports){
 var components = {
@@ -297,16 +349,26 @@ var model = {
     },
     enti = new Enti(model);
 
-var users = require('./users.json').map(function(user){
+var users = require('./users.json');
+
+users = users.map(function(user){
     return user.user;
 });
 
 window.enti = enti;
 
 window.onload = function(){
+    var userSearch = fastn.binding('userSearch').attach({
+        userSearch: ''
+    });
+
     var app = fastn('div',
-        // require('./userList')(fastn),
-        require('./header')(fastn)
+        require('./header')(fastn),
+        fastn('input', {value: userSearch})
+            .on('keyup', function(){
+                this.value(this.element.value);
+            }),
+        require('./userList')(fastn, userSearch)
     );
 
     app.attach(model);
@@ -321,8 +383,79 @@ window.onload = function(){
 
     crel(document.body, app.element);
 };
-},{"../":"/home/kory/dev/fastn/index.js","../genericComponent":"/home/kory/dev/fastn/genericComponent.js","../listComponent":"/home/kory/dev/fastn/listComponent.js","./header":"/home/kory/dev/fastn/example/header.js","./users.json":"/home/kory/dev/fastn/example/users.json","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","enti":"/usr/lib/node_modules/enti/index.js"}],"/home/kory/dev/fastn/example/users.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
+},{"../":"/home/kory/dev/fastn/index.js","../genericComponent":"/home/kory/dev/fastn/genericComponent.js","../listComponent":"/home/kory/dev/fastn/listComponent.js","./header":"/home/kory/dev/fastn/example/header.js","./userList":"/home/kory/dev/fastn/example/userList.js","./users.json":"/home/kory/dev/fastn/example/users.json","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/example/user.js":[function(require,module,exports){
+var Enti = require('enti');
+
+module.exports = function(fastn, userSearch, selectedUser, deleteUser){
+
+    return fastn('div', {
+            'class': fastn.fuse('.', userSearch, selectedUser, 'deleted', function(user, search, selectedUser, deleted){
+                return [
+                    'user',
+                    (user && (~user.name.first.indexOf(search) || ~user.name.last.indexOf(search))) ? '' : 'hidden',
+                    user === selectedUser ? 'selected' : '',
+                    deleted ? 'deleted' : ''
+                ].join(' ').trim();
+            })
+        },
+
+        fastn('img', {src: fastn.fuse('picture', function(picture){
+                return picture && picture.medium;
+            })
+        }),
+
+        fastn('label', {
+            'class': 'name',
+            textContent: fastn.fuse('name.first', 'name.last', function(firstName, surname){
+                return firstName + ' ' + surname;
+            })
+        }),
+
+        fastn('div', {'class': 'details'},
+
+            fastn('p', {'class':'extra'},
+                fastn('a', {
+                    textContent: fastn.binding('email'),
+                    href: fastn.fuse('email', function(email){
+                        return 'mailto:' + email;
+                    })
+                }),
+                fastn('p', {
+                    textContent: fastn.fuse('cell', function(cell){
+                        return 'Mobile: ' + cell;
+                    })
+                })
+            )
+
+        ),
+
+        fastn('button', {textContent: 'X', 'class': 'remove'})
+        .on('click', function(event, scope){
+            scope.set('deleted', true);
+            deleteUser();
+        })
+
+    ).on('click', function(event, scope){
+        selectedUser(scope._model);
+    });
+};
+},{"enti":"/home/kory/dev/fastn/node_modules/enti/index.js"}],"/home/kory/dev/fastn/example/userList.js":[function(require,module,exports){
+module.exports = function(fastn, userSearch){
+    var selectedUser = fastn.binding('selectedUser').attach({});
+
+    return fastn('list', {items: fastn.binding('users'), template: function(item, key, scope){
+
+        function deleteUser(){
+            var deletedUsers = scope.get('deletedUsers') ||[];
+            deletedUsers.push(item);
+            scope.set('deletedUsers', deletedUsers);
+        }
+
+        return require('./user.js')(fastn, userSearch, selectedUser, deleteUser);
+    }});
+};
+},{"./user.js":"/home/kory/dev/fastn/example/user.js"}],"/home/kory/dev/fastn/example/users.json":[function(require,module,exports){
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
     {
         "user":{
             "gender":"female",
@@ -3844,7 +3977,11 @@ module.exports = function fuseBinding(){
         })));
     }
 
-    bindings.forEach(function(binding){
+    bindings.forEach(function(binding, index){
+        if(typeof binding === 'string'){
+            binding = createBinding(binding);
+            bindings.splice(index,1,binding);
+        }
         binding.on('change', change);
         resultBinding.on('attach', function(object){
             attaching = true;
@@ -3857,14 +3994,14 @@ module.exports = function fuseBinding(){
 
     return resultBinding;
 };
-},{"./binding":"/home/kory/dev/fastn/binding.js","enti":"/usr/lib/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
+},{"./binding":"/home/kory/dev/fastn/binding.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
 var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
 function createProperty(fastn, generic, key, settings){
     var setting = settings[key],
         binding = fastn.isBinding(setting) && setting,
-        property = fastn.isProperty(setting) && setting;
+        property = fastn.isProperty(setting) && setting,
         value = !binding && !property && setting || null;
 
     if(!property){
@@ -3897,7 +4034,7 @@ function createProperty(fastn, generic, key, settings){
         if(value !== previous){
             if(isProperty){
                 element[key] = value;
-            }else{
+            }else if(typeof value !== 'function' && typeof value !== 'object'){
                 element.setAttribute(key, value);
             }
         }
@@ -3919,6 +4056,10 @@ function addUpdateHandler(generic, eventName, settings){
 }
 
 module.exports = function(type, fastn, settings, children){
+    if(children.length === 1 && !fastn.isComponent(children[0])){
+        settings.textContent = children.pop();
+    }
+
     var generic = containerComponent(type, fastn);
 
     createProperties(fastn, generic, settings);
@@ -3930,7 +4071,7 @@ module.exports = function(type, fastn, settings, children){
     };
 
     generic.on('render', function(){
-        for(key in this._events){
+        for(var key in this._events){
             if('on' + key.toLowerCase() in generic.element){
                 addUpdateHandler(generic, key);
             }
@@ -3943,8 +4084,8 @@ module.exports = function(type, fastn, settings, children){
 var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
-    createBinding = require('./binding');
-    fuseBinding = require('./fuse');
+    createBinding = require('./binding'),
+    fuseBinding = require('./fuse'),
     is = require('./is');
 
 module.exports = function(components){
@@ -3958,7 +4099,7 @@ module.exports = function(components){
         var settings = args[1],
             childrenIndex = 2;
 
-        if(is.component(args[1])){
+        if(is.component(args[1]) || typeof args[1] !== 'object' || !args[1]){
             childrenIndex--;
             settings = null;
         }
@@ -4005,7 +4146,7 @@ module.exports = {
 };
 },{}],"/home/kory/dev/fastn/listComponent.js":[function(require,module,exports){
 var crel = require('crel'),
-    containerComponent = require('./containerComponent');
+    genericComponent = require('./genericComponent');
 
 function each(value, fn){
     if(!value || typeof value !== 'object'){
@@ -4052,7 +4193,7 @@ function values(object){
 }
 
 module.exports = function(type, fastn, settings, children){
-    var list = containerComponent(type, fastn);
+    var list = genericComponent(type, fastn, settings, children),
         lastItems = [],
         lastComponents = [];
 
@@ -4137,7 +4278,7 @@ module.exports = function(type, fastn, settings, children){
 
     return list;
 };
-},{"./containerComponent":"/home/kory/dev/fastn/containerComponent.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js"}],"/home/kory/dev/fastn/node_modules/crel/crel.js":[function(require,module,exports){
+},{"./genericComponent":"/home/kory/dev/fastn/genericComponent.js","crel":"/home/kory/dev/fastn/node_modules/crel/crel.js"}],"/home/kory/dev/fastn/node_modules/crel/crel.js":[function(require,module,exports){
 //Copyright (C) 2012 Kory Nunn
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -4185,13 +4326,6 @@ module.exports = function(type, fastn, settings, children){
 }(this, function () {
     var fn = 'function',
         obj = 'object',
-        nodeType = 'nodeType',
-        textContent = 'textContent',
-        setAttribute = 'setAttribute',
-        attrMapString = 'attrMap',
-        isNodeString = 'isNode',
-        isElementString = 'isElement',
-        d = typeof document === obj ? document : {},
         isType = function(a, type){
             return typeof a === type;
         },
@@ -4202,18 +4336,18 @@ module.exports = function(type, fastn, settings, children){
         function(object){
             return object &&
                 isType(object, obj) &&
-                (nodeType in object) &&
+                ('nodeType' in object) &&
                 isType(object.ownerDocument,obj);
         },
         isElement = function (object) {
-            return crel[isNodeString](object) && object[nodeType] === 1;
+            return crel.isNode(object) && object.nodeType === 1;
         },
         isArray = function(a){
             return a instanceof Array;
         },
         appendChild = function(element, child) {
-          if(!crel[isNodeString](child)){
-              child = d.createTextNode(child);
+          if(!isNode(child)){
+              child = document.createTextNode(child);
           }
           element.appendChild(child);
         };
@@ -4226,22 +4360,22 @@ module.exports = function(type, fastn, settings, children){
             settings = args[1],
             childIndex = 2,
             argumentsLength = args.length,
-            attributeMap = crel[attrMapString];
+            attributeMap = crel.attrMap;
 
-        element = crel[isElementString](element) ? element : d.createElement(element);
+        element = crel.isElement(element) ? element : document.createElement(element);
         // shortcut
         if(argumentsLength === 1){
             return element;
         }
 
-        if(!isType(settings,obj) || crel[isNodeString](settings) || isArray(settings)) {
+        if(!isType(settings,obj) || crel.isNode(settings) || isArray(settings)) {
             --childIndex;
             settings = null;
         }
 
         // shortcut if there is only one child that is a string
-        if((argumentsLength - childIndex) === 1 && isType(args[childIndex], 'string') && element[textContent] !== undefined){
-            element[textContent] = args[childIndex];
+        if((argumentsLength - childIndex) === 1 && isType(args[childIndex], 'string') && element.textContent !== undefined){
+            element.textContent = args[childIndex];
         }else{
             for(; childIndex < argumentsLength; ++childIndex){
                 child = args[childIndex];
@@ -4262,13 +4396,13 @@ module.exports = function(type, fastn, settings, children){
 
         for(var key in settings){
             if(!attributeMap[key]){
-                element[setAttribute](key, settings[key]);
+                element.setAttribute(key, settings[key]);
             }else{
-                var attr = attributeMap[key];
+                var attr = crel.attrMap[key];
                 if(typeof attr === fn){
                     attr(element, settings[key]);
                 }else{
-                    element[setAttribute](attr, settings[key]);
+                    element.setAttribute(attr, settings[key]);
                 }
             }
         }
@@ -4277,121 +4411,23 @@ module.exports = function(type, fastn, settings, children){
     }
 
     // Used for mapping one kind of attribute to the supported version of that in bad browsers.
-    crel[attrMapString] = {};
+    // String referenced so that compilers maintain the property name.
+    crel['attrMap'] = {};
 
-    crel[isElementString] = isElement;
-
-    crel[isNodeString] = isNode;
+    // String referenced so that compilers maintain the property name.
+    crel["isElement"] = isElement;
+    crel["isNode"] = isNode;
 
     return crel;
 }));
 
-},{}],"/home/kory/dev/fastn/node_modules/flat-merge/index.js":[function(require,module,exports){
-function flatMerge(a,b){
-    if(!b || typeof b !== 'object'){
-        b = {};
-    }
-
-    if(!a || typeof a !== 'object'){
-        a = new b.constructor();
-    }
-
-    var result = new a.constructor(),
-        aKeys = Object.keys(a),
-        bKeys = Object.keys(b);
-
-    for(var i = 0; i < aKeys.length; i++){
-        result[aKeys[i]] = a[aKeys[i]];
-    }
-
-    for(var i = 0; i < bKeys.length; i++){
-        result[bKeys[i]] = b[bKeys[i]];
-    }
-
-    return result;
-}
-
-module.exports = flatMerge;
-},{}],"/home/kory/dev/fastn/property.js":[function(require,module,exports){
-var Enti = require('enti'),
-    EventEmitter = require('events').EventEmitter,
-    is = require('./is');
-
-function getInitialBindingsAndUpdater(args){
-    var bindingsIndex = 0,
-        bindingsEndIndex = args
-}
-
-module.exports = function property(currentValue, updater){
-    var binding,
-        model;
-
-    function property(value){
-        if(!arguments.length){
-            return binding && binding() || currentValue;
-        }
-
-        if(value === currentValue){
-            return property;
-        }
-
-        currentValue = value;
-        binding && binding(value);
-        property.emit('change', value);
-        property.update();
-
-        return property;
-    }
-
-    for(var emitterKey in EventEmitter.prototype){
-        property[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
-
-    property.binding = function(newBinding){
-        if(!arguments.length){
-            return binding;
-        }
-
-        if(binding){
-            binding.removeListener('change', property);
-            binding.detach(true);
-        }
-        binding = newBinding;
-        property.attach(model);
-        property.update();
-        return property;
-    };
-    property.attach = function(object){
-        if(binding){
-            model = object;
-            binding.attach(object, true);
-            binding.on('change', property);
-        }
-        property.update();
-        return property;
-    };
-    property.detach = function(){
-        if(binding){
-            binding.removeListener('change', property);
-            binding.detach(true);
-            model = null;
-        }
-        property.update();
-        return property;
-    };
-    property.update = function(){
-        property.emit('update', currentValue);
-    };
-    property._fastn_property = true;
-
-    return property;
-};
-},{"./is":"/home/kory/dev/fastn/is.js","enti":"/usr/lib/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/usr/lib/node_modules/enti/index.js":[function(require,module,exports){
+},{}],"/home/kory/dev/fastn/node_modules/enti/index.js":[function(require,module,exports){
 var EventEmitter = require('events').EventEmitter,
     flatMerge = require('flat-merge'),
     deepEqual = require('deep-equal'),
     WM = require('./weakmap'),
-    arrayProto = [];
+    arrayProto = [],
+    rootKey = '$';
 
 var attachedEnties = new WM();
 
@@ -4407,12 +4443,12 @@ function emit(model, key, value, original){
     }
 }
 
-function Enti(object){
-    if(!object || (typeof object !== 'object' && typeof object !== 'function')){
-        object = {};
+function Enti(model){
+    if(!model || (typeof model !== 'object' && typeof model !== 'function')){
+        model = {};
     }
-
-    this.attach(object);
+        
+    this.attach(model);
 }
 Enti.prototype = Object.create(EventEmitter.prototype);
 Enti.prototype.constructor = Enti;
@@ -4443,28 +4479,24 @@ Enti.prototype.detach = function(){
     references.splice(references.indexOf(this._model),1);
 };
 Enti.prototype.get = function(key){
-    return Enti.get(this._model, key);
+    return this._model[key];
 };
-Enti.prototype.set = function(key, value){
-    Enti.set(this._model, key, value);
-};
-Enti.get = function(model, key){
-    return model[key];
-}
-Enti.set = function(model, key, value){
-    var existing = key in model,
-        original = model[key];
 
-    if(value === original && existing){
+Enti.prototype.set = function(key, value){
+    var original = this._model[key];
+
+    if(value && typeof value !== 'object' && value === original){
         return;
     }
 
-    model[key] = value;
-    emit(model, key, value, original);
-}
+    this._model[key] = value;
+
+    emit(this._model, key, value, original);
+};
 
 module.exports = Enti;
-},{"./weakmap":"/usr/lib/node_modules/enti/weakmap.js","deep-equal":"/usr/lib/node_modules/enti/node_modules/deep-equal/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","flat-merge":"/usr/lib/node_modules/enti/node_modules/flat-merge/index.js"}],"/usr/lib/node_modules/enti/node_modules/deep-equal/index.js":[function(require,module,exports){
+
+},{"./weakmap":"/home/kory/dev/fastn/node_modules/enti/weakmap.js","deep-equal":"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","flat-merge":"/home/kory/dev/fastn/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/index.js":[function(require,module,exports){
 var pSlice = Array.prototype.slice;
 var objectKeys = require('./lib/keys.js');
 var isArguments = require('./lib/is_arguments.js');
@@ -4560,7 +4592,7 @@ function objEquiv(a, b, opts) {
   return true;
 }
 
-},{"./lib/is_arguments.js":"/usr/lib/node_modules/enti/node_modules/deep-equal/lib/is_arguments.js","./lib/keys.js":"/usr/lib/node_modules/enti/node_modules/deep-equal/lib/keys.js"}],"/usr/lib/node_modules/enti/node_modules/deep-equal/lib/is_arguments.js":[function(require,module,exports){
+},{"./lib/is_arguments.js":"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/lib/is_arguments.js","./lib/keys.js":"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/lib/keys.js"}],"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/lib/is_arguments.js":[function(require,module,exports){
 var supportsArgumentsClass = (function(){
   return Object.prototype.toString.call(arguments)
 })() == '[object Arguments]';
@@ -4582,7 +4614,7 @@ function unsupported(object){
     false;
 };
 
-},{}],"/usr/lib/node_modules/enti/node_modules/deep-equal/lib/keys.js":[function(require,module,exports){
+},{}],"/home/kory/dev/fastn/node_modules/enti/node_modules/deep-equal/lib/keys.js":[function(require,module,exports){
 exports = module.exports = typeof Object.keys === 'function'
   ? Object.keys : shim;
 
@@ -4593,7 +4625,25 @@ function shim (obj) {
   return keys;
 }
 
-},{}],"/usr/lib/node_modules/enti/node_modules/flat-merge/index.js":[function(require,module,exports){
+},{}],"/home/kory/dev/fastn/node_modules/enti/weakmap.js":[function(require,module,exports){
+var WM;
+
+if(typeof WeakMap !== 'undefined'){
+    WM = WeakMap;
+}else if(typeof window !== 'undefined'){
+    if (navigator.appName == 'Microsoft Internet Explorer'){
+        var match = navigator.userAgent.match(/MSIE ([0-9]{1,}[\.0-9]{0,})/);
+        if (match && match[1] <= 9){
+            // MEMORY LEAKS FOR EVERYONE!!!
+            WM = require('leak-map');
+        }
+    }
+}
+
+WM || (WM = require('weak-map'));
+
+module.exports = WM;
+},{"leak-map":"/home/kory/dev/fastn/node_modules/leak-map/index.js","weak-map":"/home/kory/dev/fastn/node_modules/weak-map/weak-map.js"}],"/home/kory/dev/fastn/node_modules/flat-merge/index.js":[function(require,module,exports){
 function flatMerge(a,b){
     if(!b || typeof b !== 'object'){
         b = {};
@@ -4619,7 +4669,7 @@ function flatMerge(a,b){
 }
 
 module.exports = flatMerge;
-},{}],"/usr/lib/node_modules/enti/node_modules/leak-map/index.js":[function(require,module,exports){
+},{}],"/home/kory/dev/fastn/node_modules/leak-map/index.js":[function(require,module,exports){
 function validateKey(key){
     if(!key || !(typeof key === 'object' || typeof key === 'function')){
         throw key + " is not a valid WeakMap key.";
@@ -4665,7 +4715,7 @@ LeakMap.prototype.toString = function(){
 };
 
 module.exports = LeakMap;
-},{}],"/usr/lib/node_modules/enti/node_modules/weak-map/weak-map.js":[function(require,module,exports){
+},{}],"/home/kory/dev/fastn/node_modules/weak-map/weak-map.js":[function(require,module,exports){
 // Copyright (C) 2011 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -5352,25 +5402,1733 @@ module.exports = LeakMap;
   }
 })();
 
-},{}],"/usr/lib/node_modules/enti/weakmap.js":[function(require,module,exports){
-var WM;
+},{}],"/home/kory/dev/fastn/node_modules/what-changed/index.js":[function(require,module,exports){
+var clone = require('clone'),
+    deepEqual = require('deep-equal');
 
-if(typeof WeakMap !== 'undefined'){
-    WM = WeakMap;
-}else if(typeof window !== 'undefined'){
-    if (navigator.appName == 'Microsoft Internet Explorer'){
-        var match = navigator.userAgent.match(/MSIE ([0-9]{1,}[\.0-9]{0,})/);
-        if (match && match[1] <= 9){
-            // MEMORY LEAKS FOR EVERYONE!!!
-            WM = require('leak-map');
+function keysAreDifferent(keys1, keys2){
+    if(keys1 === keys2){
+        return;
+    }
+    if(!keys1 || !keys2 || keys1.length !== keys2.length){
+        return true;
+    }
+    for(var i = 0; i < keys1.length; i++){
+        if(!~keys2.indexOf(keys1[i])){
+            return true;
         }
     }
 }
 
-WM || (WM = require('weak-map'));
+function getKeys(value){
+    if(!value || typeof value !== 'object'){
+        return;
+    }
 
-module.exports = WM;
-},{"leak-map":"/usr/lib/node_modules/enti/node_modules/leak-map/index.js","weak-map":"/usr/lib/node_modules/enti/node_modules/weak-map/weak-map.js"}],"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js":[function(require,module,exports){
+    return Object.keys(value);
+}
+
+function WhatChanged(value, changesToTrack){
+    this._changesToTrack = {};
+
+    if(changesToTrack == null){
+        changesToTrack = 'value type keys structure reference';
+    }
+
+    if(typeof changesToTrack !== 'string'){
+        throw 'changesToTrack must be of type string';
+    }
+
+    changesToTrack = changesToTrack.split(' ');
+
+    for (var i = 0; i < changesToTrack.length; i++) {
+        this._changesToTrack[changesToTrack[i]] = true;
+    };
+
+    this.update(value);
+}
+WhatChanged.prototype.update = function(value){
+    var result = {},
+        changesToTrack = this._changesToTrack,
+        newKeys = getKeys(value);
+
+    if('value' in changesToTrack && value+'' !== this._lastReference+''){
+        result.value = true;
+    }
+    if('type' in changesToTrack && typeof value !== typeof this._lastValue){
+        result.type = true;
+    }
+    if('keys' in changesToTrack && keysAreDifferent(this._lastKeys, getKeys(value))){
+        result.keys = true;
+    }
+
+    if(value !== null && typeof value === 'object'){
+        if('structure' in changesToTrack && !deepEqual(value, this._lastValue)){
+            result.structure = true;
+        }
+        if('reference' in changesToTrack && value !== this._lastReference){
+            result.reference = true;
+        }
+    }
+
+    this._lastValue = 'structure' in changesToTrack ? clone(value) : value;
+    this._lastReference = value;
+    this._lastKeys = newKeys;
+
+    return result;
+};
+
+module.exports = WhatChanged;
+},{"clone":"/home/kory/dev/fastn/node_modules/what-changed/node_modules/clone/clone.js","deep-equal":"/home/kory/dev/fastn/node_modules/what-changed/node_modules/deep-equal/index.js"}],"/home/kory/dev/fastn/node_modules/what-changed/node_modules/clone/clone.js":[function(require,module,exports){
+(function (Buffer){
+'use strict';
+
+function objectToString(o) {
+  return Object.prototype.toString.call(o);
+}
+
+// shim for Node's 'util' package
+// DO NOT REMOVE THIS! It is required for compatibility with EnderJS (http://enderjs.com/).
+var util = {
+  isArray: function (ar) {
+    return Array.isArray(ar) || (typeof ar === 'object' && objectToString(ar) === '[object Array]');
+  },
+  isDate: function (d) {
+    return typeof d === 'object' && objectToString(d) === '[object Date]';
+  },
+  isRegExp: function (re) {
+    return typeof re === 'object' && objectToString(re) === '[object RegExp]';
+  },
+  getRegExpFlags: function (re) {
+    var flags = '';
+    re.global && (flags += 'g');
+    re.ignoreCase && (flags += 'i');
+    re.multiline && (flags += 'm');
+    return flags;
+  }
+};
+
+
+if (typeof module === 'object')
+  module.exports = clone;
+
+/**
+ * Clones (copies) an Object using deep copying.
+ *
+ * This function supports circular references by default, but if you are certain
+ * there are no circular references in your object, you can save some CPU time
+ * by calling clone(obj, false).
+ *
+ * Caution: if `circular` is false and `parent` contains circular references,
+ * your program may enter an infinite loop and crash.
+ *
+ * @param `parent` - the object to be cloned
+ * @param `circular` - set to true if the object to be cloned may contain
+ *    circular references. (optional - true by default)
+ * @param `depth` - set to a number if the object is only to be cloned to
+ *    a particular depth. (optional - defaults to Infinity)
+ * @param `prototype` - sets the prototype to be used when cloning an object.
+ *    (optional - defaults to parent prototype).
+*/
+
+function clone(parent, circular, depth, prototype) {
+  // maintain two arrays for circular references, where corresponding parents
+  // and children have the same index
+  var allParents = [];
+  var allChildren = [];
+
+  var useBuffer = typeof Buffer != 'undefined';
+
+  if (typeof circular == 'undefined')
+    circular = true;
+
+  if (typeof depth == 'undefined')
+    depth = Infinity;
+
+  // recurse this function so we don't reset allParents and allChildren
+  function _clone(parent, depth) {
+    // cloning null always returns null
+    if (parent === null)
+      return null;
+
+    if (depth == 0)
+      return parent;
+
+    var child;
+    var proto;
+    if (typeof parent != 'object') {
+      return parent;
+    }
+
+    if (util.isArray(parent)) {
+      child = [];
+    } else if (util.isRegExp(parent)) {
+      child = new RegExp(parent.source, util.getRegExpFlags(parent));
+      if (parent.lastIndex) child.lastIndex = parent.lastIndex;
+    } else if (util.isDate(parent)) {
+      child = new Date(parent.getTime());
+    } else if (useBuffer && Buffer.isBuffer(parent)) {
+      child = new Buffer(parent.length);
+      parent.copy(child);
+      return child;
+    } else {
+      if (typeof prototype == 'undefined') {
+        proto = Object.getPrototypeOf(parent);
+        child = Object.create(proto);
+      }
+      else {
+        child = Object.create(prototype);
+        proto = prototype;
+      }
+    }
+
+    if (circular) {
+      var index = allParents.indexOf(parent);
+
+      if (index != -1) {
+        return allChildren[index];
+      }
+      allParents.push(parent);
+      allChildren.push(child);
+    }
+
+    for (var i in parent) {
+      var attrs;
+      if (proto) {
+        attrs = Object.getOwnPropertyDescriptor(proto, i);
+      }
+      
+      if (attrs && attrs.set == null) {
+        continue;
+      }
+      child[i] = _clone(parent[i], depth - 1);
+    }
+
+    return child;
+  }
+
+  return _clone(parent, depth);
+}
+
+/**
+ * Simple flat clone using prototype, accepts only objects, usefull for property
+ * override on FLAT configuration object (no nested props).
+ *
+ * USE WITH CAUTION! This may not behave as you wish if you do not know how this
+ * works.
+ */
+clone.clonePrototype = function(parent) {
+  if (parent === null)
+    return null;
+
+  var c = function () {};
+  c.prototype = parent;
+  return new c();
+};
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/index.js"}],"/home/kory/dev/fastn/node_modules/what-changed/node_modules/deep-equal/index.js":[function(require,module,exports){
+var pSlice = Array.prototype.slice;
+var objectKeys = require('./lib/keys.js');
+var isArguments = require('./lib/is_arguments.js');
+
+var deepEqual = module.exports = function (actual, expected, opts) {
+  if (!opts) opts = {};
+  // 7.1. All identical values are equivalent, as determined by ===.
+  if (actual === expected) {
+    return true;
+
+  } else if (actual instanceof Date && expected instanceof Date) {
+    return actual.getTime() === expected.getTime();
+
+  // 7.3. Other pairs that do not both pass typeof value == 'object',
+  // equivalence is determined by ==.
+  } else if (typeof actual != 'object' && typeof expected != 'object') {
+    return opts.strict ? actual === expected : actual == expected;
+
+  // 7.4. For all other Object pairs, including Array objects, equivalence is
+  // determined by having the same number of owned properties (as verified
+  // with Object.prototype.hasOwnProperty.call), the same set of keys
+  // (although not necessarily the same order), equivalent values for every
+  // corresponding key, and an identical 'prototype' property. Note: this
+  // accounts for both named and indexed properties on Arrays.
+  } else {
+    return objEquiv(actual, expected, opts);
+  }
+}
+
+function isUndefinedOrNull(value) {
+  return value === null || value === undefined;
+}
+
+function isBuffer (x) {
+  if (!x || typeof x !== 'object' || typeof x.length !== 'number') return false;
+  if (typeof x.copy !== 'function' || typeof x.slice !== 'function') {
+    return false;
+  }
+  if (x.length > 0 && typeof x[0] !== 'number') return false;
+  return true;
+}
+
+function objEquiv(a, b, opts) {
+  var i, key;
+  if (isUndefinedOrNull(a) || isUndefinedOrNull(b))
+    return false;
+  // an identical 'prototype' property.
+  if (a.prototype !== b.prototype) return false;
+  //~~~I've managed to break Object.keys through screwy arguments passing.
+  //   Converting to array solves the problem.
+  if (isArguments(a)) {
+    if (!isArguments(b)) {
+      return false;
+    }
+    a = pSlice.call(a);
+    b = pSlice.call(b);
+    return deepEqual(a, b, opts);
+  }
+  if (isBuffer(a)) {
+    if (!isBuffer(b)) {
+      return false;
+    }
+    if (a.length !== b.length) return false;
+    for (i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+  try {
+    var ka = objectKeys(a),
+        kb = objectKeys(b);
+  } catch (e) {//happens when one is a string literal and the other isn't
+    return false;
+  }
+  // having the same number of owned properties (keys incorporates
+  // hasOwnProperty)
+  if (ka.length != kb.length)
+    return false;
+  //the same set of keys (although not necessarily the same order),
+  ka.sort();
+  kb.sort();
+  //~~~cheap key test
+  for (i = ka.length - 1; i >= 0; i--) {
+    if (ka[i] != kb[i])
+      return false;
+  }
+  //equivalent values for every corresponding key, and
+  //~~~possibly expensive deep test
+  for (i = ka.length - 1; i >= 0; i--) {
+    key = ka[i];
+    if (!deepEqual(a[key], b[key], opts)) return false;
+  }
+  return true;
+}
+
+},{"./lib/is_arguments.js":"/home/kory/dev/fastn/node_modules/what-changed/node_modules/deep-equal/lib/is_arguments.js","./lib/keys.js":"/home/kory/dev/fastn/node_modules/what-changed/node_modules/deep-equal/lib/keys.js"}],"/home/kory/dev/fastn/node_modules/what-changed/node_modules/deep-equal/lib/is_arguments.js":[function(require,module,exports){
+var supportsArgumentsClass = (function(){
+  return Object.prototype.toString.call(arguments)
+})() == '[object Arguments]';
+
+exports = module.exports = supportsArgumentsClass ? supported : unsupported;
+
+exports.supported = supported;
+function supported(object) {
+  return Object.prototype.toString.call(object) == '[object Arguments]';
+};
+
+exports.unsupported = unsupported;
+function unsupported(object){
+  return object &&
+    typeof object == 'object' &&
+    typeof object.length == 'number' &&
+    Object.prototype.hasOwnProperty.call(object, 'callee') &&
+    !Object.prototype.propertyIsEnumerable.call(object, 'callee') ||
+    false;
+};
+
+},{}],"/home/kory/dev/fastn/node_modules/what-changed/node_modules/deep-equal/lib/keys.js":[function(require,module,exports){
+exports = module.exports = typeof Object.keys === 'function'
+  ? Object.keys : shim;
+
+exports.shim = shim;
+function shim (obj) {
+  var keys = [];
+  for (var key in obj) keys.push(key);
+  return keys;
+}
+
+},{}],"/home/kory/dev/fastn/property.js":[function(require,module,exports){
+var Enti = require('enti'),
+    EventEmitter = require('events').EventEmitter,
+    WhatChanged = require('what-changed'),
+    is = require('./is');
+
+function getInitialBindingsAndUpdater(args){
+    var bindingsIndex = 0,
+        bindingsEndIndex = args
+}
+
+module.exports = function property(currentValue, updater){
+    var binding,
+        model,
+        previous = new WhatChanged(currentValue, 'value type reference keys');
+
+    function property(value){
+        if(!arguments.length){
+            return binding && binding() || currentValue;
+        }
+
+        if(!Object.keys(previous.update(value)).length){
+            return property;
+        }
+
+        currentValue = value;
+        binding && binding(value);
+        property.emit('change', value);
+        property.update();
+
+        return property;
+    }
+
+    for(var emitterKey in EventEmitter.prototype){
+        property[emitterKey] = EventEmitter.prototype[emitterKey];
+    }
+
+    property.binding = function(newBinding){
+        if(!arguments.length){
+            return binding;
+        }
+
+        if(binding){
+            binding.removeListener('change', property);
+            binding.detach(true);
+        }
+        binding = newBinding;
+        property.attach(model);
+        property.update();
+        return property;
+    };
+    property.attach = function(object){
+        if(binding){
+            model = object;
+            binding.attach(object, true);
+            binding.on('change', property);
+            property(binding());
+        }
+        property.update();
+        return property;
+    };
+    property.detach = function(){
+        if(binding){
+            binding.removeListener('change', property);
+            binding.detach(true);
+            model = null;
+        }
+        property.update();
+        return property;
+    };
+    property.update = function(){
+        property.emit('update', currentValue);
+    };
+    property._fastn_property = true;
+
+    return property;
+};
+},{"./is":"/home/kory/dev/fastn/is.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","what-changed":"/home/kory/dev/fastn/node_modules/what-changed/index.js"}],"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/index.js":[function(require,module,exports){
+/*!
+ * The buffer module from node.js, for the browser.
+ *
+ * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @license  MIT
+ */
+
+var base64 = require('base64-js')
+var ieee754 = require('ieee754')
+var isArray = require('is-array')
+
+exports.Buffer = Buffer
+exports.SlowBuffer = Buffer
+exports.INSPECT_MAX_BYTES = 50
+Buffer.poolSize = 8192 // not used by this implementation
+
+var kMaxLength = 0x3fffffff
+
+/**
+ * If `Buffer.TYPED_ARRAY_SUPPORT`:
+ *   === true    Use Uint8Array implementation (fastest)
+ *   === false   Use Object implementation (most compatible, even IE6)
+ *
+ * Browsers that support typed arrays are IE 10+, Firefox 4+, Chrome 7+, Safari 5.1+,
+ * Opera 11.6+, iOS 4.2+.
+ *
+ * Note:
+ *
+ * - Implementation must support adding new properties to `Uint8Array` instances.
+ *   Firefox 4-29 lacked support, fixed in Firefox 30+.
+ *   See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
+ *
+ *  - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
+ *
+ *  - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
+ *    incorrect length in some situations.
+ *
+ * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they will
+ * get the Object implementation, which is slower but will work correctly.
+ */
+Buffer.TYPED_ARRAY_SUPPORT = (function () {
+  try {
+    var buf = new ArrayBuffer(0)
+    var arr = new Uint8Array(buf)
+    arr.foo = function () { return 42 }
+    return 42 === arr.foo() && // typed array instances can be augmented
+        typeof arr.subarray === 'function' && // chrome 9-10 lack `subarray`
+        new Uint8Array(1).subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
+  } catch (e) {
+    return false
+  }
+})()
+
+/**
+ * Class: Buffer
+ * =============
+ *
+ * The Buffer constructor returns instances of `Uint8Array` that are augmented
+ * with function properties for all the node `Buffer` API functions. We use
+ * `Uint8Array` so that square bracket notation works as expected -- it returns
+ * a single octet.
+ *
+ * By augmenting the instances, we can avoid modifying the `Uint8Array`
+ * prototype.
+ */
+function Buffer (subject, encoding, noZero) {
+  if (!(this instanceof Buffer))
+    return new Buffer(subject, encoding, noZero)
+
+  var type = typeof subject
+
+  // Find the length
+  var length
+  if (type === 'number')
+    length = subject > 0 ? subject >>> 0 : 0
+  else if (type === 'string') {
+    if (encoding === 'base64')
+      subject = base64clean(subject)
+    length = Buffer.byteLength(subject, encoding)
+  } else if (type === 'object' && subject !== null) { // assume object is array-like
+    if (subject.type === 'Buffer' && isArray(subject.data))
+      subject = subject.data
+    length = +subject.length > 0 ? Math.floor(+subject.length) : 0
+  } else
+    throw new TypeError('must start with number, buffer, array or string')
+
+  if (this.length > kMaxLength)
+    throw new RangeError('Attempt to allocate Buffer larger than maximum ' +
+      'size: 0x' + kMaxLength.toString(16) + ' bytes')
+
+  var buf
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    // Preferred: Return an augmented `Uint8Array` instance for best performance
+    buf = Buffer._augment(new Uint8Array(length))
+  } else {
+    // Fallback: Return THIS instance of Buffer (created by `new`)
+    buf = this
+    buf.length = length
+    buf._isBuffer = true
+  }
+
+  var i
+  if (Buffer.TYPED_ARRAY_SUPPORT && typeof subject.byteLength === 'number') {
+    // Speed optimization -- use set if we're copying from a typed array
+    buf._set(subject)
+  } else if (isArrayish(subject)) {
+    // Treat array-ish objects as a byte array
+    if (Buffer.isBuffer(subject)) {
+      for (i = 0; i < length; i++)
+        buf[i] = subject.readUInt8(i)
+    } else {
+      for (i = 0; i < length; i++)
+        buf[i] = ((subject[i] % 256) + 256) % 256
+    }
+  } else if (type === 'string') {
+    buf.write(subject, 0, encoding)
+  } else if (type === 'number' && !Buffer.TYPED_ARRAY_SUPPORT && !noZero) {
+    for (i = 0; i < length; i++) {
+      buf[i] = 0
+    }
+  }
+
+  return buf
+}
+
+Buffer.isBuffer = function (b) {
+  return !!(b != null && b._isBuffer)
+}
+
+Buffer.compare = function (a, b) {
+  if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b))
+    throw new TypeError('Arguments must be Buffers')
+
+  var x = a.length
+  var y = b.length
+  for (var i = 0, len = Math.min(x, y); i < len && a[i] === b[i]; i++) {}
+  if (i !== len) {
+    x = a[i]
+    y = b[i]
+  }
+  if (x < y) return -1
+  if (y < x) return 1
+  return 0
+}
+
+Buffer.isEncoding = function (encoding) {
+  switch (String(encoding).toLowerCase()) {
+    case 'hex':
+    case 'utf8':
+    case 'utf-8':
+    case 'ascii':
+    case 'binary':
+    case 'base64':
+    case 'raw':
+    case 'ucs2':
+    case 'ucs-2':
+    case 'utf16le':
+    case 'utf-16le':
+      return true
+    default:
+      return false
+  }
+}
+
+Buffer.concat = function (list, totalLength) {
+  if (!isArray(list)) throw new TypeError('Usage: Buffer.concat(list[, length])')
+
+  if (list.length === 0) {
+    return new Buffer(0)
+  } else if (list.length === 1) {
+    return list[0]
+  }
+
+  var i
+  if (totalLength === undefined) {
+    totalLength = 0
+    for (i = 0; i < list.length; i++) {
+      totalLength += list[i].length
+    }
+  }
+
+  var buf = new Buffer(totalLength)
+  var pos = 0
+  for (i = 0; i < list.length; i++) {
+    var item = list[i]
+    item.copy(buf, pos)
+    pos += item.length
+  }
+  return buf
+}
+
+Buffer.byteLength = function (str, encoding) {
+  var ret
+  str = str + ''
+  switch (encoding || 'utf8') {
+    case 'ascii':
+    case 'binary':
+    case 'raw':
+      ret = str.length
+      break
+    case 'ucs2':
+    case 'ucs-2':
+    case 'utf16le':
+    case 'utf-16le':
+      ret = str.length * 2
+      break
+    case 'hex':
+      ret = str.length >>> 1
+      break
+    case 'utf8':
+    case 'utf-8':
+      ret = utf8ToBytes(str).length
+      break
+    case 'base64':
+      ret = base64ToBytes(str).length
+      break
+    default:
+      ret = str.length
+  }
+  return ret
+}
+
+// pre-set for values that may exist in the future
+Buffer.prototype.length = undefined
+Buffer.prototype.parent = undefined
+
+// toString(encoding, start=0, end=buffer.length)
+Buffer.prototype.toString = function (encoding, start, end) {
+  var loweredCase = false
+
+  start = start >>> 0
+  end = end === undefined || end === Infinity ? this.length : end >>> 0
+
+  if (!encoding) encoding = 'utf8'
+  if (start < 0) start = 0
+  if (end > this.length) end = this.length
+  if (end <= start) return ''
+
+  while (true) {
+    switch (encoding) {
+      case 'hex':
+        return hexSlice(this, start, end)
+
+      case 'utf8':
+      case 'utf-8':
+        return utf8Slice(this, start, end)
+
+      case 'ascii':
+        return asciiSlice(this, start, end)
+
+      case 'binary':
+        return binarySlice(this, start, end)
+
+      case 'base64':
+        return base64Slice(this, start, end)
+
+      case 'ucs2':
+      case 'ucs-2':
+      case 'utf16le':
+      case 'utf-16le':
+        return utf16leSlice(this, start, end)
+
+      default:
+        if (loweredCase)
+          throw new TypeError('Unknown encoding: ' + encoding)
+        encoding = (encoding + '').toLowerCase()
+        loweredCase = true
+    }
+  }
+}
+
+Buffer.prototype.equals = function (b) {
+  if(!Buffer.isBuffer(b)) throw new TypeError('Argument must be a Buffer')
+  return Buffer.compare(this, b) === 0
+}
+
+Buffer.prototype.inspect = function () {
+  var str = ''
+  var max = exports.INSPECT_MAX_BYTES
+  if (this.length > 0) {
+    str = this.toString('hex', 0, max).match(/.{2}/g).join(' ')
+    if (this.length > max)
+      str += ' ... '
+  }
+  return '<Buffer ' + str + '>'
+}
+
+Buffer.prototype.compare = function (b) {
+  if (!Buffer.isBuffer(b)) throw new TypeError('Argument must be a Buffer')
+  return Buffer.compare(this, b)
+}
+
+// `get` will be removed in Node 0.13+
+Buffer.prototype.get = function (offset) {
+  console.log('.get() is deprecated. Access using array indexes instead.')
+  return this.readUInt8(offset)
+}
+
+// `set` will be removed in Node 0.13+
+Buffer.prototype.set = function (v, offset) {
+  console.log('.set() is deprecated. Access using array indexes instead.')
+  return this.writeUInt8(v, offset)
+}
+
+function hexWrite (buf, string, offset, length) {
+  offset = Number(offset) || 0
+  var remaining = buf.length - offset
+  if (!length) {
+    length = remaining
+  } else {
+    length = Number(length)
+    if (length > remaining) {
+      length = remaining
+    }
+  }
+
+  // must be an even number of digits
+  var strLen = string.length
+  if (strLen % 2 !== 0) throw new Error('Invalid hex string')
+
+  if (length > strLen / 2) {
+    length = strLen / 2
+  }
+  for (var i = 0; i < length; i++) {
+    var byte = parseInt(string.substr(i * 2, 2), 16)
+    if (isNaN(byte)) throw new Error('Invalid hex string')
+    buf[offset + i] = byte
+  }
+  return i
+}
+
+function utf8Write (buf, string, offset, length) {
+  var charsWritten = blitBuffer(utf8ToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+function asciiWrite (buf, string, offset, length) {
+  var charsWritten = blitBuffer(asciiToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+function binaryWrite (buf, string, offset, length) {
+  return asciiWrite(buf, string, offset, length)
+}
+
+function base64Write (buf, string, offset, length) {
+  var charsWritten = blitBuffer(base64ToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+function utf16leWrite (buf, string, offset, length) {
+  var charsWritten = blitBuffer(utf16leToBytes(string), buf, offset, length)
+  return charsWritten
+}
+
+Buffer.prototype.write = function (string, offset, length, encoding) {
+  // Support both (string, offset, length, encoding)
+  // and the legacy (string, encoding, offset, length)
+  if (isFinite(offset)) {
+    if (!isFinite(length)) {
+      encoding = length
+      length = undefined
+    }
+  } else {  // legacy
+    var swap = encoding
+    encoding = offset
+    offset = length
+    length = swap
+  }
+
+  offset = Number(offset) || 0
+  var remaining = this.length - offset
+  if (!length) {
+    length = remaining
+  } else {
+    length = Number(length)
+    if (length > remaining) {
+      length = remaining
+    }
+  }
+  encoding = String(encoding || 'utf8').toLowerCase()
+
+  var ret
+  switch (encoding) {
+    case 'hex':
+      ret = hexWrite(this, string, offset, length)
+      break
+    case 'utf8':
+    case 'utf-8':
+      ret = utf8Write(this, string, offset, length)
+      break
+    case 'ascii':
+      ret = asciiWrite(this, string, offset, length)
+      break
+    case 'binary':
+      ret = binaryWrite(this, string, offset, length)
+      break
+    case 'base64':
+      ret = base64Write(this, string, offset, length)
+      break
+    case 'ucs2':
+    case 'ucs-2':
+    case 'utf16le':
+    case 'utf-16le':
+      ret = utf16leWrite(this, string, offset, length)
+      break
+    default:
+      throw new TypeError('Unknown encoding: ' + encoding)
+  }
+  return ret
+}
+
+Buffer.prototype.toJSON = function () {
+  return {
+    type: 'Buffer',
+    data: Array.prototype.slice.call(this._arr || this, 0)
+  }
+}
+
+function base64Slice (buf, start, end) {
+  if (start === 0 && end === buf.length) {
+    return base64.fromByteArray(buf)
+  } else {
+    return base64.fromByteArray(buf.slice(start, end))
+  }
+}
+
+function utf8Slice (buf, start, end) {
+  var res = ''
+  var tmp = ''
+  end = Math.min(buf.length, end)
+
+  for (var i = start; i < end; i++) {
+    if (buf[i] <= 0x7F) {
+      res += decodeUtf8Char(tmp) + String.fromCharCode(buf[i])
+      tmp = ''
+    } else {
+      tmp += '%' + buf[i].toString(16)
+    }
+  }
+
+  return res + decodeUtf8Char(tmp)
+}
+
+function asciiSlice (buf, start, end) {
+  var ret = ''
+  end = Math.min(buf.length, end)
+
+  for (var i = start; i < end; i++) {
+    ret += String.fromCharCode(buf[i])
+  }
+  return ret
+}
+
+function binarySlice (buf, start, end) {
+  return asciiSlice(buf, start, end)
+}
+
+function hexSlice (buf, start, end) {
+  var len = buf.length
+
+  if (!start || start < 0) start = 0
+  if (!end || end < 0 || end > len) end = len
+
+  var out = ''
+  for (var i = start; i < end; i++) {
+    out += toHex(buf[i])
+  }
+  return out
+}
+
+function utf16leSlice (buf, start, end) {
+  var bytes = buf.slice(start, end)
+  var res = ''
+  for (var i = 0; i < bytes.length; i += 2) {
+    res += String.fromCharCode(bytes[i] + bytes[i + 1] * 256)
+  }
+  return res
+}
+
+Buffer.prototype.slice = function (start, end) {
+  var len = this.length
+  start = ~~start
+  end = end === undefined ? len : ~~end
+
+  if (start < 0) {
+    start += len;
+    if (start < 0)
+      start = 0
+  } else if (start > len) {
+    start = len
+  }
+
+  if (end < 0) {
+    end += len
+    if (end < 0)
+      end = 0
+  } else if (end > len) {
+    end = len
+  }
+
+  if (end < start)
+    end = start
+
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    return Buffer._augment(this.subarray(start, end))
+  } else {
+    var sliceLen = end - start
+    var newBuf = new Buffer(sliceLen, undefined, true)
+    for (var i = 0; i < sliceLen; i++) {
+      newBuf[i] = this[i + start]
+    }
+    return newBuf
+  }
+}
+
+/*
+ * Need to make sure that buffer isn't trying to write out of bounds.
+ */
+function checkOffset (offset, ext, length) {
+  if ((offset % 1) !== 0 || offset < 0)
+    throw new RangeError('offset is not uint')
+  if (offset + ext > length)
+    throw new RangeError('Trying to access beyond buffer length')
+}
+
+Buffer.prototype.readUInt8 = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 1, this.length)
+  return this[offset]
+}
+
+Buffer.prototype.readUInt16LE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 2, this.length)
+  return this[offset] | (this[offset + 1] << 8)
+}
+
+Buffer.prototype.readUInt16BE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 2, this.length)
+  return (this[offset] << 8) | this[offset + 1]
+}
+
+Buffer.prototype.readUInt32LE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 4, this.length)
+
+  return ((this[offset]) |
+      (this[offset + 1] << 8) |
+      (this[offset + 2] << 16)) +
+      (this[offset + 3] * 0x1000000)
+}
+
+Buffer.prototype.readUInt32BE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 4, this.length)
+
+  return (this[offset] * 0x1000000) +
+      ((this[offset + 1] << 16) |
+      (this[offset + 2] << 8) |
+      this[offset + 3])
+}
+
+Buffer.prototype.readInt8 = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 1, this.length)
+  if (!(this[offset] & 0x80))
+    return (this[offset])
+  return ((0xff - this[offset] + 1) * -1)
+}
+
+Buffer.prototype.readInt16LE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 2, this.length)
+  var val = this[offset] | (this[offset + 1] << 8)
+  return (val & 0x8000) ? val | 0xFFFF0000 : val
+}
+
+Buffer.prototype.readInt16BE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 2, this.length)
+  var val = this[offset + 1] | (this[offset] << 8)
+  return (val & 0x8000) ? val | 0xFFFF0000 : val
+}
+
+Buffer.prototype.readInt32LE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 4, this.length)
+
+  return (this[offset]) |
+      (this[offset + 1] << 8) |
+      (this[offset + 2] << 16) |
+      (this[offset + 3] << 24)
+}
+
+Buffer.prototype.readInt32BE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 4, this.length)
+
+  return (this[offset] << 24) |
+      (this[offset + 1] << 16) |
+      (this[offset + 2] << 8) |
+      (this[offset + 3])
+}
+
+Buffer.prototype.readFloatLE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 4, this.length)
+  return ieee754.read(this, offset, true, 23, 4)
+}
+
+Buffer.prototype.readFloatBE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 4, this.length)
+  return ieee754.read(this, offset, false, 23, 4)
+}
+
+Buffer.prototype.readDoubleLE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 8, this.length)
+  return ieee754.read(this, offset, true, 52, 8)
+}
+
+Buffer.prototype.readDoubleBE = function (offset, noAssert) {
+  if (!noAssert)
+    checkOffset(offset, 8, this.length)
+  return ieee754.read(this, offset, false, 52, 8)
+}
+
+function checkInt (buf, value, offset, ext, max, min) {
+  if (!Buffer.isBuffer(buf)) throw new TypeError('buffer must be a Buffer instance')
+  if (value > max || value < min) throw new TypeError('value is out of bounds')
+  if (offset + ext > buf.length) throw new TypeError('index out of range')
+}
+
+Buffer.prototype.writeUInt8 = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 1, 0xff, 0)
+  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
+  this[offset] = value
+  return offset + 1
+}
+
+function objectWriteUInt16 (buf, value, offset, littleEndian) {
+  if (value < 0) value = 0xffff + value + 1
+  for (var i = 0, j = Math.min(buf.length - offset, 2); i < j; i++) {
+    buf[offset + i] = (value & (0xff << (8 * (littleEndian ? i : 1 - i)))) >>>
+      (littleEndian ? i : 1 - i) * 8
+  }
+}
+
+Buffer.prototype.writeUInt16LE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 2, 0xffff, 0)
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset] = value
+    this[offset + 1] = (value >>> 8)
+  } else objectWriteUInt16(this, value, offset, true)
+  return offset + 2
+}
+
+Buffer.prototype.writeUInt16BE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 2, 0xffff, 0)
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset] = (value >>> 8)
+    this[offset + 1] = value
+  } else objectWriteUInt16(this, value, offset, false)
+  return offset + 2
+}
+
+function objectWriteUInt32 (buf, value, offset, littleEndian) {
+  if (value < 0) value = 0xffffffff + value + 1
+  for (var i = 0, j = Math.min(buf.length - offset, 4); i < j; i++) {
+    buf[offset + i] = (value >>> (littleEndian ? i : 3 - i) * 8) & 0xff
+  }
+}
+
+Buffer.prototype.writeUInt32LE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 4, 0xffffffff, 0)
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset + 3] = (value >>> 24)
+    this[offset + 2] = (value >>> 16)
+    this[offset + 1] = (value >>> 8)
+    this[offset] = value
+  } else objectWriteUInt32(this, value, offset, true)
+  return offset + 4
+}
+
+Buffer.prototype.writeUInt32BE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 4, 0xffffffff, 0)
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset] = (value >>> 24)
+    this[offset + 1] = (value >>> 16)
+    this[offset + 2] = (value >>> 8)
+    this[offset + 3] = value
+  } else objectWriteUInt32(this, value, offset, false)
+  return offset + 4
+}
+
+Buffer.prototype.writeInt8 = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 1, 0x7f, -0x80)
+  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
+  if (value < 0) value = 0xff + value + 1
+  this[offset] = value
+  return offset + 1
+}
+
+Buffer.prototype.writeInt16LE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 2, 0x7fff, -0x8000)
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset] = value
+    this[offset + 1] = (value >>> 8)
+  } else objectWriteUInt16(this, value, offset, true)
+  return offset + 2
+}
+
+Buffer.prototype.writeInt16BE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 2, 0x7fff, -0x8000)
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset] = (value >>> 8)
+    this[offset + 1] = value
+  } else objectWriteUInt16(this, value, offset, false)
+  return offset + 2
+}
+
+Buffer.prototype.writeInt32LE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset] = value
+    this[offset + 1] = (value >>> 8)
+    this[offset + 2] = (value >>> 16)
+    this[offset + 3] = (value >>> 24)
+  } else objectWriteUInt32(this, value, offset, true)
+  return offset + 4
+}
+
+Buffer.prototype.writeInt32BE = function (value, offset, noAssert) {
+  value = +value
+  offset = offset >>> 0
+  if (!noAssert)
+    checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
+  if (value < 0) value = 0xffffffff + value + 1
+  if (Buffer.TYPED_ARRAY_SUPPORT) {
+    this[offset] = (value >>> 24)
+    this[offset + 1] = (value >>> 16)
+    this[offset + 2] = (value >>> 8)
+    this[offset + 3] = value
+  } else objectWriteUInt32(this, value, offset, false)
+  return offset + 4
+}
+
+function checkIEEE754 (buf, value, offset, ext, max, min) {
+  if (value > max || value < min) throw new TypeError('value is out of bounds')
+  if (offset + ext > buf.length) throw new TypeError('index out of range')
+}
+
+function writeFloat (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert)
+    checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -3.4028234663852886e+38)
+  ieee754.write(buf, value, offset, littleEndian, 23, 4)
+  return offset + 4
+}
+
+Buffer.prototype.writeFloatLE = function (value, offset, noAssert) {
+  return writeFloat(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeFloatBE = function (value, offset, noAssert) {
+  return writeFloat(this, value, offset, false, noAssert)
+}
+
+function writeDouble (buf, value, offset, littleEndian, noAssert) {
+  if (!noAssert)
+    checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -1.7976931348623157E+308)
+  ieee754.write(buf, value, offset, littleEndian, 52, 8)
+  return offset + 8
+}
+
+Buffer.prototype.writeDoubleLE = function (value, offset, noAssert) {
+  return writeDouble(this, value, offset, true, noAssert)
+}
+
+Buffer.prototype.writeDoubleBE = function (value, offset, noAssert) {
+  return writeDouble(this, value, offset, false, noAssert)
+}
+
+// copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
+Buffer.prototype.copy = function (target, target_start, start, end) {
+  var source = this
+
+  if (!start) start = 0
+  if (!end && end !== 0) end = this.length
+  if (!target_start) target_start = 0
+
+  // Copy 0 bytes; we're done
+  if (end === start) return
+  if (target.length === 0 || source.length === 0) return
+
+  // Fatal error conditions
+  if (end < start) throw new TypeError('sourceEnd < sourceStart')
+  if (target_start < 0 || target_start >= target.length)
+    throw new TypeError('targetStart out of bounds')
+  if (start < 0 || start >= source.length) throw new TypeError('sourceStart out of bounds')
+  if (end < 0 || end > source.length) throw new TypeError('sourceEnd out of bounds')
+
+  // Are we oob?
+  if (end > this.length)
+    end = this.length
+  if (target.length - target_start < end - start)
+    end = target.length - target_start + start
+
+  var len = end - start
+
+  if (len < 100 || !Buffer.TYPED_ARRAY_SUPPORT) {
+    for (var i = 0; i < len; i++) {
+      target[i + target_start] = this[i + start]
+    }
+  } else {
+    target._set(this.subarray(start, start + len), target_start)
+  }
+}
+
+// fill(value, start=0, end=buffer.length)
+Buffer.prototype.fill = function (value, start, end) {
+  if (!value) value = 0
+  if (!start) start = 0
+  if (!end) end = this.length
+
+  if (end < start) throw new TypeError('end < start')
+
+  // Fill 0 bytes; we're done
+  if (end === start) return
+  if (this.length === 0) return
+
+  if (start < 0 || start >= this.length) throw new TypeError('start out of bounds')
+  if (end < 0 || end > this.length) throw new TypeError('end out of bounds')
+
+  var i
+  if (typeof value === 'number') {
+    for (i = start; i < end; i++) {
+      this[i] = value
+    }
+  } else {
+    var bytes = utf8ToBytes(value.toString())
+    var len = bytes.length
+    for (i = start; i < end; i++) {
+      this[i] = bytes[i % len]
+    }
+  }
+
+  return this
+}
+
+/**
+ * Creates a new `ArrayBuffer` with the *copied* memory of the buffer instance.
+ * Added in Node 0.12. Only available in browsers that support ArrayBuffer.
+ */
+Buffer.prototype.toArrayBuffer = function () {
+  if (typeof Uint8Array !== 'undefined') {
+    if (Buffer.TYPED_ARRAY_SUPPORT) {
+      return (new Buffer(this)).buffer
+    } else {
+      var buf = new Uint8Array(this.length)
+      for (var i = 0, len = buf.length; i < len; i += 1) {
+        buf[i] = this[i]
+      }
+      return buf.buffer
+    }
+  } else {
+    throw new TypeError('Buffer.toArrayBuffer not supported in this browser')
+  }
+}
+
+// HELPER FUNCTIONS
+// ================
+
+var BP = Buffer.prototype
+
+/**
+ * Augment a Uint8Array *instance* (not the Uint8Array class!) with Buffer methods
+ */
+Buffer._augment = function (arr) {
+  arr._isBuffer = true
+
+  // save reference to original Uint8Array get/set methods before overwriting
+  arr._get = arr.get
+  arr._set = arr.set
+
+  // deprecated, will be removed in node 0.13+
+  arr.get = BP.get
+  arr.set = BP.set
+
+  arr.write = BP.write
+  arr.toString = BP.toString
+  arr.toLocaleString = BP.toString
+  arr.toJSON = BP.toJSON
+  arr.equals = BP.equals
+  arr.compare = BP.compare
+  arr.copy = BP.copy
+  arr.slice = BP.slice
+  arr.readUInt8 = BP.readUInt8
+  arr.readUInt16LE = BP.readUInt16LE
+  arr.readUInt16BE = BP.readUInt16BE
+  arr.readUInt32LE = BP.readUInt32LE
+  arr.readUInt32BE = BP.readUInt32BE
+  arr.readInt8 = BP.readInt8
+  arr.readInt16LE = BP.readInt16LE
+  arr.readInt16BE = BP.readInt16BE
+  arr.readInt32LE = BP.readInt32LE
+  arr.readInt32BE = BP.readInt32BE
+  arr.readFloatLE = BP.readFloatLE
+  arr.readFloatBE = BP.readFloatBE
+  arr.readDoubleLE = BP.readDoubleLE
+  arr.readDoubleBE = BP.readDoubleBE
+  arr.writeUInt8 = BP.writeUInt8
+  arr.writeUInt16LE = BP.writeUInt16LE
+  arr.writeUInt16BE = BP.writeUInt16BE
+  arr.writeUInt32LE = BP.writeUInt32LE
+  arr.writeUInt32BE = BP.writeUInt32BE
+  arr.writeInt8 = BP.writeInt8
+  arr.writeInt16LE = BP.writeInt16LE
+  arr.writeInt16BE = BP.writeInt16BE
+  arr.writeInt32LE = BP.writeInt32LE
+  arr.writeInt32BE = BP.writeInt32BE
+  arr.writeFloatLE = BP.writeFloatLE
+  arr.writeFloatBE = BP.writeFloatBE
+  arr.writeDoubleLE = BP.writeDoubleLE
+  arr.writeDoubleBE = BP.writeDoubleBE
+  arr.fill = BP.fill
+  arr.inspect = BP.inspect
+  arr.toArrayBuffer = BP.toArrayBuffer
+
+  return arr
+}
+
+var INVALID_BASE64_RE = /[^+\/0-9A-z]/g
+
+function base64clean (str) {
+  // Node strips out invalid characters like \n and \t from the string, base64-js does not
+  str = stringtrim(str).replace(INVALID_BASE64_RE, '')
+  // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
+  while (str.length % 4 !== 0) {
+    str = str + '='
+  }
+  return str
+}
+
+function stringtrim (str) {
+  if (str.trim) return str.trim()
+  return str.replace(/^\s+|\s+$/g, '')
+}
+
+function isArrayish (subject) {
+  return isArray(subject) || Buffer.isBuffer(subject) ||
+      subject && typeof subject === 'object' &&
+      typeof subject.length === 'number'
+}
+
+function toHex (n) {
+  if (n < 16) return '0' + n.toString(16)
+  return n.toString(16)
+}
+
+function utf8ToBytes (str) {
+  var byteArray = []
+  for (var i = 0; i < str.length; i++) {
+    var b = str.charCodeAt(i)
+    if (b <= 0x7F) {
+      byteArray.push(b)
+    } else {
+      var start = i
+      if (b >= 0xD800 && b <= 0xDFFF) i++
+      var h = encodeURIComponent(str.slice(start, i+1)).substr(1).split('%')
+      for (var j = 0; j < h.length; j++) {
+        byteArray.push(parseInt(h[j], 16))
+      }
+    }
+  }
+  return byteArray
+}
+
+function asciiToBytes (str) {
+  var byteArray = []
+  for (var i = 0; i < str.length; i++) {
+    // Node's code seems to be doing this and not & 0x7F..
+    byteArray.push(str.charCodeAt(i) & 0xFF)
+  }
+  return byteArray
+}
+
+function utf16leToBytes (str) {
+  var c, hi, lo
+  var byteArray = []
+  for (var i = 0; i < str.length; i++) {
+    c = str.charCodeAt(i)
+    hi = c >> 8
+    lo = c % 256
+    byteArray.push(lo)
+    byteArray.push(hi)
+  }
+
+  return byteArray
+}
+
+function base64ToBytes (str) {
+  return base64.toByteArray(str)
+}
+
+function blitBuffer (src, dst, offset, length) {
+  for (var i = 0; i < length; i++) {
+    if ((i + offset >= dst.length) || (i >= src.length))
+      break
+    dst[i + offset] = src[i]
+  }
+  return i
+}
+
+function decodeUtf8Char (str) {
+  try {
+    return decodeURIComponent(str)
+  } catch (err) {
+    return String.fromCharCode(0xFFFD) // UTF 8 invalid char
+  }
+}
+
+},{"base64-js":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/node_modules/base64-js/lib/b64.js","ieee754":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/node_modules/ieee754/index.js","is-array":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/node_modules/is-array/index.js"}],"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/node_modules/base64-js/lib/b64.js":[function(require,module,exports){
+var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+;(function (exports) {
+	'use strict';
+
+  var Arr = (typeof Uint8Array !== 'undefined')
+    ? Uint8Array
+    : Array
+
+	var PLUS   = '+'.charCodeAt(0)
+	var SLASH  = '/'.charCodeAt(0)
+	var NUMBER = '0'.charCodeAt(0)
+	var LOWER  = 'a'.charCodeAt(0)
+	var UPPER  = 'A'.charCodeAt(0)
+
+	function decode (elt) {
+		var code = elt.charCodeAt(0)
+		if (code === PLUS)
+			return 62 // '+'
+		if (code === SLASH)
+			return 63 // '/'
+		if (code < NUMBER)
+			return -1 //no match
+		if (code < NUMBER + 10)
+			return code - NUMBER + 26 + 26
+		if (code < UPPER + 26)
+			return code - UPPER
+		if (code < LOWER + 26)
+			return code - LOWER + 26
+	}
+
+	function b64ToByteArray (b64) {
+		var i, j, l, tmp, placeHolders, arr
+
+		if (b64.length % 4 > 0) {
+			throw new Error('Invalid string. Length must be a multiple of 4')
+		}
+
+		// the number of equal signs (place holders)
+		// if there are two placeholders, than the two characters before it
+		// represent one byte
+		// if there is only one, then the three characters before it represent 2 bytes
+		// this is just a cheap hack to not do indexOf twice
+		var len = b64.length
+		placeHolders = '=' === b64.charAt(len - 2) ? 2 : '=' === b64.charAt(len - 1) ? 1 : 0
+
+		// base64 is 4/3 + up to two characters of the original data
+		arr = new Arr(b64.length * 3 / 4 - placeHolders)
+
+		// if there are placeholders, only get up to the last complete 4 chars
+		l = placeHolders > 0 ? b64.length - 4 : b64.length
+
+		var L = 0
+
+		function push (v) {
+			arr[L++] = v
+		}
+
+		for (i = 0, j = 0; i < l; i += 4, j += 3) {
+			tmp = (decode(b64.charAt(i)) << 18) | (decode(b64.charAt(i + 1)) << 12) | (decode(b64.charAt(i + 2)) << 6) | decode(b64.charAt(i + 3))
+			push((tmp & 0xFF0000) >> 16)
+			push((tmp & 0xFF00) >> 8)
+			push(tmp & 0xFF)
+		}
+
+		if (placeHolders === 2) {
+			tmp = (decode(b64.charAt(i)) << 2) | (decode(b64.charAt(i + 1)) >> 4)
+			push(tmp & 0xFF)
+		} else if (placeHolders === 1) {
+			tmp = (decode(b64.charAt(i)) << 10) | (decode(b64.charAt(i + 1)) << 4) | (decode(b64.charAt(i + 2)) >> 2)
+			push((tmp >> 8) & 0xFF)
+			push(tmp & 0xFF)
+		}
+
+		return arr
+	}
+
+	function uint8ToBase64 (uint8) {
+		var i,
+			extraBytes = uint8.length % 3, // if we have 1 byte left, pad 2 bytes
+			output = "",
+			temp, length
+
+		function encode (num) {
+			return lookup.charAt(num)
+		}
+
+		function tripletToBase64 (num) {
+			return encode(num >> 18 & 0x3F) + encode(num >> 12 & 0x3F) + encode(num >> 6 & 0x3F) + encode(num & 0x3F)
+		}
+
+		// go through the array every three bytes, we'll deal with trailing stuff later
+		for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
+			temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
+			output += tripletToBase64(temp)
+		}
+
+		// pad the end with zeros, but make sure to not forget the extra bytes
+		switch (extraBytes) {
+			case 1:
+				temp = uint8[uint8.length - 1]
+				output += encode(temp >> 2)
+				output += encode((temp << 4) & 0x3F)
+				output += '=='
+				break
+			case 2:
+				temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1])
+				output += encode(temp >> 10)
+				output += encode((temp >> 4) & 0x3F)
+				output += encode((temp << 2) & 0x3F)
+				output += '='
+				break
+		}
+
+		return output
+	}
+
+	exports.toByteArray = b64ToByteArray
+	exports.fromByteArray = uint8ToBase64
+}(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
+
+},{}],"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/node_modules/ieee754/index.js":[function(require,module,exports){
+exports.read = function(buffer, offset, isLE, mLen, nBytes) {
+  var e, m,
+      eLen = nBytes * 8 - mLen - 1,
+      eMax = (1 << eLen) - 1,
+      eBias = eMax >> 1,
+      nBits = -7,
+      i = isLE ? (nBytes - 1) : 0,
+      d = isLE ? -1 : 1,
+      s = buffer[offset + i];
+
+  i += d;
+
+  e = s & ((1 << (-nBits)) - 1);
+  s >>= (-nBits);
+  nBits += eLen;
+  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8);
+
+  m = e & ((1 << (-nBits)) - 1);
+  e >>= (-nBits);
+  nBits += mLen;
+  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8);
+
+  if (e === 0) {
+    e = 1 - eBias;
+  } else if (e === eMax) {
+    return m ? NaN : ((s ? -1 : 1) * Infinity);
+  } else {
+    m = m + Math.pow(2, mLen);
+    e = e - eBias;
+  }
+  return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
+};
+
+exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
+  var e, m, c,
+      eLen = nBytes * 8 - mLen - 1,
+      eMax = (1 << eLen) - 1,
+      eBias = eMax >> 1,
+      rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0),
+      i = isLE ? 0 : (nBytes - 1),
+      d = isLE ? 1 : -1,
+      s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0;
+
+  value = Math.abs(value);
+
+  if (isNaN(value) || value === Infinity) {
+    m = isNaN(value) ? 1 : 0;
+    e = eMax;
+  } else {
+    e = Math.floor(Math.log(value) / Math.LN2);
+    if (value * (c = Math.pow(2, -e)) < 1) {
+      e--;
+      c *= 2;
+    }
+    if (e + eBias >= 1) {
+      value += rt / c;
+    } else {
+      value += rt * Math.pow(2, 1 - eBias);
+    }
+    if (value * c >= 2) {
+      e++;
+      c /= 2;
+    }
+
+    if (e + eBias >= eMax) {
+      m = 0;
+      e = eMax;
+    } else if (e + eBias >= 1) {
+      m = (value * c - 1) * Math.pow(2, mLen);
+      e = e + eBias;
+    } else {
+      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen);
+      e = 0;
+    }
+  }
+
+  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8);
+
+  e = (e << mLen) | m;
+  eLen += mLen;
+  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8);
+
+  buffer[offset + i - d] |= s * 128;
+};
+
+},{}],"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/buffer/node_modules/is-array/index.js":[function(require,module,exports){
+
+/**
+ * isArray
+ */
+
+var isArray = Array.isArray;
+
+/**
+ * toString
+ */
+
+var str = Object.prototype.toString;
+
+/**
+ * Whether or not the given `val`
+ * is an array.
+ *
+ * example:
+ *
+ *        isArray([]);
+ *        // > true
+ *        isArray(arguments);
+ *        // > false
+ *        isArray('');
+ *        // > false
+ *
+ * @param {mixed} val
+ * @return {bool}
+ */
+
+module.exports = isArray || function (val) {
+  return !! val && '[object Array]' == str.call(val);
+};
+
+},{}],"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js":[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -5430,10 +7188,8 @@ EventEmitter.prototype.emit = function(type) {
       er = arguments[1];
       if (er instanceof Error) {
         throw er; // Unhandled 'error' event
-      } else {
-        throw TypeError('Uncaught, unspecified "error" event.');
       }
-      return false;
+      throw TypeError('Uncaught, unspecified "error" event.');
     }
   }
 

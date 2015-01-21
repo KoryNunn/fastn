@@ -42,7 +42,7 @@ module.exports = function(type, fastn){
     };
 
     container._remove = function(element){
-        if(!element || !container.element || !element.parentNode === container.element){
+        if(!element || !container.element || element.parentNode !== container.element){
             return;
         }
         container.element.removeChild(element);
@@ -50,7 +50,7 @@ module.exports = function(type, fastn){
 
     container.on('render', function(){
         for(var i = 0; i < container._children.length; i++){
-            if(fastn.isComponent(container._children[i])){
+            if(fastn.isComponent(container._children[i]) && !container._children[i].element){
                 container._children[i].render();
             }
 

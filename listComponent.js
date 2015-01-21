@@ -1,5 +1,5 @@
 var crel = require('crel'),
-    containerComponent = require('./containerComponent');
+    genericComponent = require('./genericComponent');
 
 function each(value, fn){
     if(!value || typeof value !== 'object'){
@@ -46,7 +46,7 @@ function values(object){
 }
 
 module.exports = function(type, fastn, settings, children){
-    var list = containerComponent(type, fastn);
+    var list = genericComponent(type, fastn, settings, children),
         lastItems = [],
         lastComponents = [];
 
@@ -78,11 +78,11 @@ module.exports = function(type, fastn, settings, children){
             newItems = [],
             newComponents = [];
 
-        each(value, function(item){
+        each(value, function(item, key){
             var child,
-                key = keyFor(lastItems, item);
+                lastKey = keyFor(lastItems, item);
 
-            if(key === false){
+            if(lastKey === false){
                 child = template(item, key, list.scope());
                 child._templated = true;
 
@@ -100,11 +100,11 @@ module.exports = function(type, fastn, settings, children){
                 newItems.push(item);
                 newComponents.push(child);
             }else{
-                newItems.push(lastItems[key]);
-                lastItems.splice(key,1)
+                newItems.push(lastItems[lastKey]);
+                lastItems.splice(lastKey,1)
 
-                child = lastComponents[key];
-                lastComponents.splice(key,1);
+                child = lastComponents[lastKey];
+                lastComponents.splice(lastKey,1);
                 newComponents.push(child);
             }
 
@@ -125,9 +125,7 @@ module.exports = function(type, fastn, settings, children){
     };
 
     list.items = fastn.property([], updateItems).binding(settings.items);
-    list.on('attach', function(data){
-        list.items.attach(data);
-    });
+    list.on('attach', list.items.attach);
 
     return list;
 };
