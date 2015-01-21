@@ -9,10 +9,10 @@ The absolute minimum required to make a fastn component:
 initialise fastn:
 ```javascript
 // Require and initialise fastn
-var fastn = require('../')({
+var fastn = require('fastn/')({
     // component constructors
-    _generic: require('../genericComponent'),
-    list: require('../listComponent')
+    _generic: require('fastn/genericComponent'),
+    list: require('fastn/listComponent')
 });
 ```
 
@@ -30,6 +30,8 @@ var someComponent = fastn('section',
         fastn('h1', 'I\'m a component! :D'),
         fastn('a', {href: 'http://google.com'}, 'An anchor')
     );
+
+someComponent.render();
 
 // Append the components element to the DOM
 document.body.appendChild(someComponent.element);
@@ -62,6 +64,8 @@ someComponent.scope().set('url', 'http://bing.com');
 
 
 ```
+
+[A similar example in requirebin](http://requirebin.com/?code=797790e7cfe624776414)
 
 ## A little deeper..
 
@@ -133,6 +137,10 @@ function(){
 
 A fastn property is a getterSetter function and EventEmitter.
 
+```javascript
+function property([value])
+```
+
 ### Implementation
 
 a property must be a function that:
@@ -177,6 +185,10 @@ A fastn `binding` is a getterSetter function and `EventEmitter`.
 It is used as a mapping between an object and a value on that object. 
 
 ### Implementation
+
+```javascript
+function binding([value])
+```
 
 a `binding` must be a function that:
 
