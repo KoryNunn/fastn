@@ -64,9 +64,11 @@ module.exports = function(type, fastn, settings, children){
     createProperties(fastn, generic, settings);
 
     generic.render = function(){
-        this.element = crel(type);
+        generic.element = crel(type);
 
-        this.emit('render');
+        generic.emit('render');
+
+        return generic;
     };
 
     generic.on('render', function(){

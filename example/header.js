@@ -1,7 +1,7 @@
 module.exports = function(fastn){
 
     return fastn('header', {'class':'mainHeader'},
-        fastn('h1', fastn.fuse('users|*.deleted', 'deletedUsers', function(users, deleted){
+        fastn('h1', fastn.binding('users', 'deletedUsers', function(users, deleted){
             if(!users){
                 users = [];
             }

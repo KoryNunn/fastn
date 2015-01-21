@@ -2,7 +2,6 @@ var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
     createBinding = require('./binding'),
-    fuseBinding = require('./fuse'),
     is = require('./is');
 
 module.exports = function(components, debug){
@@ -29,8 +28,6 @@ module.exports = function(components, debug){
     fastn.property = createProperty;
 
     fastn.binding = createBinding;
-
-    fastn.fuse = fuseBinding;
 
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;

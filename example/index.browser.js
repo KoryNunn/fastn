@@ -13,6 +13,39 @@ function bindify(binding, key){
     return binding;
 }
 
+function fuseBinding(){
+    var bindings = Array.prototype.slice.call(arguments),
+        transform = bindings.pop(),
+        resultBinding = createBinding('result').attach({}),
+        attaching;
+
+    function change(){
+        if(attaching){
+            return;
+        }
+        resultBinding(transform.apply(null, bindings.map(function(binding){
+            return binding();
+        })));
+    }
+
+    bindings.forEach(function(binding, index){
+        if(typeof binding === 'string'){
+            binding = createBinding(binding);
+            bindings.splice(index,1,binding);
+        }
+        binding.on('change', change);
+        resultBinding.on('attach', function(object){
+            attaching = true;
+            binding.attach(object, true);
+            attaching = false;
+            change();
+        });
+        resultBinding.on('detach', binding.detach);
+    });
+
+    return resultBinding;
+}
+
 function createSelfBinding(){
     var value;
 
@@ -42,7 +75,7 @@ function drill(sourceKey, targetKey){
     var drilledBinding = createBinding(targetKey),
         resultBinding = bindify(function(value, self){
             return drilledBinding.apply(null, arguments);
-        });
+        }, sourceKey + '.' + targetKey);
 
     resultBinding.attach = function(object, loose){
         if(loose && resultBinding._firm){
@@ -77,6 +110,10 @@ function drill(sourceKey, targetKey){
 }
 
 function createBinding(key){
+    if(arguments.length > 1){
+        return fuseBinding.apply(null, arguments);
+    }
+
     var enti = new Enti(),
         value;
 
@@ -110,8 +147,8 @@ function createBinding(key){
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
         if(loose && binding._firm){
-            binding.emit('attach', object);
-            return;
+            binding.emit('attach', object, loose);
+            return binding;
         }
 
         binding._firm = !loose;
@@ -126,20 +163,21 @@ function createBinding(key){
 
         enti.attach(object);
         handler(enti.get(key));
-        this._scope = object;
+        binding._scope = object;
         binding.emit('attach', object);
-        return this;
+        return binding;
     };
     binding.detach = function(loose){
         if(loose && binding._firm){
-            return;
+            binding.emit('detach', loose);
+            return binding;
         }
 
         enti.detach();
         handler(undefined);
-        this._scope = null;
+        binding._scope = null;
         binding.emit('detach');
-        return this;
+        return binding;
     };
     binding.drill = function(drillKey){
         return drill(key, drillKey);
@@ -205,16 +243,36 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
     }
 
-    component.attach = function(data){
-        model.attach(data instanceof Enti ? data._model : data);
-        this.emit('attach', data);
-        return this;
+    component.attach = function(object, loose){
+        if(loose && component._firm){
+            component.emit('attach', object, loose);
+            return;
+        }
+
+        component._firm = !loose;
+
+        if(object instanceof Enti){
+            object = object._model;
+        }
+
+        if(!(object instanceof Object)){
+            object = {};
+        }
+
+        model.attach(object instanceof Enti ? object._model : object);
+        component.emit('attach', object, loose);
+        return component;
     };
 
-    component.detach = function(){
+    component.detach = function(loose){
+        if(loose && component._firm){
+            component.emit('detach', true);
+            return;
+        }
+
         model.detach();
-        this.emit('detach');
-        return this;
+        component.emit('detach', loose);
+        return component;
     };
 
     component.scope = function(){
@@ -226,7 +284,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     }
 
     component.destroy = function(){
-        this.emit('destroy');
+        component.emit('destroy');
     };
 
     component.clone = function(){
@@ -239,6 +297,14 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.on('attach', emitUpdate);
     component.on('render', emitUpdate);
+
+    if(fastn.debug){
+        component.on('render', function(){
+            if(component.element && typeof component.element === 'object'){
+                component.element._component = component;
+            }
+        });
+    }
 
     return component;
 }
@@ -318,7 +384,7 @@ module.exports = function(type, fastn){
 module.exports = function(fastn){
 
     return fastn('header', {'class':'mainHeader'},
-        fastn('h1', fastn.fuse('users|*.deleted', 'deletedUsers', function(users, deleted){
+        fastn('h1', fastn.binding('users', 'deletedUsers', function(users, deleted){
             if(!users){
                 users = [];
             }
@@ -389,24 +455,24 @@ var Enti = require('enti');
 module.exports = function(fastn, userSearch, selectedUser, deleteUser){
 
     return fastn('div', {
-            'class': fastn.fuse('.', userSearch, selectedUser, 'deleted', function(user, search, selectedUser, deleted){
+            'class': fastn.binding('.', 'name', userSearch, selectedUser, 'deleted', function(user, name, search, selectedUser, deleted){
                 return [
                     'user',
-                    (user && (~user.name.first.indexOf(search) || ~user.name.last.indexOf(search))) ? '' : 'hidden',
+                    (name && ((name.first && ~name.first.indexOf(search)) || (name.last && ~name.last.indexOf(search)))) ? '' : 'hidden',
                     user === selectedUser ? 'selected' : '',
                     deleted ? 'deleted' : ''
                 ].join(' ').trim();
             })
         },
 
-        fastn('img', {src: fastn.fuse('picture', function(picture){
+        fastn('img', {src: fastn.binding('picture', function(picture){
                 return picture && picture.medium;
             })
         }),
 
         fastn('label', {
             'class': 'name',
-            textContent: fastn.fuse('name.first', 'name.last', function(firstName, surname){
+            textContent: fastn.binding('name.first', 'name.last', function(firstName, surname){
                 return firstName + ' ' + surname;
             })
         }),
@@ -416,12 +482,12 @@ module.exports = function(fastn, userSearch, selectedUser, deleteUser){
             fastn('p', {'class':'extra'},
                 fastn('a', {
                     textContent: fastn.binding('email'),
-                    href: fastn.fuse('email', function(email){
+                    href: fastn.binding('email', function(email){
                         return 'mailto:' + email;
                     })
                 }),
                 fastn('p', {
-                    textContent: fastn.fuse('cell', function(cell){
+                    textContent: fastn.binding('cell', function(cell){
                         return 'Mobile: ' + cell;
                     })
                 })
@@ -455,7 +521,7 @@ module.exports = function(fastn, userSearch){
     }});
 };
 },{"./user.js":"/home/kory/dev/fastn/example/user.js"}],"/home/kory/dev/fastn/example/users.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
     {
         "user":{
             "gender":"female",
@@ -3957,44 +4023,7 @@ module.exports=module.exports=module.exports=module.exports=module.exports=modul
         "seed":"e57deeb05040343a"
     }
 ]
-},{}],"/home/kory/dev/fastn/fuse.js":[function(require,module,exports){
-var Enti = require('enti'),
-    createBinding = require('./binding'),
-    EventEmitter = require('events').EventEmitter;
-
-module.exports = function fuseBinding(){
-    var bindings = Array.prototype.slice.call(arguments),
-        transform = bindings.pop(),
-        resultBinding = createBinding('result').attach({}),
-        attaching;
-
-    function change(){
-        if(attaching){
-            return;
-        }
-        resultBinding(transform.apply(null, bindings.map(function(binding){
-            return binding();
-        })));
-    }
-
-    bindings.forEach(function(binding, index){
-        if(typeof binding === 'string'){
-            binding = createBinding(binding);
-            bindings.splice(index,1,binding);
-        }
-        binding.on('change', change);
-        resultBinding.on('attach', function(object){
-            attaching = true;
-            binding.attach(object, true);
-            attaching = false;
-            change();
-        });
-        resultBinding.on('detach', binding.detach);
-    });
-
-    return resultBinding;
-};
-},{"./binding":"/home/kory/dev/fastn/binding.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js"}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
+},{}],"/home/kory/dev/fastn/genericComponent.js":[function(require,module,exports){
 var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
@@ -4012,12 +4041,8 @@ function createProperty(fastn, generic, key, settings){
         property.binding(binding);
     }
 
-    generic.on('update', function(){
-        property.update();
-    });
-    generic.on('attach', function(object){
-        property.attach(object);
-    });
+    generic.on('update', property.update);
+    generic.on('attach', property.attach);
     property.on('update', function(value){
         if(!generic.element){
             return;
@@ -4065,9 +4090,11 @@ module.exports = function(type, fastn, settings, children){
     createProperties(fastn, generic, settings);
 
     generic.render = function(){
-        this.element = crel(type);
+        generic.element = crel(type);
 
-        this.emit('render');
+        generic.emit('render');
+
+        return generic;
     };
 
     generic.on('render', function(){
@@ -4085,10 +4112,9 @@ var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
     createBinding = require('./binding'),
-    fuseBinding = require('./fuse'),
     is = require('./is');
 
-module.exports = function(components){
+module.exports = function(components, debug){
 
     function fastn(type){
         var args = [];
@@ -4107,11 +4133,11 @@ module.exports = function(components){
         return createComponent(type, fastn, settings, args.slice(childrenIndex), components);
     }
 
+    fastn.debug = debug;
+
     fastn.property = createProperty;
 
     fastn.binding = createBinding;
-
-    fastn.fuse = fuseBinding;
 
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;
@@ -4120,7 +4146,7 @@ module.exports = function(components){
 
     return fastn;
 };
-},{"./binding":"/home/kory/dev/fastn/binding.js","./component":"/home/kory/dev/fastn/component.js","./fuse":"/home/kory/dev/fastn/fuse.js","./is":"/home/kory/dev/fastn/is.js","./property":"/home/kory/dev/fastn/property.js","flat-merge":"/home/kory/dev/fastn/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/is.js":[function(require,module,exports){
+},{"./binding":"/home/kory/dev/fastn/binding.js","./component":"/home/kory/dev/fastn/component.js","./is":"/home/kory/dev/fastn/is.js","./property":"/home/kory/dev/fastn/property.js","flat-merge":"/home/kory/dev/fastn/node_modules/flat-merge/index.js"}],"/home/kory/dev/fastn/is.js":[function(require,module,exports){
 
 function isComponent(thing){
     return thing && typeof thing === 'object' && '_fastn_component' in thing;
@@ -4225,11 +4251,11 @@ module.exports = function(type, fastn, settings, children){
             newItems = [],
             newComponents = [];
 
-        each(value, function(item){
+        each(value, function(item, key){
             var child,
-                key = keyFor(lastItems, item);
+                lastKey = keyFor(lastItems, item);
 
-            if(key === false){
+            if(lastKey === false){
                 child = template(item, key, list.scope());
                 child._templated = true;
 
@@ -4247,11 +4273,11 @@ module.exports = function(type, fastn, settings, children){
                 newItems.push(item);
                 newComponents.push(child);
             }else{
-                newItems.push(lastItems[key]);
-                lastItems.splice(key,1)
+                newItems.push(lastItems[lastKey]);
+                lastItems.splice(lastKey,1)
 
-                child = lastComponents[key];
-                lastComponents.splice(key,1);
+                child = lastComponents[lastKey];
+                lastComponents.splice(lastKey,1);
                 newComponents.push(child);
             }
 
@@ -4272,9 +4298,7 @@ module.exports = function(type, fastn, settings, children){
     };
 
     list.items = fastn.property([], updateItems).binding(settings.items);
-    list.on('attach', function(data){
-        list.items.attach(data);
-    });
+    list.on('attach', list.items.attach);
 
     return list;
 };
@@ -5762,11 +5786,6 @@ var Enti = require('enti'),
     WhatChanged = require('what-changed'),
     is = require('./is');
 
-function getInitialBindingsAndUpdater(args){
-    var bindingsIndex = 0,
-        bindingsEndIndex = args
-}
-
 module.exports = function property(currentValue, updater){
     var binding,
         model,
@@ -5803,11 +5822,25 @@ module.exports = function property(currentValue, updater){
             binding.detach(true);
         }
         binding = newBinding;
-        property.attach(model);
+        property.attach(model, !property._firm);
         property.update();
         return property;
     };
-    property.attach = function(object){
+    property.attach = function(object, loose){
+        if(loose && property._firm){
+            return property;
+        }
+
+        property._firm = !loose;
+
+        if(object instanceof Enti){
+            object = object._model;
+        }
+
+        if(!(object instanceof Object)){
+            object = {};
+        }
+
         if(binding){
             model = object;
             binding.attach(object, true);
@@ -5817,10 +5850,14 @@ module.exports = function property(currentValue, updater){
         property.update();
         return property;
     };
-    property.detach = function(){
+    property.detach = function(loose){
+        if(loose && component._firm){
+            return property;
+        }
+
         if(binding){
             binding.removeListener('change', property);
-            binding.detach(true);
+            binding.detach();
             model = null;
         }
         property.update();

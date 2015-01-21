@@ -68,8 +68,8 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
 
         model.attach(object instanceof Enti ? object._model : object);
-        this.emit('attach', object, loose);
-        return this;
+        component.emit('attach', object, loose);
+        return component;
     };
 
     component.detach = function(loose){
@@ -79,8 +79,8 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
 
         model.detach();
-        this.emit('detach');
-        return this;
+        component.emit('detach', loose);
+        return component;
     };
 
     component.scope = function(){
@@ -92,7 +92,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     }
 
     component.destroy = function(){
-        this.emit('destroy');
+        component.emit('destroy');
     };
 
     component.clone = function(){

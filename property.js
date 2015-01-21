@@ -3,11 +3,6 @@ var Enti = require('enti'),
     WhatChanged = require('what-changed'),
     is = require('./is');
 
-function getInitialBindingsAndUpdater(args){
-    var bindingsIndex = 0,
-        bindingsEndIndex = args
-}
-
 module.exports = function property(currentValue, updater){
     var binding,
         model,
@@ -50,8 +45,7 @@ module.exports = function property(currentValue, updater){
     };
     property.attach = function(object, loose){
         if(loose && property._firm){
-            property.emit('attach', object, loose);
-            return;
+            return property;
         }
 
         property._firm = !loose;
@@ -66,7 +60,7 @@ module.exports = function property(currentValue, updater){
 
         if(binding){
             model = object;
-            binding.attach(object, loose);
+            binding.attach(object, true);
             binding.on('change', property);
             property(binding());
         }
@@ -75,13 +69,12 @@ module.exports = function property(currentValue, updater){
     };
     property.detach = function(loose){
         if(loose && component._firm){
-            property.emit('detach', loose);
-            return;
+            return property;
         }
 
         if(binding){
             binding.removeListener('change', property);
-            binding.detach(loose);
+            binding.detach();
             model = null;
         }
         property.update();

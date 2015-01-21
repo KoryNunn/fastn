@@ -3,24 +3,24 @@ var Enti = require('enti');
 module.exports = function(fastn, userSearch, selectedUser, deleteUser){
 
     return fastn('div', {
-            'class': fastn.fuse('.', userSearch, selectedUser, 'deleted', function(user, search, selectedUser, deleted){
+            'class': fastn.binding('.', 'name', userSearch, selectedUser, 'deleted', function(user, name, search, selectedUser, deleted){
                 return [
                     'user',
-                    (user && (~user.name.first.indexOf(search) || ~user.name.last.indexOf(search))) ? '' : 'hidden',
+                    (name && ((name.first && ~name.first.indexOf(search)) || (name.last && ~name.last.indexOf(search)))) ? '' : 'hidden',
                     user === selectedUser ? 'selected' : '',
                     deleted ? 'deleted' : ''
                 ].join(' ').trim();
             })
         },
 
-        fastn('img', {src: fastn.fuse('picture', function(picture){
+        fastn('img', {src: fastn.binding('picture', function(picture){
                 return picture && picture.medium;
             })
         }),
 
         fastn('label', {
             'class': 'name',
-            textContent: fastn.fuse('name.first', 'name.last', function(firstName, surname){
+            textContent: fastn.binding('name.first', 'name.last', function(firstName, surname){
                 return firstName + ' ' + surname;
             })
         }),
@@ -30,12 +30,12 @@ module.exports = function(fastn, userSearch, selectedUser, deleteUser){
             fastn('p', {'class':'extra'},
                 fastn('a', {
                     textContent: fastn.binding('email'),
-                    href: fastn.fuse('email', function(email){
+                    href: fastn.binding('email', function(email){
                         return 'mailto:' + email;
                     })
                 }),
                 fastn('p', {
-                    textContent: fastn.fuse('cell', function(cell){
+                    textContent: fastn.binding('cell', function(cell){
                         return 'Mobile: ' + cell;
                     })
                 })
