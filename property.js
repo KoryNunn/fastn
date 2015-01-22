@@ -36,10 +36,11 @@ module.exports = function property(currentValue, updater){
 
         if(binding){
             binding.removeListener('change', property);
-            binding.detach(true);
         }
         binding = newBinding;
-        property.attach(model, !property._firm);
+        if(model){
+            property.attach(model, !property._firm);
+        }
         property.update();
         return property;
     };
@@ -74,7 +75,7 @@ module.exports = function property(currentValue, updater){
 
         if(binding){
             binding.removeListener('change', property);
-            binding.detach();
+            binding.detach(true);
             model = null;
         }
         property.update();

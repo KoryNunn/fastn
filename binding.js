@@ -6,6 +6,8 @@ function bindify(binding, key){
         binding[emitterKey] = EventEmitter.prototype[emitterKey];
     }
     binding.setMaxListeners(1000);
+    binding.model = new Enti(
+        ),
     binding._fastn_binding = key;
     binding._firm = false;
 
@@ -15,8 +17,12 @@ function bindify(binding, key){
 function fuseBinding(){
     var bindings = Array.prototype.slice.call(arguments),
         transform = bindings.pop(),
-        resultBinding = createBinding('result').attach({}),
+        resultBinding = createBinding('result'),
         attaching;
+
+    resultBinding.model.set = function(key, value){
+        this.emit(key, value);
+    };
 
     function change(){
         if(attaching){
@@ -33,41 +39,19 @@ function fuseBinding(){
             bindings.splice(index,1,binding);
         }
         binding.on('change', change);
-        resultBinding.on('attach', function(object){
-            attaching = true;
-            binding.attach(object, true);
-            attaching = false;
-            change();
-        });
         resultBinding.on('detach', binding.detach);
     });
 
+    resultBinding.on('attach', function(object){
+        attaching = true;
+        bindings.forEach(function(binding){
+            binding.attach(object, true);
+        });
+        attaching = false;
+        change();
+    });
+
     return resultBinding;
-}
-
-function createSelfBinding(){
-    var value;
-
-    var binding = function(newValue){
-        if(!arguments.length){
-            return value;
-        }
-
-        value = newValue;
-    }
-    bindify(binding, '.');
-    binding.attach = function(object, loose){
-        if(loose && binding._firm){
-            return;
-        }
-
-        binding._firm = !loose;
-
-        value = object;
-    };
-    binding.detach = function(){};
-
-    return binding;
 }
 
 function drill(sourceKey, targetKey){
@@ -78,12 +62,13 @@ function drill(sourceKey, targetKey){
 
     resultBinding.attach = function(object, loose){
         if(loose && resultBinding._firm){
-            return;
+            return resultBinding;
         }
 
         resultBinding._firm = !loose;
 
         resultBinding.emit('attach', object);
+        return resultBinding;
     };
     resultBinding.detach = resultBinding.emit.bind(null, 'attach');
 
@@ -113,15 +98,10 @@ function createBinding(key){
         return fuseBinding.apply(null, arguments);
     }
 
-    var enti = new Enti(),
-        value;
-
-    if(key === '.'){
-        return createSelfBinding();
-    }
+    var value;
 
     var dotIndex = key.indexOf('.');
-    if(~dotIndex){
+    if(key.length > 1 && ~dotIndex){
         return drill(key.slice(0, dotIndex), key.slice(dotIndex+1));
     }
 
@@ -130,7 +110,7 @@ function createBinding(key){
             return value;
         }
 
-        enti.set(key, newValue);
+        binding.model.set(key, newValue);
     };
     bindify(binding, key);
 
@@ -138,15 +118,14 @@ function createBinding(key){
         value = newValue;
         binding.emit('change', value);
     };
-    enti._events = {};
-    enti._events[key] = handler
+    binding.model._events = {};
+    binding.model._events[key] = handler
 
     binding.attach = function(object, loose){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
         if(loose && binding._firm){
-            binding.emit('attach', object, loose);
             return binding;
         }
 
@@ -160,19 +139,18 @@ function createBinding(key){
             object = {};
         }
 
-        enti.attach(object);
-        handler(enti.get(key));
+        binding.model.attach(object);
+        handler(binding.model.get(key));
         binding._scope = object;
-        binding.emit('attach', object);
+        binding.emit('attach', object, true);
         return binding;
     };
     binding.detach = function(loose){
         if(loose && binding._firm){
-            binding.emit('detach', loose);
             return binding;
         }
 
-        enti.detach();
+        binding.model.detach(true);
         handler(undefined);
         binding._scope = null;
         binding.emit('detach');
@@ -181,8 +159,6 @@ function createBinding(key){
     binding.drill = function(drillKey){
         return drill(key, drillKey);
     };
-
-    binding.attach({}, true);
 
     return binding;
 }

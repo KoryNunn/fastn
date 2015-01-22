@@ -4,12 +4,18 @@ module.exports = function(fastn, userSearch, selectedUser, deleteUser){
 
     return fastn('div', {
             'class': fastn.binding('.', 'name', userSearch, selectedUser, 'deleted', function(user, name, search, selectedUser, deleted){
-                return [
-                    'user',
-                    (name && ((name.first && ~name.first.indexOf(search)) || (name.last && ~name.last.indexOf(search)))) ? '' : 'hidden',
-                    user === selectedUser ? 'selected' : '',
-                    deleted ? 'deleted' : ''
-                ].join(' ').trim();
+                var classes = ['user'];
+
+                if(!name || !(name.first && ~name.first.indexOf(search)) && !(name.last && ~name.last.indexOf(search))){
+                    classes.push('hidden');
+                }
+                if(user === selectedUser){
+                    classes.push('selected');
+                }
+                if(deleted){
+                    classes.push('deleted');
+                }
+                return classes.join(' ');
             })
         },
 

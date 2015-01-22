@@ -53,8 +53,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.attach = function(object, loose){
         if(loose && component._firm){
-            component.emit('attach', object, loose);
-            return;
+            return component;
         }
 
         component._firm = !loose;
@@ -68,18 +67,17 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
 
         model.attach(object instanceof Enti ? object._model : object);
-        component.emit('attach', object, loose);
+        component.emit('attach', object, true);
         return component;
     };
 
     component.detach = function(loose){
         if(loose && component._firm){
-            component.emit('detach', true);
-            return;
+            return component;
         }
 
         model.detach();
-        component.emit('detach', loose);
+        component.emit('detach', true);
         return component;
     };
 
