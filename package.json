@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "crel": "^2.1.5",
-    "enti": "^1.1.0",
+    "enti": "^1.2.0",
     "flat-merge": "^1.0.0",
     "what-changed": "^2.0.0"
   },
