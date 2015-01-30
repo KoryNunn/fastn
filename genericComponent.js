@@ -54,6 +54,14 @@ function addUpdateHandler(generic, eventName, settings){
     });
 }
 
+function addAutoHandler(generic, key, settings){
+    var autoEvent = settings[key].split(':');
+    delete settings[key];
+    generic.element.addEventListener(key.slice(2), function(event){
+        generic[autoEvent[0]](generic.element[autoEvent[1]]);
+    });
+}
+
 module.exports = function(type, fastn, settings, children){
     if(children.length === 1 && !fastn.isComponent(children[0])){
         settings.textContent = children.pop();
@@ -72,11 +80,20 @@ module.exports = function(type, fastn, settings, children){
     };
 
     generic.on('render', function(){
-        for(var key in this._events){
+
+        //
+        for(var key in settings){
+            if(key.slice(0,2) === 'on' && key in generic.element){
+                addAutoHandler(generic, key, settings);
+            }
+        }
+
+        for(var key in generic._events){
             if('on' + key.toLowerCase() in generic.element){
                 addUpdateHandler(generic, key);
             }
         }
+
     });
 
     return generic;

@@ -71,10 +71,12 @@ button{
 .user .extra{
     opacity: 0;
     transition: all 0.25s cubic-bezier(.29,.7,0,.99);
+    pointer-events:none;
 }
 
 .user.selected .extra{
     opacity: 1;
+    pointer-events:all;
 }
 
 .user img{

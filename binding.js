@@ -1,5 +1,6 @@
 var Enti = require('enti'),
-    EventEmitter = require('events').EventEmitter;
+    EventEmitter = require('events').EventEmitter,
+    watchFilter = require('./filter');
 
 function bindify(binding, key){
     for(var emitterKey in EventEmitter.prototype){
@@ -93,33 +94,38 @@ function drill(sourceKey, targetKey){
     return resultBinding;
 }
 
-function createBinding(key){
+function createBinding(keyAndFilter){
     if(arguments.length > 1){
         return fuseBinding.apply(null, arguments);
     }
 
-    var value;
+    var keyAndFilterParts = keyAndFilter.split('|'),
+        filter = keyAndFilterParts[1],
+        key = keyAndFilterParts[0];
 
     var dotIndex = key.indexOf('.');
+
     if(key.length > 1 && ~dotIndex){
         return drill(key.slice(0, dotIndex), key.slice(dotIndex+1));
     }
 
-    var binding = function binding(newValue){
+    var value,
+        binding = function binding(newValue){
         if(!arguments.length){
             return value;
         }
 
+        if(key === '.'){
+            return;
+        }
+        
         binding.model.set(key, newValue);
     };
     bindify(binding, key);
-
-    var handler = function(newValue){
-        value = newValue;
-        binding.emit('change', value);
-    };
     binding.model._events = {};
-    binding.model._events[key] = handler
+    binding.model._events[key] = function(value){
+        binding._change(value, value);
+    };
 
     binding.attach = function(object, loose){
 
@@ -140,7 +146,7 @@ function createBinding(key){
         }
 
         binding.model.attach(object);
-        handler(binding.model.get(key));
+        binding._change(binding.model.get(key));
         binding._scope = object;
         binding.emit('attach', object, true);
         return binding;
@@ -150,15 +156,21 @@ function createBinding(key){
             return binding;
         }
 
-        binding.model.detach(true);
-        handler(undefined);
+        binding.model.detach();
+        binding._change(undefined);
         binding._scope = null;
-        binding.emit('detach');
+        binding.emit('detach', true);
         return binding;
     };
     binding.drill = function(drillKey){
         return drill(key, drillKey);
     };
+    binding._change = function(newValue, changeTarget){
+        value = newValue;
+        binding.emit('change', value, changeTarget);
+    };
+
+    filter && watchFilter(binding, filter);
 
     return binding;
 }

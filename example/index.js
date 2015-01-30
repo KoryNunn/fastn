@@ -17,7 +17,9 @@ var model = {
 var users = require('./users.json');
 
 users = users.map(function(user){
-    return user.user;
+    var user = user.user;
+    // user.deleted = false;
+    return user;
 });
 
 window.enti = enti;

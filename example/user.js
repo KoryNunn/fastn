@@ -31,6 +31,12 @@ module.exports = function(fastn, userSearch, selectedUser, deleteUser){
             })
         }),
 
+        fastn('input', {
+            value: fastn.binding('name.first')
+        }).on('keyup', function(){
+            this.value(this.element.value);
+        }),
+
         fastn('div', {'class': 'details'},
 
             fastn('p', {'class':'extra'},

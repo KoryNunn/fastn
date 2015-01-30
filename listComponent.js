@@ -86,17 +86,6 @@ module.exports = function(type, fastn, settings, children){
                 child = template(item, key, list.scope());
                 child._templated = true;
 
-                if(fastn.isComponent(child)){
-                    if(item && typeof item === 'object'){
-                        child.attach(item, true);
-                    }else{
-                        child.attach({
-                            item: item,
-                            key: key
-                        }, true);
-                    }
-                }
-
                 newItems.push(item);
                 newComponents.push(child);
             }else{
@@ -106,6 +95,17 @@ module.exports = function(type, fastn, settings, children){
                 child = lastComponents[lastKey];
                 lastComponents.splice(lastKey,1);
                 newComponents.push(child);
+            }
+            
+            if(fastn.isComponent(child)){
+                if(item && typeof item === 'object'){
+                    child.attach(item, true);
+                }else{
+                    child.attach({
+                        item: item,
+                        key: key
+                    }, true);
+                }
             }
 
             list.insert(child, index);

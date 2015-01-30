@@ -5,9 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "watchify test/index.js -o test/index.browser.js",
-    "watchexample": "watchify example/index.js -o example/index.browser.js -d",
-    "ie": "cat test/index.browser.js | ieify > test/index.ie.js"
+    "watch": "watchify test/index.js -o test/index.browser.js -d",
+    "watchexample": "watchify example/index.js -o example/index.browser.js -d"
   },
   "author": "",
   "license": "ISC",

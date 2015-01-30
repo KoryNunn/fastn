@@ -3,7 +3,7 @@ var Enti = require('enti'),
     WhatChanged = require('what-changed'),
     is = require('./is');
 
-module.exports = function property(currentValue, updater){
+module.exports = function property(currentValue){
     var binding,
         model,
         previous = new WhatChanged(currentValue, 'value type reference keys');

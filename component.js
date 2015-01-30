@@ -20,12 +20,18 @@ function dereferenceSettings(settings){
     return result;
 }
 
+function flatten(item){
+    return Array.isArray(item) ? item.reduce(function(result, element){
+        return result.concat(flatten(element));
+    },[]) : item;
+}
+
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
         model = new Enti({});
 
     settings = dereferenceSettings(settings || {});
-    children = children.slice();
+    children = flatten(children);
 
     if(!(type in components)){
         if(!('_generic' in components)){
