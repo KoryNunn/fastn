@@ -67,5 +67,13 @@ module.exports = function(type, fastn){
         }
     });
 
+    container.on('destroy', function(data, loose){
+        for(var i = 0; i < container._children.length; i++){
+            if(fastn.isComponent(container._children[i])){
+                container._children[i].destroy();
+            }
+        }
+    });
+
     return container;
 };

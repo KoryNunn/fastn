@@ -97,6 +97,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.destroy = function(){
         component.emit('destroy');
+        model.detach();
     };
 
     component.clone = function(){

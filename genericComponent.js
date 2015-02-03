@@ -49,16 +49,31 @@ function createProperties(fastn, generic, settings){
 }
 
 function addUpdateHandler(generic, eventName, settings){
-    generic.element.addEventListener(eventName, function(event){
+    var handler = function(event){
         generic.emit(eventName, event, generic.scope());
+    };
+
+    generic.element.addEventListener(eventName, handler);
+
+    generic.on('destroy', function(){
+        generic.element.removeEventListener(eventName, handler);
     });
 }
 
 function addAutoHandler(generic, key, settings){
-    var autoEvent = settings[key].split(':');
+    var autoEvent = settings[key].split(':'),
+        eventName = key.slice(2);
+        
     delete settings[key];
-    generic.element.addEventListener(key.slice(2), function(event){
+
+    var handler = function(event){
         generic[autoEvent[0]](generic.element[autoEvent[1]]);
+    };
+
+    generic.element.addEventListener(eventName, handler);
+
+    generic.on('destroy', function(){
+        generic.element.removeEventListener(eventName, handler);
     });
 }
 
