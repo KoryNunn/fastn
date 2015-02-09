@@ -3,18 +3,6 @@ var Enti = require('enti'),
     watchFilter = require('./filter'),
     is = require('./is');
 
-function bindify(binding, key){
-    for(var emitterKey in EventEmitter.prototype){
-        binding[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
-    binding.setMaxListeners(1000);
-    binding.model = new Enti(),
-    binding._fastn_binding = key;
-    binding._firm = false;
-
-    return binding;
-}
-
 function fuseBinding(){
     var bindings = Array.prototype.slice.call(arguments),
         transform = bindings.pop(),
@@ -30,7 +18,10 @@ function fuseBinding(){
     resultBinding.model.set = function(key, value){
         if(updateTransform){
             selfChanging = true;
-            bindings[0](updateTransform(value));
+            var newValue = updateTransform(value);
+            if(newValue !== bindings[0]()){
+                bindings[0](newValue);
+            }
             selfChanging = false;
         }else{
             this.emit(key, value);
@@ -110,7 +101,7 @@ function createBinding(keyAndFilter){
     var dotIndex = key.indexOf('.');
 
     if(key.length > 1 && ~dotIndex){
-        return drill(key.slice(0, dotIndex), key.slice(dotIndex+1));
+        return drill(key.slice(0, dotIndex), keyAndFilter.slice(dotIndex+1));
     }
 
     var value,
@@ -125,7 +116,13 @@ function createBinding(keyAndFilter){
 
         binding.model.set(key, newValue);
     };
-    bindify(binding, key);
+    for(var emitterKey in EventEmitter.prototype){
+        binding[emitterKey] = EventEmitter.prototype[emitterKey];
+    }
+    binding.setMaxListeners(1000);
+    binding.model = new Enti(),
+    binding._fastn_binding = key;
+    binding._firm = false;
     binding.model._events = {};
     binding.model._events[key] = function(value){
         binding._change(value, value);
@@ -175,6 +172,9 @@ function createBinding(keyAndFilter){
     };
     binding.clone = function(){
         return createBinding.apply(null, args);
+    };
+    binding.destroy = function(){
+        this.detach();
     };
 
     filter && watchFilter(binding, filter);

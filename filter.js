@@ -1,8 +1,12 @@
 var Enti = require('enti');
 
-function watchFilter(object, filter, handler){
+function watchFilter(object, filter, handler, model){
     if(!object || typeof object !=='object') {
         return;
+    }
+
+    if(!model){
+        model = new Enti(object);
     }
 
     var dotIndex = filter.indexOf('.'),
@@ -12,22 +16,22 @@ function watchFilter(object, filter, handler){
         isValueStar = target === '*$',
         rest = isLast ? null : filter.slice(dotIndex+1),
         realKey = target.charAt(0) !== '*',
-        model = new Enti(object),
-        childWatches = {};
+        childWatches = [];
 
     function unwatch(){
         model.detach();
         model._events = {};
-        for(var key in childWatches){
-            childWatches[key] && childWatches[key]();
-            delete childWatches[key];
+        while(childWatches.length){
+            var remove = childWatches.pop();
+            remove && remove();
         }
     }
 
     function updateOn(key){
         model.on(key, function(){
             unwatch();
-            watchFilter(object, filter, handler);
+            model.attach(object);
+            watchFilter(object, filter, handler, model);
         });
     }
 
@@ -35,7 +39,7 @@ function watchFilter(object, filter, handler){
 
     if(realKey){
         if(rest){
-            childWatches[target] = watchFilter(object[target], rest, handler);
+            childWatches.push(watchFilter(object[target], rest, handler));
         }else{
             model.on(target, handler);
         }
@@ -49,16 +53,16 @@ function watchFilter(object, filter, handler){
         for(var key in object){
             updateOn(key);
             if(rest){
-                childWatches[key] = watchFilter(object[key], rest, handler);
+                childWatches.push(watchFilter(object[key], rest, handler));
                 if(isDoubleStar){
-                    childWatches[key + '.**.' + rest] = watchFilter(object[key], '**.' + rest, handler);
+                    childWatches.push(watchFilter(object[key], '**.' + rest, handler));
                 }
             }else{
                 if(isValueStar || isDoubleStar){
                     model.on(key, handler);
                 }
                 if(isDoubleStar){
-                    childWatches[key + '.**'] = watchFilter(object[key], '**', handler);
+                    childWatches.push(watchFilter(object[key], '**', handler));
                 }
             }
         }

@@ -15,9 +15,14 @@ function isProperty(thing){
     return thing && typeof thing === 'function' && '_fastn_property' in thing;
 }
 
+function isDefaultBinding(thing){
+    return thing && typeof thing === 'function' && '_fastn_binding' in thing && '_default_binding' in thing;
+}
+
 module.exports = {
     component: isComponent,
     bindingObject: isBindingObject,
     binding: isBinding,
+    defaultBinding: isDefaultBinding,
     property: isProperty
 };

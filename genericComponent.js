@@ -7,8 +7,14 @@ function createProperty(fastn, generic, key, settings){
         property = fastn.isProperty(setting) && setting,
         value = !binding && !property && setting || null;
 
+    if(typeof value === 'function'){
+        return;
+    } 
+
     if(!property){
         property = fastn.property(value);
+    }else{
+        return;
     }
 
     if(binding){

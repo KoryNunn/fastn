@@ -3,10 +3,10 @@ var Enti = require('enti'),
     WhatChanged = require('what-changed'),
     is = require('./is');
 
-module.exports = function property(currentValue){
+module.exports = function createProperty(currentValue, changes){
     var binding,
         model,
-        previous = new WhatChanged(currentValue, 'value type reference keys');
+        previous = new WhatChanged(currentValue, changes || 'value type reference keys');
 
     function property(value){
         if(!arguments.length){
@@ -32,6 +32,10 @@ module.exports = function property(currentValue){
     property.binding = function(newBinding){
         if(!arguments.length){
             return binding;
+        }
+
+        if(newBinding === binding){
+            return property;
         }
 
         if(binding){

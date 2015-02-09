@@ -1,4 +1,5 @@
 var Enti = require('enti'),
+    createBinding = require('./binding'),
     is = require('./is');
 
 function dereferenceSettings(settings){
@@ -28,7 +29,7 @@ function flatten(item){
 
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
-        model = new Enti({});
+        binding;
 
     settings = dereferenceSettings(settings || {});
     children = flatten(children);
@@ -47,33 +48,8 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     component._fastn_component = true;
     component._children = children;
 
-    for(var key in settings){
-        if(is.property(component[key])){
-            if(is.binding(settings[key])){
-                component[key].binding(settings[key]);
-            }else{
-                component[key](settings[key]);
-            }
-        }
-    }
-
     component.attach = function(object, loose){
-        if(loose && component._firm){
-            return component;
-        }
-
-        component._firm = !loose;
-
-        if(object instanceof Enti){
-            object = object._model;
-        }
-
-        if(!(object instanceof Object)){
-            object = {};
-        }
-
-        model.attach(object instanceof Enti ? object._model : object);
-        component.emit('attach', object, true);
+        binding.attach(object, loose);
         return component;
     };
 
@@ -82,13 +58,13 @@ module.exports = function createComponent(type, fastn, settings, children, compo
             return component;
         }
 
-        model.detach();
+        binding.detach();
         component.emit('detach', true);
         return component;
     };
 
     component.scope = function(){
-        return model;
+        return new Enti(binding());
     };
 
     function emitUpdate(){
@@ -97,7 +73,30 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.destroy = function(){
         component.emit('destroy');
-        model.detach();
+        binding.destroy();
+    };
+
+    component.binding = function(newBinding){
+        if(!arguments.length){
+            return binding;
+        }
+
+        if(!is.binding(newBinding)){
+            newBinding = createBinding(newBinding);
+        }
+
+        if(binding){
+            newBinding.attach(binding.model, true);
+        }
+
+        binding = newBinding;
+
+        binding.on('change', function(data){
+            component.emit('attach', data, true);
+        });
+        component.emit('attach', binding(), true);
+
+        return component;
     };
 
     component.clone = function(){
@@ -108,8 +107,23 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }), components);
     };
 
+    for(var key in settings){
+        if(is.property(component[key])){
+            if(is.binding(settings[key])){
+                component[key].binding(settings[key]);
+            }else{
+                component[key](settings[key]);
+            }
+        }
+    }
+
     component.on('attach', emitUpdate);
     component.on('render', emitUpdate);
+
+    var defaultBinding = createBinding('.');
+    defaultBinding._default_binding = true;
+
+    component.binding(defaultBinding);
 
     if(fastn.debug){
         component.on('render', function(){

@@ -31,6 +31,7 @@ module.exports = function(components, debug){
 
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;
+    fastn.isDefaultBinding = is.defaultBinding;
     fastn.isBindingObject = is.bindingObject;
     fastn.isProperty = is.property;
 

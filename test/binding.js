@@ -75,3 +75,47 @@ test('no model', function(t){
 
     t.equal(binding(), 'bar');
 });
+
+test('drill', function(t){
+    t.plan(2);
+
+    var data = {
+            foo: {
+                bar: 123
+            }
+        },
+        model = new Enti(data),
+        binding = createBinding('foo.bar');
+
+    binding.attach(data);
+
+    t.equal(binding(), 123);
+
+    model.set('foo', {
+        bar: 456
+    });
+
+    t.equal(binding(), 456);
+});
+
+test('drill', function(t){
+    t.plan(1);
+
+    var data = {
+            foo: {
+                bar: 123
+            }
+        },
+        model = new Enti(data),
+        binding = createBinding('foo.bar');
+
+    binding.attach(data);
+
+    binding.on('change', function(){
+        t.pass();
+    });
+
+    model.set('foo', {
+        bar: 456
+    });
+});

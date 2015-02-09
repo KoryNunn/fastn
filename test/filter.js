@@ -1,31 +1,3 @@
-
-// var x = {};
-
-// watchKeys(x, '**', function(){console.log('changed')})
-
-// var y = new Enti(x);
-
-// var a = {};
-
-// y.set('a', a);
-
-// var aM = new Enti(a);
-
-// var b = {};
-
-// aM.set('b', b);
-
-// var bM = new Enti(b);
-
-// bM.set('c', 5);
-// bM.set('d', 6);
-
-// y.set('a', 'bar');
-// y.set('b', 'bar');
-// y.set('c', 'bar');
-// y.set('d', 'bar');
-// y.set('e', 'bar');
-
 var test = require('tape'),
     createBinding = require('../binding'),
     Enti = require('enti');

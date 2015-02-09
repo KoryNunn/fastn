@@ -1,4 +1,5 @@
 var crel = require('crel'),
+    Enti = require('enti'),
     genericComponent = require('./genericComponent');
 
 function each(value, fn){
@@ -80,10 +81,14 @@ module.exports = function(type, fastn, settings, children){
 
         each(value, function(item, key){
             var child,
-                lastKey = keyFor(lastItems, item);
+                lastKey = keyFor(lastItems, item),
+                model = new Enti({
+                    item: item,
+                    key: key
+                });
 
             if(lastKey === false){
-                child = template(item, key, list.scope());
+                child = template(model, list.scope());
                 child._templated = true;
 
                 newItems.push(item);
@@ -98,14 +103,7 @@ module.exports = function(type, fastn, settings, children){
             }
             
             if(fastn.isComponent(child)){
-                if(item && typeof item === 'object'){
-                    child.attach(item, true);
-                }else{
-                    child.attach({
-                        item: item,
-                        key: key
-                    }, true);
-                }
+                child.attach(model, true);
             }
 
             list.insert(child, index);
@@ -124,7 +122,7 @@ module.exports = function(type, fastn, settings, children){
         this.emit('render');
     };
 
-    list.items = fastn.property([], updateItems).binding(settings.items);
+    list.items = fastn.property([], 'structure').binding(settings.items);
     list.on('attach', list.items.attach);
 
     return list;
