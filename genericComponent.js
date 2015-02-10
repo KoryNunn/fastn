@@ -12,10 +12,12 @@ function createProperty(fastn, generic, key, settings){
     } 
 
     if(!property){
-        property = fastn.property(value);
-    }else{
-        return;
+        property = fastn.property();
     }
+
+    property(value);
+
+    generic[key] = property;
 
     if(binding){
         property.binding(binding);
