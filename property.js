@@ -25,6 +25,8 @@ module.exports = function createProperty(currentValue, changes){
         return property;
     }
 
+    property._loose = true;
+
     for(var emitterKey in EventEmitter.prototype){
         property[emitterKey] = EventEmitter.prototype[emitterKey];
     }
@@ -43,17 +45,17 @@ module.exports = function createProperty(currentValue, changes){
         }
         binding = newBinding;
         if(model){
-            property.attach(model, !property._firm);
+            property.attach(model, property._loose);
         }
         property.update();
         return property;
     };
     property.attach = function(object, loose){
-        if(loose && property._firm){
+        if(loose && !property._loose){
             return property;
         }
 
-        property._firm = !loose;
+        property._loose = loose;
 
         if(object instanceof Enti){
             object = object._model;
@@ -73,7 +75,7 @@ module.exports = function createProperty(currentValue, changes){
         return property;
     };
     property.detach = function(loose){
-        if(loose && component._firm){
+        if(loose && !component._loose){
             return property;
         }
 

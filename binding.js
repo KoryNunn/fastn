@@ -67,7 +67,10 @@ function drill(sourceKey, targetKey){
     var remove,
         lastTarget = resultBinding();
 
-    resultBinding.on('attach', sourceBinding.attach);
+    resultBinding.attach = function(data, loose){
+        sourceBinding.attach(data, loose);
+        return this;
+    };
 
     sourceBinding.on('change', function(newTarget){
         if(lastTarget !== newTarget){
@@ -122,7 +125,7 @@ function createBinding(keyAndFilter){
     binding.setMaxListeners(1000);
     binding.model = new Enti(),
     binding._fastn_binding = key;
-    binding._firm = false;
+    binding._loose = true;
     binding.model._events = {};
     binding.model._events[key] = function(value){
         binding._change(value, value);
@@ -132,11 +135,11 @@ function createBinding(keyAndFilter){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
-        if(loose && binding._firm){
+        if(loose && !binding._loose){
             return binding;
         }
 
-        binding._firm = !loose;
+        binding._loose = loose;
 
         if(object instanceof Enti){
             object = object._model;
@@ -153,7 +156,7 @@ function createBinding(keyAndFilter){
         return binding;
     };
     binding.detach = function(loose){
-        if(loose && binding._firm){
+        if(loose && !binding._loose){
             return binding;
         }
 

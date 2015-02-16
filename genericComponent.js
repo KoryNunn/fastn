@@ -13,9 +13,29 @@ function createProperty(fastn, generic, key, settings){
 
     if(!property){
         property = fastn.property();
-    }
+        property(value);
+        property.on('update', function(value){
+            if(!generic.element){
+                return;
+            }
 
-    property(value);
+            var element = generic.element,
+                isProperty = key in element,
+                previous = isProperty ? element[key] : element.getAttribute(key);
+
+            if(value == null){
+                value = '';
+            }
+
+            if(value !== previous){
+                if(isProperty){
+                    element[key] = value;
+                }else if(typeof value !== 'function' && typeof value !== 'object'){
+                    element.setAttribute(key, value);
+                }
+            }
+        });
+    }
 
     generic[key] = property;
 
@@ -25,29 +45,6 @@ function createProperty(fastn, generic, key, settings){
 
     generic.on('update', property.update);
     generic.on('attach', property.attach);
-    property.on('update', function(value){
-        if(!generic.element){
-            return;
-        }
-
-        var element = generic.element,
-            isProperty = key in element,
-            previous = isProperty ? element[key] : element.getAttribute(key);
-
-        if(value == null){
-            value = '';
-        }
-
-        if(value !== previous){
-            if(isProperty){
-                element[key] = value;
-            }else if(typeof value !== 'function' && typeof value !== 'object'){
-                element.setAttribute(key, value);
-            }
-        }
-    });
-
-    generic[key] = property;
 }
 
 function createProperties(fastn, generic, settings){
@@ -69,6 +66,10 @@ function addUpdateHandler(generic, eventName, settings){
 }
 
 function addAutoHandler(generic, key, settings){
+    if(!settings[key]){
+        return;
+    }
+
     var autoEvent = settings[key].split(':'),
         eventName = key.slice(2);
         

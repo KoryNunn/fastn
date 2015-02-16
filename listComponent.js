@@ -102,7 +102,7 @@ module.exports = function(type, fastn, settings, children){
                 newComponents.push(child);
             }
             
-            if(fastn.isComponent(child)){
+            if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
                 child.attach(model, true);
             }
 
@@ -116,7 +116,7 @@ module.exports = function(type, fastn, settings, children){
     }
 
     list.render = function(){
-        this.element = crel('div');
+        this.element = crel(settings.tagName || 'div');
         this.items.on('update', updateItems);
         updateItems(this.items());
         this.emit('render');

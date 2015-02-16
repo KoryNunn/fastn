@@ -15,7 +15,7 @@ module.exports = function(components, debug){
         var settings = args[1],
             childrenIndex = 2;
 
-        if(is.component(args[1]) || typeof args[1] !== 'object' || !args[1]){
+        if(is.component(args[1]) || Array.isArray(args[1]) || typeof args[1] !== 'object' || !args[1]){
             childrenIndex--;
             settings = null;
         }

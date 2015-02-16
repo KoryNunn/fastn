@@ -16,8 +16,6 @@ module.exports = function(type, fastn, settings, children){
             return;
         }
 
-        itemModel.set('item', value);
-
         if(lastValue === value){
             return;
         }
@@ -29,8 +27,13 @@ module.exports = function(type, fastn, settings, children){
             currentItem.destroy();
         }
 
-        currentItem = template(itemModel, templater.scope())
-            .attach(itemModel, true);
+        itemModel.set('item', value);
+
+        currentItem = template(itemModel, templater.scope());
+
+        if(fastn.isComponent(currentItem) && templater._settings.attachTemplates !== false){
+            currentItem.attach(itemModel, true);
+        }
             
         currentItem._templated = true;
 
@@ -50,9 +53,6 @@ module.exports = function(type, fastn, settings, children){
     };
     templater.data.foo = 'bar'; 
     templater.data.on('update', update);
-    templater.data.on('change', function(data){
-        console.log(data);
-    });
 
     return templater;
 };

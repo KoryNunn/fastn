@@ -1,5 +1,22 @@
 var Enti = require('enti');
 
+function watchKey(updateOn, childWatches, object, key, rest, model, isDoubleStar, isValueStar, handler){
+    updateOn(key);
+    if(rest){
+        childWatches.push(watchFilter(object[key], rest, handler));
+        if(isDoubleStar){
+            childWatches.push(watchFilter(object[key], '**.' + rest, handler));
+        }
+    }else{
+        if(isValueStar || isDoubleStar){
+            model.on(key, handler);
+        }
+        if(isDoubleStar){
+            childWatches.push(watchFilter(object[key], '**', handler));
+        }
+    }
+}
+
 function watchFilter(object, filter, handler, model){
     if(!object || typeof object !=='object') {
         return;
@@ -51,20 +68,7 @@ function watchFilter(object, filter, handler, model){
         }
         
         for(var key in object){
-            updateOn(key);
-            if(rest){
-                childWatches.push(watchFilter(object[key], rest, handler));
-                if(isDoubleStar){
-                    childWatches.push(watchFilter(object[key], '**.' + rest, handler));
-                }
-            }else{
-                if(isValueStar || isDoubleStar){
-                    model.on(key, handler);
-                }
-                if(isDoubleStar){
-                    childWatches.push(watchFilter(object[key], '**', handler));
-                }
-            }
+            watchKey(updateOn, childWatches, object, key, rest, model, isDoubleStar, isValueStar, handler);
         }
     }
 

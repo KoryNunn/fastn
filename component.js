@@ -43,6 +43,11 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         component = components[type](type, fastn, settings, children);
     }
 
+    if(is.component(component)){
+        // The component constructor returned a ready-to-go component.
+        return component;
+    }
+
     component._type = type;
     component._settings = settings;
     component._fastn_component = true;
@@ -54,11 +59,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     };
 
     component.detach = function(loose){
-        if(loose && component._firm){
-            return component;
-        }
-
-        binding.detach();
+        binding.detach(loose);
         component.emit('detach', true);
         return component;
     };
@@ -76,6 +77,10 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         binding.destroy();
     };
 
+    function emitAttach(data){
+        component.emit('attach', binding(), true);
+    }
+
     component.binding = function(newBinding){
         if(!arguments.length){
             return binding;
@@ -86,15 +91,14 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
 
         if(binding){
-            newBinding.attach(binding.model, true);
+            newBinding.attach(binding.model, binding._loose);
+            binding.removeListener('change', emitAttach);
         }
 
         binding = newBinding;
 
-        binding.on('change', function(data){
-            component.emit('attach', data, true);
-        });
-        component.emit('attach', binding(), true);
+        binding.on('change', emitAttach);
+        emitAttach(binding());
 
         return component;
     };
