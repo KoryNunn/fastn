@@ -97,6 +97,8 @@ function createBinding(keyAndFilter){
         return fuseBinding.apply(null, args);
     }
 
+    keyAndFilter = keyAndFilter.toString();
+
     var keyAndFilterParts = keyAndFilter.split('|'),
         filter = keyAndFilterParts[1],
         key = keyAndFilterParts[0];
