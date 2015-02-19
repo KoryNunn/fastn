@@ -1,7 +1,8 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     watchFilter = require('./filter'),
-    is = require('./is');
+    is = require('./is'),
+    same = require('same-value');
 
 function fuseBinding(){
     var bindings = Array.prototype.slice.call(arguments),
@@ -19,8 +20,9 @@ function fuseBinding(){
         if(updateTransform){
             selfChanging = true;
             var newValue = updateTransform(value);
-            if(newValue !== bindings[0]()){
+            if(!same(newValue, bindings[0]())){
                 bindings[0](newValue);
+                resultBinding._change(newValue);
             }
             selfChanging = false;
         }else{
@@ -163,7 +165,6 @@ function createBinding(keyAndFilter){
         }
 
         binding.model.detach();
-        binding._change(undefined);
         binding._scope = null;
         binding.emit('detach', true);
         return binding;

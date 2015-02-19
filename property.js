@@ -18,8 +18,13 @@ module.exports = function createProperty(currentValue, changes){
         }
 
         currentValue = value;
-        binding && binding(value);
-        property.emit('change', value);
+
+        if(binding){
+            binding(value);
+            currentValue = binding();
+        }
+
+        property.emit('change', currentValue);
         property.update();
 
         return property;

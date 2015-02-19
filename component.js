@@ -77,7 +77,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         binding.destroy();
     };
 
-    function emitAttach(data){
+    function emitAttach(){
         component.emit('attach', binding(), true);
     }
 

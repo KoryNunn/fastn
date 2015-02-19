@@ -31,6 +31,11 @@ module.exports = function(type, fastn, settings, children){
 
         currentItem = template(itemModel, templater.scope());
 
+        if(!currentItem){
+            templater._insert(document.createTextNode(''));
+            return;
+        }
+
         if(fastn.isComponent(currentItem) && templater._settings.attachTemplates !== false){
             currentItem.attach(itemModel, true);
         }
@@ -41,7 +46,7 @@ module.exports = function(type, fastn, settings, children){
     };
 
     templater.render = function(){
-        templater.element = templater.element || crel('span');
+        templater.element = templater.element || document.createTextNode('');
         templater.emit('render');
     };
 
