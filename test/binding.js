@@ -112,7 +112,7 @@ test('drill change', function(t){
     binding.attach(data);
 
     binding.on('change', function(){
-        t.pass();
+        t.pass('target changed');
     });
 
     model.set('foo', {

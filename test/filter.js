@@ -3,7 +3,7 @@ var test = require('tape'),
     Enti = require('enti');
 
 test('single key filter', function(t){
-    t.plan(2);
+    t.plan(1);
 
     var binding = createBinding('foo|bar');
 
@@ -16,9 +16,8 @@ test('single key filter', function(t){
         model = new Enti(data),
         fooModel = new Enti(data.foo);
 
-    binding.attach(data).on('change', function(value, target){
+    binding.attach(data).on('change', function(value){
         t.equal(value, data.foo);
-        t.equal(target, data.foo.bar);
     });
 
     model.set('majigger', 10);
@@ -27,7 +26,7 @@ test('single key filter', function(t){
 });
 
 test('wildcard', function(t){
-    t.plan(2);
+    t.plan(1);
 
     var binding = createBinding('foo|*');
 
@@ -42,9 +41,8 @@ test('wildcard', function(t){
         model = new Enti(data),
         fooModel = new Enti(data.foo);
 
-    binding.attach(data).on('change', function(value, target){
+    binding.attach(data).on('change', function(value){
         t.equal(value, data.foo);
-        t.equal(target, data.foo);
     });
 
     model.set('majigger', 10);
@@ -60,7 +58,7 @@ test('wildcard', function(t){
 });
 
 test('wildcard 2', function(t){
-    t.plan(2);
+    t.plan(1);
 
     var binding = createBinding('foo|*');
 
@@ -72,9 +70,8 @@ test('wildcard 2', function(t){
         model = new Enti(data),
         fooModel = new Enti(data.foo);
 
-    binding.attach(data).on('change', function(value, target){
+    binding.attach(data).on('change', function(value){
         t.equal(value, data.foo);
-        t.equal(target, data.foo);
     });
 
     model.set('majigger', 10);
@@ -84,7 +81,7 @@ test('wildcard 2', function(t){
 });
 
 test('wildcard on array', function(t){
-    t.plan(2);
+    t.plan(1);
 
     var binding = createBinding('foo|*');
 
@@ -93,16 +90,15 @@ test('wildcard on array', function(t){
         },
         model = new Enti(data);
 
-    binding.attach(data).on('change', function(value, target){
+    binding.attach(data).on('change', function(value){
         t.equal(value, data.foo);
-        t.equal(target, data.foo);
     });
 
     model.push('foo', {});
 });
 
 test('wildcard.key', function(t){
-    t.plan(2);
+    t.plan(1);
 
     var binding = createBinding('foo|*.bar');
 
@@ -117,9 +113,8 @@ test('wildcard.key', function(t){
         model = new Enti(data),
         fooModel = new Enti(data.foo);
 
-    binding.attach(data).on('change', function(value, target){
+    binding.attach(data).on('change', function(value){
         t.equal(value, data.foo);
-        t.equal(target, data.foo[4].bar);
     });
 
     model.set('majigger', 10);
@@ -130,7 +125,6 @@ test('wildcard.key', function(t){
     fooModel.push(lastFoo);
 
     lastFooModel.set('bar', 10);
-    lastFooModel.set('bin', 20);
 });
 
 test('double wildcard', function(t){
