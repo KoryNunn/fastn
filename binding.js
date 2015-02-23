@@ -81,9 +81,7 @@ function drill(sourceKey, targetKey){
         }
     });
 
-    resultBinding.model.set = function(key, value){
-        this.emit(key, value);
-    };
+    resultBinding._set = targetBinding;
 
     targetBinding.on('change', resultBinding);
     resultBinding.on('detach', sourceBinding.detach);
@@ -121,7 +119,7 @@ function createBinding(keyAndFilter){
             return;
         }
 
-        binding.model.set(key, newValue);
+        binding._set(newValue);
     };
     for(var emitterKey in EventEmitter.prototype){
         binding[emitterKey] = EventEmitter.prototype[emitterKey];
@@ -164,6 +162,7 @@ function createBinding(keyAndFilter){
             return binding;
         }
 
+        value = undefined;
         binding.model.detach();
         binding._scope = null;
         binding.emit('detach', true);
@@ -171,6 +170,9 @@ function createBinding(keyAndFilter){
     };
     binding.drill = function(drillKey){
         return drill(key, drillKey);
+    };
+    binding._set = function(newValue){
+        binding.model.set(key, newValue);
     };
     binding._change = function(newValue, changeTarget){
         value = newValue;

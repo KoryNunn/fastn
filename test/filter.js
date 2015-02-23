@@ -66,7 +66,7 @@ test('wildcard 2', function(t){
 
     var data = {
             foo:{
-                a:1   
+                a:1
             }
         },
         model = new Enti(data),

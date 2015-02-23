@@ -51,8 +51,8 @@ test('simple binding event', function(t){
 
     enti.set('foo', 'bar');
 
-    binding.once('change', function(value){
-        t.equal(value, undefined);
+    binding.once('detach', function(){
+        t.equal(binding(), undefined);
     });
 
     binding.detach();
@@ -145,4 +145,26 @@ test('drill attach', function(t){
     model.set('foo', {
         bar: 456
     });
+});
+
+test('drill set', function(t){
+    t.plan(1);
+
+    var data = {
+            foo: {
+                bar: 123
+            }
+        },
+        model = new Enti(data),
+        fooModel = new Enti(data.foo),
+        binding = createBinding('foo.bar');
+
+
+    fooModel.on('bar', function(value){
+        t.equal(value, 456);
+    });
+
+    binding.attach(data);
+
+    binding(456);
 });
