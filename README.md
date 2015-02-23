@@ -14,6 +14,10 @@ var fastn = require('fastn/')({
     _generic: require('fastn/genericComponent'),
     list: require('fastn/listComponent')
 });
+
+var something = fastn('h1', 'Hello World');
+
+document.body.appendChild(something.element);
 ```
 
 `fastn` is a function with the signature:
@@ -43,12 +47,12 @@ You can assign bindings to properties:
 
 var someComponent = fastn('section',
         fastn('h1', 'I\'m a component! :D'),
-        fastn('a', {href: fastn.binding('url')}, 
+        fastn('a', {href: fastn.binding('url')},
             fastn('label', 'This link points to '),
             fastn('label', fastn.binding('url'))
         )
     );
-    
+
 someComponent.attach({
     url: 'http://google.com'
 });
@@ -108,7 +112,7 @@ A `component` is created by a function that returns an instance of `EventEmitter
 
 ### Implementation
 
-Here is an example of an extremely simple component consctructor
+Here is an example of an extremely simple component constructor
 
 ```javascript
 function(){
@@ -150,7 +154,7 @@ a property must be a function that:
     - set its value
     - `emit('change')`
     - call its `.update()` method with the new value.
-    
+
 A property should NOT emit change if the value being set has not changed
 **The developer may decide what constitutes a change.**
 
@@ -168,13 +172,13 @@ A property should NOT emit change if the value being set has not changed
 
 - `update()` must:
     - `emit('update')`
-    
+
 - `attach()` may:
     - attach to some object
-    
+
 - `detach()` may:
     - detach from its currently attached object
-    
+
 - `binding()` may:
     - update the properties binding
 
@@ -182,7 +186,7 @@ A property should NOT emit change if the value being set has not changed
 
 A fastn `binding` is a getterSetter function and `EventEmitter`.
 
-It is used as a mapping between an object and a value on that object. 
+It is used as a mapping between an object and a value on that object.
 
 ### Implementation
 
@@ -204,9 +208,9 @@ a `binding` must be a function that:
 - All from EventEmitter.
 
 - `_fastn_binding` set to the key the binding is set to. Lets fastn know to treat it as a `binding`.
-    
+
 - `attach()` may:
     - attach to some object
-    
+
 - `detach()` may:
     - detach from its currently attached object
