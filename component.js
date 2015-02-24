@@ -98,10 +98,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         binding = newBinding;
 
         binding.on('change', emitAttach);
-
-        // if(!is.defaultBinding(binding)){
-            emitAttach(binding());
-        // }
+        emitAttach(binding());
 
         return component;
     };
