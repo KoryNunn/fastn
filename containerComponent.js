@@ -24,6 +24,9 @@ module.exports = function(type, fastn){
         if(this.element && !component.element){
             component.render();
         }
+
+        component.attach(container.scope(), true);
+        
         this._insert(component.element, index);
     };
 
