@@ -168,3 +168,37 @@ test('drill set', function(t){
 
     binding(456);
 });
+
+test('drill multiple', function(t){
+    t.plan(3);
+
+    var data = {
+            foo: {
+                bar: 123
+            }
+        },
+        model = new Enti(data),
+        fooModel = new Enti(data.foo),
+        binding = createBinding('foo.bar');
+
+
+    fooModel.once('bar', function(value){
+        t.equal(value, 456);
+    });
+
+    binding.attach(data);
+
+    binding(456);
+
+    binding.once('change', function(value){
+        t.equal(value, 789);
+    });
+
+    fooModel.set('bar', 789);
+
+    binding.once('change', function(value){
+        t.equal(value, 987);
+    });
+
+    binding(987);
+});

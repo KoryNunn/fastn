@@ -13,6 +13,10 @@ module.exports = function createProperty(currentValue, changes){
             return binding && binding() || currentValue;
         }
 
+        if(typeof value === 'function'){
+            debugger;
+        }
+
         if(!Object.keys(previous.update(value)).length){
             return property;
         }

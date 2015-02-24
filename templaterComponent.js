@@ -4,7 +4,6 @@ var crel = require('crel'),
 
 module.exports = function(type, fastn, settings, children){
     var templater = genericComponent(type, fastn, settings, children),
-        currentItem,
         lastValue = {},
         itemModel = new Enti({});
 
@@ -22,27 +21,27 @@ module.exports = function(type, fastn, settings, children){
 
         lastValue = value;
 
-        if(currentItem){
-            templater.remove(currentItem);
-            currentItem.destroy();
+        if(templater._currentComponent){
+            templater.remove(templater._currentComponent);
+            templater._currentComponent.destroy();
         }
 
         itemModel.set('item', value);
 
-        currentItem = template(itemModel, templater.scope());
+        templater._currentComponent = template(itemModel, templater.scope());
 
-        if(!currentItem){
+        if(!templater._currentComponent){
             templater._insert(document.createTextNode(''));
             return;
         }
-
-        if(fastn.isComponent(currentItem) && templater._settings.attachTemplates !== false){
-            currentItem.attach(itemModel, true);
-        }
             
-        currentItem._templated = true;
+        templater._currentComponent._templated = true;
 
-        templater.insert(currentItem);
+        templater.insert(templater._currentComponent);
+
+        if(fastn.isComponent(templater._currentComponent) && templater._settings.attachTemplates !== false){
+            templater._currentComponent.attach(itemModel, true);
+        }
     };
 
     templater.render = function(){

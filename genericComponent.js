@@ -27,6 +27,10 @@ function createProperty(fastn, generic, key, settings){
                 value = '';
             }
 
+            // if(element[key] === 'create'){
+            //     debugger;
+            // }
+
             if(value !== previous){
                 if(isProperty){
                     element[key] = value;
@@ -117,7 +121,6 @@ module.exports = function(type, fastn, settings, children){
                 addUpdateHandler(generic, key);
             }
         }
-
     });
 
     return generic;
