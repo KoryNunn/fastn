@@ -139,7 +139,7 @@ function createBinding(keyAndFilter){
     for(var emitterKey in EventEmitter.prototype){
         binding[emitterKey] = EventEmitter.prototype[emitterKey];
     }
-    binding.setMaxListeners(1000);
+    binding.setMaxListeners(10);
     binding.model = new Enti(),
     binding._fastn_binding = key;
     binding._loose = true;
@@ -164,6 +164,10 @@ function createBinding(keyAndFilter){
 
         if(!(object instanceof Object)){
             object = {};
+        }
+
+        if(binding.model.get('.') === object){
+            return binding;
         }
 
         binding.model.attach(object);
@@ -200,7 +204,8 @@ function createBinding(keyAndFilter){
         return createBinding.apply(null, args);
     };
     binding.destroy = function(){
-        this.detach();
+        binding.model._events = {};
+        binding.detach();
     };
 
     filter && watchFilter(binding, filter);

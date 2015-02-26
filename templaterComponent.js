@@ -24,6 +24,7 @@ module.exports = function(type, fastn, settings, children){
         if(templater._currentComponent){
             templater.remove(templater._currentComponent);
             templater._currentComponent.destroy();
+            templater._currentComponent = null;
         }
 
         itemModel.set('item', value);
@@ -57,6 +58,11 @@ module.exports = function(type, fastn, settings, children){
     };
     templater.data.foo = 'bar'; 
     templater.data.on('update', update);
+    templater.on('destroy', function(){
+        if(fastn.isComponent(templater._currentComponent)){
+            templater._currentComponent.destroy();
+        }
+    });
 
     return templater;
 };

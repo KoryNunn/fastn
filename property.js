@@ -52,6 +52,7 @@ module.exports = function createProperty(currentValue, changes){
         if(model){
             property.attach(model, property._loose);
         }
+        binding.on('change', property);
         property.update();
         return property;
     };
@@ -73,7 +74,6 @@ module.exports = function createProperty(currentValue, changes){
         if(binding){
             model = object;
             binding.attach(object, true);
-            binding.on('change', property);
             property(binding());
         }
         property.update();

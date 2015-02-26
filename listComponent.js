@@ -70,8 +70,8 @@ module.exports = function(type, fastn, settings, children){
                 lastItems.splice(i, 1);
                 lastComponents.splice(i, 1);
                 i--;
-                component.destroy();
                 list.remove(component);
+                component.destroy();
             }
         }
 
