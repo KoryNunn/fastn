@@ -13,25 +13,29 @@ module.exports = function(type, fastn){
         }
 
         if(isNaN(index)){
-            index = this._children.length;
+            index = container._children.length;
         }
-        var currentIndex = this._children.indexOf(component);
+        var currentIndex = container._children.indexOf(component);
         if(~currentIndex){
-            this._children.splice(currentIndex, 1);
+            container._children.splice(currentIndex, 1);
         }
-        this._children.splice(index, 0, component);
+        container._children.splice(index, 0, component);
 
-        if(this.element && !component.element){
+        if(container.element && !component.element){
             component.render();
         }
 
         component.attach(container.scope(), true);
         
-        this._insert(component.element, index);
+        container._insert(component.element, index);
     };
 
     container._insert = function(element, index){
-        this.element.insertBefore(element, this.element.childNodes[index]);
+        if(!container.element){
+            return;
+        }
+        
+        container.element.insertBefore(element, container.element.childNodes[index]);
     };
 
     container.remove = function(component){

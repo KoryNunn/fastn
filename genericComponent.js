@@ -1,6 +1,25 @@
 var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
+var fancyProps = {
+    disabled: function(element, value){
+        if(arguments.length === 1){
+            return element.hasAttribute('disabled');
+        }
+        if(value){
+            element.removeAttribute('disabled');
+        }else{
+            element.setAttribute('disabled', 'disabled');
+        }
+    },
+    textContent: function(element, value){
+        if(arguments.length === 1){
+            return element.textContent;
+        }
+        element.textContent = (value == null ? '' : value);
+    }
+};
+
 function createProperty(fastn, generic, key, settings){
     var setting = settings[key],
         binding = fastn.isBinding(setting) && setting,
@@ -21,20 +40,25 @@ function createProperty(fastn, generic, key, settings){
 
             var element = generic.element,
                 isProperty = key in element,
-                previous = isProperty ? element[key] : element.getAttribute(key);
+                fancyProp = fancyProps[key],
+                previous = fancyProp ? fancyProp(element) : isProperty ? element[key] : element.getAttribute(key);
 
-            if(value == null){
+            if(!fancyProp && !isProperty && value == null){
                 value = '';
             }
 
-            // if(element[key] === 'create'){
-            //     debugger;
-            // }
-
             if(value !== previous){
+                if(fancyProp){
+                    fancyProp(element, value);
+                    return;
+                }
+
                 if(isProperty){
                     element[key] = value;
-                }else if(typeof value !== 'function' && typeof value !== 'object'){
+                    return;
+                }
+
+                if(typeof value !== 'function' && typeof value !== 'object'){
                     element.setAttribute(key, value);
                 }
             }

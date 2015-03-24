@@ -202,3 +202,51 @@ test('drill multiple', function(t){
 
     binding(987);
 });
+
+test('fuse', function(t){
+    t.plan(2);
+
+    var data = {
+            foo: 1,
+            bar: 2,
+            baz: 3
+        },
+        model = new Enti(data),
+        binding = createBinding('foo', 'bar', 'baz', function(foo, bar, baz){
+            return foo + bar + baz;
+        });
+
+    binding.attach(data);
+
+    binding(2);
+
+    binding.once('change', function(value){
+        t.equal(value, 7);
+    });
+
+    model.set('bar', 3);
+
+    binding.once('change', function(value){
+        t.equal(value, 3);
+    });
+
+    binding(3);
+});
+
+test('filter', function(t){
+    t.plan(2);
+
+    var data = {},
+        model = new Enti(data),
+        binding = createBinding('foo|*');
+
+    binding.attach(data);
+
+    binding.on('change', function(value){
+        t.pass();
+    });
+
+    model.set('foo', []);
+
+    Enti.set(data.foo, 0, {});
+});

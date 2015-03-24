@@ -1,11 +1,19 @@
 var crel = require('crel'),
     Enti = require('enti'),
+    EventEmitter = require('events').EventEmitter,
     genericComponent = require('./genericComponent');
 
 module.exports = function(type, fastn, settings, children){
-    var templater = genericComponent(type, fastn, settings, children),
+    var templater = new EventEmitter(),
         lastValue = {},
         itemModel = new Enti({});
+
+    function replaceElement(element){
+        if(templater.element && templater.element.parentNode){
+            templater.element.parentNode.replaceChild(element, templater.element);
+        }
+        templater.element = element;
+    };
 
     function update(){
         var value = templater.data(),
@@ -15,15 +23,12 @@ module.exports = function(type, fastn, settings, children){
             return;
         }
 
-        if(lastValue === value){
-            return;
-        }
-
         lastValue = value;
 
         if(templater._currentComponent){
-            templater.remove(templater._currentComponent);
-            templater._currentComponent.destroy();
+            if(fastn.isComponent(templater._currentComponent)){
+                templater._currentComponent.destroy();
+            }
             templater._currentComponent = null;
         }
 
@@ -32,32 +37,37 @@ module.exports = function(type, fastn, settings, children){
         templater._currentComponent = template(itemModel, templater.scope());
 
         if(!templater._currentComponent){
-            templater._insert(document.createTextNode(''));
+            replaceElement(document.createTextNode(''));
             return;
         }
-            
-        templater._currentComponent._templated = true;
 
-        templater.insert(templater._currentComponent);
+        if(fastn.isComponent(templater._currentComponent)){
+            if(templater._settings.attachTemplates !== false){
+                templater._currentComponent.attach(itemModel, true);
+            }else{
+                templater._currentComponent.attach(templater.scope(), true);
+            }
 
-        if(fastn.isComponent(templater._currentComponent) && templater._settings.attachTemplates !== false){
-            templater._currentComponent.attach(itemModel, true);
+            if(templater.element){
+                templater._currentComponent.render();
+                replaceElement(templater._currentComponent.element);
+            }
         }
     };
 
     templater.render = function(){
-        templater.element = templater.element || document.createTextNode('');
+        var element;
+        if(templater._currentComponent){
+            templater._currentComponent.render();
+            element = templater._currentComponent.element;
+        }
+        templater.element = element || document.createTextNode('');
         templater.emit('render');
     };
 
-    templater._insert = function(element){
-        if(templater.element && templater.element.parentNode){
-            templater.element.parentNode.replaceChild(element, templater.element);
-        }
-        templater.element = element;
-    };
-    templater.data.foo = 'bar'; 
+    templater.data = fastn.property(undefined, 'structure').binding(settings.data);
     templater.data.on('update', update);
+    templater.on('attach', templater.data.attach);
     templater.on('destroy', function(){
         if(fastn.isComponent(templater._currentComponent)){
             templater._currentComponent.destroy();

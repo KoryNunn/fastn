@@ -1,2 +1,2 @@
 require('./binding.js');
-require('./filter.js');
+require('./property.js');

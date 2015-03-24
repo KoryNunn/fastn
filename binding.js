@@ -1,6 +1,5 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
-    watchFilter = require('./filter'),
     is = require('./is'),
     same = require('same-value');
 
@@ -16,7 +15,7 @@ function fuseBinding(){
         transform = bindings.pop();
     }
 
-    resultBinding.model.set = function(key, value){
+    resultBinding._set = function(value){
         if(updateTransform){
             selfChanging = true;
             var newValue = updateTransform(value);
@@ -26,7 +25,9 @@ function fuseBinding(){
             }
             selfChanging = false;
         }else{
-            this.emit(key, value);
+            if(!same(value, bindings[0]())){
+                resultBinding._change(value);
+            }
         }
     };
 
@@ -60,51 +61,6 @@ function fuseBinding(){
     return resultBinding;
 }
 
-function drill(sourceKey, targetKey){
-    var bindings = Array.prototype.slice.call(arguments),
-        resultBinding = createBinding('result'),
-        sourceBinding = createBinding(sourceKey),
-        targetBinding = createBinding(targetKey);
-
-    resultBinding._fastn_binding = sourceKey + '.' + targetKey;
-
-    var remove,
-        lastTarget,
-        outChange;
-
-    resultBinding.on('attach', sourceBinding.attach);
-
-    sourceBinding.on('change', function(object){
-        var newTarget = sourceBinding();
-        if(!same(lastTarget, newTarget)){
-            lastTarget = newTarget;
-            targetBinding.attach(newTarget);
-        }
-    });
-
-    resultBinding._set = function(val){
-        targetBinding(val);
-    };
-
-    resultBinding.model.get = function(){
-        return targetBinding();
-    };
-
-    targetBinding.on('change', resultBinding._change);
-
-    resultBinding.on('detach', function(){
-        sourceBinding.detach();
-        targetBinding.detach();
-    });
-
-    resultBinding.on('destroy', function(){
-        sourceBinding.destroy();
-        targetBinding.destroy();
-    });
-
-    return resultBinding;
-}
-
 function createBinding(keyAndFilter){
     var args = Array.prototype.slice.call(arguments);
 
@@ -115,13 +71,11 @@ function createBinding(keyAndFilter){
     keyAndFilter = keyAndFilter.toString();
 
     var keyAndFilterParts = keyAndFilter.split('|'),
-        filter = keyAndFilterParts[1],
-        key = keyAndFilterParts[0];
+        key = keyAndFilterParts[0],
+        filter = keyAndFilterParts[1] ? ((key === '.' ? '' : key + '.') + keyAndFilterParts[1]) : key;
 
-    var dotIndex = key.indexOf('.');
-
-    if(key.length > 1 && ~dotIndex){
-        return drill(key.slice(0, dotIndex), keyAndFilter.slice(dotIndex+1));
+    if(filter === '.'){
+        filter = '*';
     }
 
     var value,
@@ -144,9 +98,6 @@ function createBinding(keyAndFilter){
     binding._fastn_binding = key;
     binding._loose = true;
     binding.model._events = {};
-    binding.model._events[key] = function(value){
-        binding._change(value);
-    };
 
     binding.attach = function(object, loose){
 
@@ -174,7 +125,7 @@ function createBinding(keyAndFilter){
         binding._scope = object;
         binding._change(binding.model.get(key), false);
         binding.emit('attach', object, true);
-        binding.emit('change', value);
+        binding.emit('change', binding());
         return binding;
     };
     binding.detach = function(loose){
@@ -188,16 +139,16 @@ function createBinding(keyAndFilter){
         binding.emit('detach', true);
         return binding;
     };
-    binding.drill = function(drillKey){
-        return drill(key, drillKey);
-    };
     binding._set = function(newValue){
+        if(same(binding.model.get(key), newValue)){
+            return;
+        }
         binding.model.set(key, newValue);
     };
     binding._change = function(newValue, emit){
         value = newValue;
         if(emit !== false){
-            binding.emit('change', value);
+            binding.emit('change', binding());
         }
     };
     binding.clone = function(){
@@ -208,7 +159,9 @@ function createBinding(keyAndFilter){
         binding.detach();
     };
 
-    filter && watchFilter(binding, filter);
+    binding.model._events[filter] = function(){
+        binding._change(binding.model.get(key));
+    }
 
     return binding;
 }

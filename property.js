@@ -10,25 +10,27 @@ module.exports = function createProperty(currentValue, changes){
 
     function property(value){
         if(!arguments.length){
-            return binding && binding() || currentValue;
+            return binding && binding() || property._value;
         }
 
         if(!Object.keys(previous.update(value)).length){
             return property;
         }
 
-        currentValue = value;
+        property._value = value;
 
         if(binding){
             binding(value);
-            currentValue = binding();
+            property._value = binding();
         }
 
-        property.emit('change', currentValue);
+        property.emit('change', property._value);
         property.update();
 
         return property;
     }
+
+    property._value = currentValue;
 
     property._loose = true;
 
@@ -93,7 +95,7 @@ module.exports = function createProperty(currentValue, changes){
         return property;
     };
     property.update = function(){
-        property.emit('update', currentValue);
+        property.emit('update', property._value);
     };
     property._fastn_property = true;
 
