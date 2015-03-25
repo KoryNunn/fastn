@@ -250,3 +250,21 @@ test('filter', function(t){
 
     Enti.set(data.foo, 0, {});
 });
+
+test('things', function(t){
+    t.plan(2);
+
+    var data = {},
+        model = new Enti(data),
+        binding = createBinding('foo|*.bar');
+
+    binding.attach(data);
+
+    binding.on('change', function(value){
+        t.pass();
+    });
+
+    model.set('foo', [{}]);
+
+    Enti.set(data.foo[0], 'bar', true);
+});

@@ -25,9 +25,7 @@ function fuseBinding(){
             }
             selfChanging = false;
         }else{
-            if(!same(value, bindings[0]())){
-                resultBinding._change(value);
-            }
+            resultBinding._change(value);
         }
     };
 

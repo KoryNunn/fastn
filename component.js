@@ -78,8 +78,13 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         binding.destroy();
     };
 
+    var lastBound;
     function emitAttach(){
-        component.emit('attach', binding(), true);
+        var newBound = binding();
+        if(newBound !== lastBound){
+            lastBound = newBound;
+            component.emit('attach', lastBound, true);
+        }
     }
 
     component.binding = function(newBinding){
