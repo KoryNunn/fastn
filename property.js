@@ -1,6 +1,7 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     WhatChanged = require('what-changed'),
+    looser = require('./looser'),
     is = require('./is');
 
 module.exports = function createProperty(currentValue, changes){
@@ -10,27 +11,29 @@ module.exports = function createProperty(currentValue, changes){
 
     function property(value){
         if(!arguments.length){
-            return binding && binding() || currentValue;
+            return binding && binding() || property._value;
         }
 
         if(!Object.keys(previous.update(value)).length){
             return property;
         }
 
-        currentValue = value;
+        property._value = value;
 
         if(binding){
             binding(value);
-            currentValue = binding();
+            property._value = binding();
         }
 
-        property.emit('change', currentValue);
+        property.emit('change', property._value);
         property.update();
 
         return property;
     }
 
-    property._loose = true;
+    property._value = currentValue;
+
+    property._loose = 1;
 
     for(var emitterKey in EventEmitter.prototype){
         property[emitterKey] = EventEmitter.prototype[emitterKey];
@@ -57,7 +60,7 @@ module.exports = function createProperty(currentValue, changes){
         return property;
     };
     property.attach = function(object, loose){
-        if(loose && !property._loose){
+        if(looser(property, loose)){
             return property;
         }
 
@@ -73,27 +76,27 @@ module.exports = function createProperty(currentValue, changes){
 
         if(binding){
             model = object;
-            binding.attach(object, true);
+            binding.attach(object, 1);
             property(binding());
         }
         property.update();
         return property;
     };
     property.detach = function(loose){
-        if(loose && !component._loose){
+        if(looser(property, loose)){
             return property;
         }
 
         if(binding){
             binding.removeListener('change', property);
-            binding.detach(true);
+            binding.detach(1);
             model = null;
         }
         property.update();
         return property;
     };
     property.update = function(){
-        property.emit('update', currentValue);
+        property.emit('update', property._value);
     };
     property._fastn_property = true;
 
