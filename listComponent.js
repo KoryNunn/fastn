@@ -105,7 +105,7 @@ module.exports = function(type, fastn, settings, children){
             list.insert(child, index);
 
             if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
-                child.attach(model, true);
+                child.attach(model, 2);
             }
 
             index++;

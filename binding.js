@@ -1,6 +1,7 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is'),
+    looser = require('./looser'),
     same = require('same-value');
 
 function fuseBinding(){
@@ -50,7 +51,7 @@ function fuseBinding(){
     resultBinding.on('attach', function(object){
         selfChanging = true;
         bindings.forEach(function(binding){
-            binding.attach(object, true);
+            binding.attach(object, 1);
         });
         selfChanging = false;
         change();
@@ -94,14 +95,14 @@ function createBinding(keyAndFilter){
     binding.setMaxListeners(10);
     binding.model = new Enti(),
     binding._fastn_binding = key;
-    binding._loose = true;
+    binding._loose = 1;
     binding.model._events = {};
 
     binding.attach = function(object, loose){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
-        if(loose && !binding._loose){
+        if(looser(binding, loose)){
             return binding;
         }
 
@@ -122,19 +123,19 @@ function createBinding(keyAndFilter){
         binding.model.attach(object);
         binding._scope = object;
         binding._change(binding.model.get(key), false);
-        binding.emit('attach', object, true);
+        binding.emit('attach', object, 1);
         binding.emit('change', binding());
         return binding;
     };
     binding.detach = function(loose){
-        if(loose && !binding._loose){
+        if(looser(binding, loose)){
             return binding;
         }
 
         value = undefined;
         binding.model.detach();
         binding._scope = null;
-        binding.emit('detach', true);
+        binding.emit('detach', 1);
         return binding;
     };
     binding._set = function(newValue){

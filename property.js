@@ -1,6 +1,7 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     WhatChanged = require('what-changed'),
+    looser = require('./looser'),
     is = require('./is');
 
 module.exports = function createProperty(currentValue, changes){
@@ -32,7 +33,7 @@ module.exports = function createProperty(currentValue, changes){
 
     property._value = currentValue;
 
-    property._loose = true;
+    property._loose = 1;
 
     for(var emitterKey in EventEmitter.prototype){
         property[emitterKey] = EventEmitter.prototype[emitterKey];
@@ -59,7 +60,7 @@ module.exports = function createProperty(currentValue, changes){
         return property;
     };
     property.attach = function(object, loose){
-        if(loose && !property._loose){
+        if(looser(property, loose)){
             return property;
         }
 
@@ -75,20 +76,20 @@ module.exports = function createProperty(currentValue, changes){
 
         if(binding){
             model = object;
-            binding.attach(object, true);
+            binding.attach(object, 1);
             property(binding());
         }
         property.update();
         return property;
     };
     property.detach = function(loose){
-        if(loose && !component._loose){
+        if(looser(property, loose)){
             return property;
         }
 
         if(binding){
             binding.removeListener('change', property);
-            binding.detach(true);
+            binding.detach(1);
             model = null;
         }
         property.update();

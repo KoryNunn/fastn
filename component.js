@@ -60,7 +60,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.detach = function(loose){
         binding.detach(loose);
-        component.emit('detach', true);
+        component.emit('detach', 1);
         return component;
     };
 
@@ -83,7 +83,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         var newBound = binding();
         if(newBound !== lastBound){
             lastBound = newBound;
-            component.emit('attach', lastBound, true);
+            component.emit('attach', lastBound, 1);
         }
     }
 

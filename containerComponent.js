@@ -16,16 +16,18 @@ module.exports = function(type, fastn){
             index = container._children.length;
         }
         var currentIndex = container._children.indexOf(component);
-        if(~currentIndex){
-            container._children.splice(currentIndex, 1);
+        if(currentIndex !== index){
+            if(~currentIndex){
+                container._children.splice(currentIndex, 1);
+            }
+            container._children.splice(index, 0, component);
         }
-        container._children.splice(index, 0, component);
 
         if(container.element && !component.element){
             component.render();
         }
 
-        component.attach(container.scope(), true);
+        component.attach(container.scope(), 1);
         
         container._insert(component.element, index);
     };

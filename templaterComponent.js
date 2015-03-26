@@ -43,9 +43,9 @@ module.exports = function(type, fastn, settings, children){
 
         if(fastn.isComponent(templater._currentComponent)){
             if(templater._settings.attachTemplates !== false){
-                templater._currentComponent.attach(itemModel, true);
+                templater._currentComponent.attach(itemModel, 2);
             }else{
-                templater._currentComponent.attach(templater.scope(), true);
+                templater._currentComponent.attach(templater.scope(), 1);
             }
 
             if(templater.element){
