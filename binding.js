@@ -16,6 +16,7 @@ function fuseBinding(){
         transform = bindings.pop();
     }
 
+    resultBinding.model._events = {};
     resultBinding._set = function(value){
         if(updateTransform){
             selfChanging = true;
@@ -61,15 +62,15 @@ function fuseBinding(){
 }
 
 function createBinding(keyAndFilter){
-    var args = Array.prototype.slice.call(arguments);
-
-    if(args.length > 1){
-        return fuseBinding.apply(null, args);
+    if(arguments.length > 1){
+        return fuseBinding.apply(null, arguments);
     }
 
-    keyAndFilter = keyAndFilter.toString();
+    if(keyAndFilter == null){
+        throw "bindings must be created with a key (and or filter)";
+    }
 
-    var keyAndFilterParts = keyAndFilter.split('|'),
+    var keyAndFilterParts = (keyAndFilter + '').split('|'),
         key = keyAndFilterParts[0],
         filter = keyAndFilterParts[1] ? ((key === '.' ? '' : key + '.') + keyAndFilterParts[1]) : key;
 
@@ -92,7 +93,7 @@ function createBinding(keyAndFilter){
     for(var emitterKey in EventEmitter.prototype){
         binding[emitterKey] = EventEmitter.prototype[emitterKey];
     }
-    binding.setMaxListeners(10);
+    binding.setMaxListeners(1000);
     binding.model = new Enti(),
     binding._fastn_binding = key;
     binding._loose = 1;
@@ -121,7 +122,6 @@ function createBinding(keyAndFilter){
         }
 
         binding.model.attach(object);
-        binding._scope = object;
         binding._change(binding.model.get(key), false);
         binding.emit('attach', object, 1);
         binding.emit('change', binding());
@@ -134,7 +134,6 @@ function createBinding(keyAndFilter){
 
         value = undefined;
         binding.model.detach();
-        binding._scope = null;
         binding.emit('detach', 1);
         return binding;
     };
@@ -154,6 +153,10 @@ function createBinding(keyAndFilter){
         return createBinding.apply(null, args);
     };
     binding.destroy = function(){
+        if(binding._destroyed){
+            return;
+        }
+        binding._destroyed;
         binding.model._events = {};
         binding.detach();
     };

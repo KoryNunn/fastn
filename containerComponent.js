@@ -30,6 +30,8 @@ module.exports = function(type, fastn){
         component.attach(container.scope(), 1);
         
         container._insert(component.element, index);
+
+        return container;
     };
 
     container._insert = function(element, index){

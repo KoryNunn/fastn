@@ -7,9 +7,9 @@ var fancyProps = {
             return element.hasAttribute('disabled');
         }
         if(value){
-            element.removeAttribute('disabled');
-        }else{
             element.setAttribute('disabled', 'disabled');
+        }else{
+            element.removeAttribute('disabled');
         }
     },
     textContent: function(element, value){
@@ -65,14 +65,11 @@ function createProperty(fastn, generic, key, settings){
         });
     }
 
-    generic[key] = property;
-
     if(binding){
         property.binding(binding);
     }
 
-    generic.on('update', property.update);
-    generic.on('attach', property.attach);
+    property.addTo(generic, key);
 }
 
 function createProperties(fastn, generic, settings){

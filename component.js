@@ -27,6 +27,20 @@ function flatten(item){
     },[]) : item;
 }
 
+function forEachProperty(component, call, arguments){
+    var keys = Object.keys(component);
+
+    for(var i = 0; i < keys.length; i++){
+        var property = component[keys[i]];
+
+        if(!is.property(property)){
+            continue;
+        }
+
+        property[call].apply(null, arguments);
+    }
+}
+
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
         binding;
@@ -73,6 +87,10 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     }
 
     component.destroy = function(){
+        if(component._destroyed){
+            return;
+        }
+        component._destroyed = true;
         component.emit('destroy');
         component.element = null;
         binding.destroy();
@@ -126,11 +144,25 @@ module.exports = function createComponent(type, fastn, settings, children, compo
             }else{
                 component[key](settings[key]);
             }
+            component[key].addTo(component, key);
         }
     }
 
     component.on('attach', emitUpdate);
     component.on('render', emitUpdate);
+
+    component.on('attach', function(){
+        forEachProperty(component, 'attach', arguments);
+    });
+    component.on('update', function(){
+        forEachProperty(component, 'update', arguments);
+    });
+    component.on('detach', function(){
+        forEachProperty(component, 'detach', arguments);
+    });
+    component.once('destroy', function(){
+        forEachProperty(component, 'destroy', arguments);
+    });
 
     var defaultBinding = createBinding('.');
     defaultBinding._default_binding = true;

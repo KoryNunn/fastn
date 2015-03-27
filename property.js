@@ -96,7 +96,24 @@ module.exports = function createProperty(currentValue, changes){
         return property;
     };
     property.update = function(){
+        if(property._destroyed){
+            return;
+        }
         property.emit('update', property._value);
+        return property;
+    };
+    property.destroy = function(){
+        if(property._destroyed){
+            return;
+        }
+        property._destroyed = true;
+        property.emit('destroy');
+        property.detach();
+        return property;
+    };
+    property.addTo = function(component, key){
+        component[key] = property;
+        return property;
     };
     property._fastn_property = true;
 

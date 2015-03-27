@@ -117,13 +117,13 @@ module.exports = function(type, fastn, settings, children){
 
     list.render = function(){
         this.element = crel(settings.tagName || 'div');
-        this.items.on('update', updateItems);
-        updateItems(this.items());
         this.emit('render');
     };
 
-    list.items = fastn.property([], 'structure').binding(settings.items);
-    list.on('attach', list.items.attach);
+    fastn.property([], 'structure')
+        .addTo(list, 'items')
+        .binding(settings.items)
+        .on('update', updateItems);
 
     return list;
 };
