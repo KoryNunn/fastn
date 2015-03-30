@@ -30,6 +30,8 @@ module.exports = function(type, fastn){
         component.attach(container.scope(), 1);
         
         container._insert(component.element, index);
+
+        return container;
     };
 
     container._insert = function(element, index){
@@ -68,15 +70,15 @@ module.exports = function(type, fastn){
         }
     });
 
-    container.on('attach', function(data, loose){
+    container.on('attach', function(data, firm){
         for(var i = 0; i < container._children.length; i++){
             if(fastn.isComponent(container._children[i])){
-                container._children[i].attach(data, loose);
+                container._children[i].attach(data, firm);
             }
         }
     });
 
-    container.on('destroy', function(data, loose){
+    container.on('destroy', function(data, firm){
         for(var i = 0; i < container._children.length; i++){
             if(fastn.isComponent(container._children[i])){
                 container._children[i].destroy();

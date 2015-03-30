@@ -1,7 +1,7 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is'),
-    looser = require('./looser'),
+    firmer = require('./firmer'),
     same = require('same-value');
 
 function fuseBinding(){
@@ -16,6 +16,7 @@ function fuseBinding(){
         transform = bindings.pop();
     }
 
+    resultBinding.model._events = {};
     resultBinding._set = function(value){
         if(updateTransform){
             selfChanging = true;
@@ -61,15 +62,15 @@ function fuseBinding(){
 }
 
 function createBinding(keyAndFilter){
-    var args = Array.prototype.slice.call(arguments);
-
-    if(args.length > 1){
-        return fuseBinding.apply(null, args);
+    if(arguments.length > 1){
+        return fuseBinding.apply(null, arguments);
     }
 
-    keyAndFilter = keyAndFilter.toString();
+    if(keyAndFilter == null){
+        throw "bindings must be created with a key (and or filter)";
+    }
 
-    var keyAndFilterParts = keyAndFilter.split('|'),
+    var keyAndFilterParts = (keyAndFilter + '').split('|'),
         key = keyAndFilterParts[0],
         filter = keyAndFilterParts[1] ? ((key === '.' ? '' : key + '.') + keyAndFilterParts[1]) : key;
 
@@ -92,21 +93,21 @@ function createBinding(keyAndFilter){
     for(var emitterKey in EventEmitter.prototype){
         binding[emitterKey] = EventEmitter.prototype[emitterKey];
     }
-    binding.setMaxListeners(10);
+    binding.setMaxListeners(1000);
     binding.model = new Enti(),
     binding._fastn_binding = key;
-    binding._loose = 1;
+    binding._firm = 1;
     binding.model._events = {};
 
-    binding.attach = function(object, loose){
+    binding.attach = function(object, firm){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
-        if(looser(binding, loose)){
+        if(firmer(binding, firm)){
             return binding;
         }
 
-        binding._loose = loose;
+        binding._firm = firm;
 
         if(object instanceof Enti){
             object = object._model;
@@ -121,20 +122,18 @@ function createBinding(keyAndFilter){
         }
 
         binding.model.attach(object);
-        binding._scope = object;
         binding._change(binding.model.get(key), false);
         binding.emit('attach', object, 1);
         binding.emit('change', binding());
         return binding;
     };
-    binding.detach = function(loose){
-        if(looser(binding, loose)){
+    binding.detach = function(firm){
+        if(firmer(binding, firm)){
             return binding;
         }
 
         value = undefined;
         binding.model.detach();
-        binding._scope = null;
         binding.emit('detach', 1);
         return binding;
     };
@@ -154,6 +153,10 @@ function createBinding(keyAndFilter){
         return createBinding.apply(null, args);
     };
     binding.destroy = function(){
+        if(binding._destroyed){
+            return;
+        }
+        binding._destroyed;
         binding.model._events = {};
         binding.detach();
     };
