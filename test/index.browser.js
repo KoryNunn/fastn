@@ -2,7 +2,7 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is'),
-    looser = require('./looser'),
+    firmer = require('./firmer'),
     same = require('same-value');
 
 function fuseBinding(){
@@ -96,18 +96,18 @@ function createBinding(keyAndFilter){
     binding.setMaxListeners(10);
     binding.model = new Enti(),
     binding._fastn_binding = key;
-    binding._loose = 1;
+    binding._firm = 1;
     binding.model._events = {};
 
-    binding.attach = function(object, loose){
+    binding.attach = function(object, firm){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
-        if(looser(binding, loose)){
+        if(firmer(binding, firm)){
             return binding;
         }
 
-        binding._loose = loose;
+        binding._firm = firm;
 
         if(object instanceof Enti){
             object = object._model;
@@ -128,8 +128,8 @@ function createBinding(keyAndFilter){
         binding.emit('change', binding());
         return binding;
     };
-    binding.detach = function(loose){
-        if(looser(binding, loose)){
+    binding.detach = function(firm){
+        if(firmer(binding, firm)){
             return binding;
         }
 
@@ -167,7 +167,7 @@ function createBinding(keyAndFilter){
 }
 
 module.exports = createBinding;
-},{"./is":"/home/kory/dev/fastn/is.js","./looser":"/home/kory/dev/fastn/looser.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","same-value":"/home/kory/dev/fastn/node_modules/same-value/index.js"}],"/home/kory/dev/fastn/is.js":[function(require,module,exports){
+},{"./is":"/home/kory/dev/fastn/is.js","./firmer":"/home/kory/dev/fastn/firmer.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","same-value":"/home/kory/dev/fastn/node_modules/same-value/index.js"}],"/home/kory/dev/fastn/is.js":[function(require,module,exports){
 
 function isComponent(thing){
     return thing && typeof thing === 'object' && '_fastn_component' in thing;
@@ -196,9 +196,9 @@ module.exports = {
     defaultBinding: isDefaultBinding,
     property: isProperty
 };
-},{}],"/home/kory/dev/fastn/looser.js":[function(require,module,exports){
-module.exports = function(entity, loose){
-    if(loose && (entity._loose === undefined || loose < entity._loose)){
+},{}],"/home/kory/dev/fastn/firmer.js":[function(require,module,exports){
+module.exports = function(entity, firm){
+    if(firm && (entity._firm === undefined || firm < entity._firm)){
         return true;
     }
 }
@@ -1975,8 +1975,8 @@ Test.prototype.deepEqual
 };
 
 Test.prototype.deepLooseEqual
-= Test.prototype.looseEqual
-= Test.prototype.looseEquals
+= Test.prototype.firmEqual
+= Test.prototype.firmEquals
 = function (a, b, msg, extra) {
     this._assert(deepEqual(a, b), {
         message : defined(msg, 'should be equivalent'),
@@ -2886,7 +2886,7 @@ function shim (obj) {
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     WhatChanged = require('what-changed'),
-    looser = require('./looser'),
+    firmer = require('./firmer'),
     is = require('./is');
 
 module.exports = function createProperty(currentValue, changes){
@@ -2918,7 +2918,7 @@ module.exports = function createProperty(currentValue, changes){
 
     property._value = currentValue;
 
-    property._loose = 1;
+    property._firm = 1;
 
     for(var emitterKey in EventEmitter.prototype){
         property[emitterKey] = EventEmitter.prototype[emitterKey];
@@ -2938,18 +2938,18 @@ module.exports = function createProperty(currentValue, changes){
         }
         binding = newBinding;
         if(model){
-            property.attach(model, property._loose);
+            property.attach(model, property._firm);
         }
         binding.on('change', property);
         property.update();
         return property;
     };
-    property.attach = function(object, loose){
-        if(looser(property, loose)){
+    property.attach = function(object, firm){
+        if(firmer(property, firm)){
             return property;
         }
 
-        property._loose = loose;
+        property._firm = firm;
 
         if(object instanceof Enti){
             object = object._model;
@@ -2967,8 +2967,8 @@ module.exports = function createProperty(currentValue, changes){
         property.update();
         return property;
     };
-    property.detach = function(loose){
-        if(looser(property, loose)){
+    property.detach = function(firm){
+        if(firmer(property, firm)){
             return property;
         }
 
@@ -2987,7 +2987,7 @@ module.exports = function createProperty(currentValue, changes){
 
     return property;
 };
-},{"./is":"/home/kory/dev/fastn/is.js","./looser":"/home/kory/dev/fastn/looser.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","what-changed":"/home/kory/dev/fastn/node_modules/what-changed/index.js"}],"/home/kory/dev/fastn/test/binding.js":[function(require,module,exports){
+},{"./is":"/home/kory/dev/fastn/is.js","./firmer":"/home/kory/dev/fastn/firmer.js","enti":"/home/kory/dev/fastn/node_modules/enti/index.js","events":"/usr/lib/node_modules/watchify/node_modules/browserify/node_modules/events/events.js","what-changed":"/home/kory/dev/fastn/node_modules/what-changed/index.js"}],"/home/kory/dev/fastn/test/binding.js":[function(require,module,exports){
 var test = require('tape'),
     createBinding = require('../binding'),
     Enti = require('enti');

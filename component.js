@@ -67,13 +67,13 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     component._fastn_component = true;
     component._children = children;
 
-    component.attach = function(object, loose){
-        binding.attach(object, loose);
+    component.attach = function(object, firm){
+        binding.attach(object, firm);
         return component;
     };
 
-    component.detach = function(loose){
-        binding.detach(loose);
+    component.detach = function(firm){
+        binding.detach(firm);
         component.emit('detach', 1);
         return component;
     };
@@ -115,7 +115,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
 
         if(binding){
-            newBinding.attach(binding.model, binding._loose);
+            newBinding.attach(binding.model, binding._firm);
             binding.removeListener('change', emitAttach);
         }
 

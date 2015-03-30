@@ -1,7 +1,7 @@
 var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is'),
-    looser = require('./looser'),
+    firmer = require('./firmer'),
     same = require('same-value');
 
 function fuseBinding(){
@@ -96,18 +96,18 @@ function createBinding(keyAndFilter){
     binding.setMaxListeners(1000);
     binding.model = new Enti(),
     binding._fastn_binding = key;
-    binding._loose = 1;
+    binding._firm = 1;
     binding.model._events = {};
 
-    binding.attach = function(object, loose){
+    binding.attach = function(object, firm){
 
         // If the binding is being asked to attach loosly to an object,
         // but it has already been defined as being firmly attached, do not attach.
-        if(looser(binding, loose)){
+        if(firmer(binding, firm)){
             return binding;
         }
 
-        binding._loose = loose;
+        binding._firm = firm;
 
         if(object instanceof Enti){
             object = object._model;
@@ -127,8 +127,8 @@ function createBinding(keyAndFilter){
         binding.emit('change', binding());
         return binding;
     };
-    binding.detach = function(loose){
-        if(looser(binding, loose)){
+    binding.detach = function(firm){
+        if(firmer(binding, firm)){
             return binding;
         }
 
