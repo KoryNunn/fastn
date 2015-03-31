@@ -102,11 +102,11 @@ module.exports = function(type, fastn, settings, children){
                 newComponents.push(child);
             }
             
-            list.insert(child, index);
-
             if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
                 child.attach(model, 2);
             }
+
+            list.insert(child, index);
 
             index++;
         });

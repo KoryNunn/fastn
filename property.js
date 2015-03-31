@@ -78,8 +78,9 @@ module.exports = function createProperty(currentValue, changes){
             model = object;
             binding.attach(object, 1);
             property(binding());
+        }else{
+            property.update();
         }
-        property.update();
         return property;
     };
     property.detach = function(firm){
