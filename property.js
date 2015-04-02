@@ -2,6 +2,7 @@ var Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     WhatChanged = require('what-changed'),
     firmer = require('./firmer'),
+    createBinding = require('./binding'),
     is = require('./is');
 
 module.exports = function createProperty(currentValue, changes){
@@ -42,6 +43,10 @@ module.exports = function createProperty(currentValue, changes){
     property.binding = function(newBinding){
         if(!arguments.length){
             return binding;
+        }
+
+        if(!is.binding(newBinding)){
+            newBinding = createBinding(newBinding);
         }
 
         if(newBinding === binding){
@@ -110,6 +115,9 @@ module.exports = function createProperty(currentValue, changes){
         property._destroyed = true;
         property.emit('destroy');
         property.detach();
+        if(binding){
+            binding.destroy(true);
+        }
         return property;
     };
     property.addTo = function(component, key){

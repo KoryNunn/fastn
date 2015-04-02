@@ -94,6 +94,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         component.emit('destroy');
         component.element = null;
         binding.destroy();
+        return component;
     };
 
     var lastBound;

@@ -152,13 +152,16 @@ function createBinding(keyAndFilter){
     binding.clone = function(){
         return createBinding.apply(null, args);
     };
-    binding.destroy = function(){
+    binding.destroy = function(soft){
         if(binding._destroyed){
             return;
         }
-        binding._destroyed;
-        binding.model._events = {};
+        if(soft && (!binding._events || binding._events.change)){
+            return;
+        }
+        binding._destroyed = true;
         binding.detach();
+        binding.model.destroy();
     };
 
     binding.model._events[filter] = function(){

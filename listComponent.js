@@ -1,5 +1,6 @@
 var crel = require('crel'),
     Enti = require('enti'),
+    Map = require('es6-map'),
     genericComponent = require('./genericComponent');
 
 function each(value, fn){
@@ -48,8 +49,7 @@ function values(object){
 
 module.exports = function(type, fastn, settings, children){
     var list = genericComponent(type, fastn, settings, children),
-        lastItems = [],
-        lastComponents = [];
+        itemsMap = new Map();
 
     function updateItems(value){
         var template = list._settings.template;
@@ -57,49 +57,42 @@ module.exports = function(type, fastn, settings, children){
             return;
         }
 
-        var currentItems = values(value);
+        var items = values(value);
+            currentItems = items.slice();
 
-        for(var i = 0; i < lastItems.length; i++){
-            var item = lastItems[i],
-                component = lastComponents[i],
-                currentIndex = currentItems.indexOf(item);
+        itemsMap.forEach(function(component, item){
+            var currentIndex = currentItems.indexOf(item);
 
             if(~currentIndex){
                 currentItems.splice(currentIndex,1);
             }else{
-                lastItems.splice(i, 1);
-                lastComponents.splice(i, 1);
-                i--;
-                list.remove(component);
-                component.destroy();
+                list.removeItem(item, itemsMap);
             }
-        }
+        });
 
         var index = 0,
             newItems = [],
             newComponents = [];
 
         each(value, function(item, key){
+            while(index < list._children.length && list._children[index]._templated && !~items.indexOf(list._children[index]._listItem)){
+                index++
+            }
+        
             var child,
-                lastKey = keyFor(lastItems, item),
                 model = new Enti({
                     item: item,
                     key: key
                 });
 
-            if(lastKey === false){
+            if(!itemsMap.has(item)){
                 child = template(model, list.scope());
+                child._listItem = item;
                 child._templated = true;
 
-                newItems.push(item);
-                newComponents.push(child);
+                itemsMap.set(item, child);
             }else{
-                newItems.push(lastItems[lastKey]);
-                lastItems.splice(lastKey,1)
-
-                child = lastComponents[lastKey];
-                lastComponents.splice(lastKey,1);
-                newComponents.push(child);
+                child = itemsMap.get(item);
             }
             
             if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
@@ -107,12 +100,15 @@ module.exports = function(type, fastn, settings, children){
             }
 
             list.insert(child, index);
-
-            index++;
+            index++
         });
+    }
 
-        lastItems = newItems;
-        lastComponents = newComponents;
+    list.removeItem = function(item, itemsMap){
+        var component = itemsMap.get(item)
+        list.remove(component);
+        component.destroy();
+        itemsMap.delete(item);
     }
 
     list.render = function(){
