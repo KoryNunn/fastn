@@ -6,16 +6,36 @@ module.exports = function(type, fastn){
     var container = new EventEmitter();
 
     container.insert = function(component, index){
+        if(index && typeof index === 'object'){
+            component = Array.prototype.slice.call(arguments);
+        }
+
+        if(Array.isArray(component)){
+            component.forEach(container.insert);
+            return container;
+        }
+
         if(crel.isNode(component)){
             var element = component;
-            component = new EventEmitter();
+            component = fastn(component.tagName);
             component.element = element;
+        }
+
+        var currentIndex = container._children.indexOf(component);
+
+        if(!is.component(component)){
+            component = fastn('text', {
+                text: component
+            });
+
+            if(~currentIndex){
+                container._children.splice(currentIndex, 1, component);
+            }
         }
 
         if(isNaN(index)){
             index = container._children.length;
         }
-        var currentIndex = container._children.indexOf(component);
         if(currentIndex !== index){
             if(~currentIndex){
                 container._children.splice(currentIndex, 1);
@@ -34,8 +54,14 @@ module.exports = function(type, fastn){
         return container;
     };
 
+    var x = 0;
+
     container._insert = function(element, index){
         if(!container.element){
+            return;
+        }
+
+        if(container.element.childNodes[index] === element){
             return;
         }
         
@@ -61,13 +87,7 @@ module.exports = function(type, fastn){
     }
 
     container.on('render', function(){
-        for(var i = 0; i < container._children.length; i++){
-            if(fastn.isComponent(container._children[i]) && !container._children[i].element){
-                container._children[i].render();
-            }
-
-            container._insert(container._children[i].element);
-        }
+        container.insert(container._children);
     });
 
     container.on('attach', function(data, firm){

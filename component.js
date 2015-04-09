@@ -41,6 +41,21 @@ function forEachProperty(component, call, arguments){
     }
 }
 
+function inflateProperties(component, settings){
+    for(var key in settings){
+        if(is.property(settings[key])){
+            component[key] = settings[key]
+        }else if(is.property(component[key])){
+            if(is.binding(settings[key])){
+                component[key].binding(settings[key]);
+            }else{
+                component[key](settings[key]);
+            }
+            component[key].addTo(component, key);
+        }
+    }
+}
+
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
         binding;
@@ -81,10 +96,6 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     component.scope = function(){
         return new Enti(binding());
     };
-
-    function emitUpdate(){
-        component.emit('update');
-    }
 
     component.destroy = function(){
         if(component._destroyed){
@@ -136,26 +147,12 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }), components);
     };
 
-    for(var key in settings){
-        if(is.property(settings[key])){
-            component[key] = settings[key]
-        }else if(is.property(component[key])){
-            if(is.binding(settings[key])){
-                component[key].binding(settings[key]);
-            }else{
-                component[key](settings[key]);
-            }
-            component[key].addTo(component, key);
-        }
-    }
-
-    component.on('attach', emitUpdate);
-    component.on('render', emitUpdate);
+    inflateProperties(component, settings);
 
     component.on('attach', function(){
         forEachProperty(component, 'attach', arguments);
     });
-    component.on('update', function(){
+    component.on('render', function(){
         forEachProperty(component, 'update', arguments);
     });
     component.on('detach', function(){

@@ -112,10 +112,6 @@ function addAutoHandler(generic, key, settings){
 }
 
 module.exports = function(type, fastn, settings, children){
-    if(children.length === 1 && !fastn.isComponent(children[0])){
-        settings.textContent = children.pop();
-    }
-
     var generic = containerComponent(type, fastn);
 
     createProperties(fastn, generic, settings);
@@ -130,7 +126,6 @@ module.exports = function(type, fastn, settings, children){
 
     generic.on('render', function(){
 
-        //
         for(var key in settings){
             if(key.slice(0,2) === 'on' && key in generic.element){
                 addAutoHandler(generic, key, settings);

@@ -1,7 +1,7 @@
 var Enti = require('enti'),
-    EventEmitter = require('events').EventEmitter,
     is = require('./is'),
     firmer = require('./firmer'),
+    makeFunctionEmitter = require('./makeFunctionEmitter'),
     same = require('same-value');
 
 function fuseBinding(){
@@ -16,7 +16,7 @@ function fuseBinding(){
         transform = bindings.pop();
     }
 
-    resultBinding.model._events = {};
+    resultBinding._model._events = {};
     resultBinding._set = function(value){
         if(updateTransform){
             selfChanging = true;
@@ -49,13 +49,17 @@ function fuseBinding(){
         resultBinding.on('detach', binding.detach);
     });
 
+    var lastAttached;
     resultBinding.on('attach', function(object){
         selfChanging = true;
         bindings.forEach(function(binding){
             binding.attach(object, 1);
         });
         selfChanging = false;
-        change();
+        if(lastAttached !== object){
+            change();
+        }
+        lastAttached = object;
     });
 
     return resultBinding;
@@ -90,14 +94,12 @@ function createBinding(keyAndFilter){
 
         binding._set(newValue);
     };
-    for(var emitterKey in EventEmitter.prototype){
-        binding[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
-    binding.setMaxListeners(1000);
-    binding.model = new Enti(),
+    makeFunctionEmitter(binding);
+    binding.setMaxListeners(10000);
+    binding._model = new Enti(),
     binding._fastn_binding = key;
     binding._firm = 1;
-    binding.model._events = {};
+    binding._model._events = {};
 
     binding.attach = function(object, firm){
 
@@ -117,14 +119,13 @@ function createBinding(keyAndFilter){
             object = {};
         }
 
-        if(binding.model.get('.') === object){
+        if(binding._model.get('.') === object){
             return binding;
         }
 
-        binding.model.attach(object);
-        binding._change(binding.model.get(key), false);
+        binding._model.attach(object);
+        binding._change(binding._model.get(key));
         binding.emit('attach', object, 1);
-        binding.emit('change', binding());
         return binding;
     };
     binding.detach = function(firm){
@@ -133,21 +134,19 @@ function createBinding(keyAndFilter){
         }
 
         value = undefined;
-        binding.model.detach();
+        binding._model.detach();
         binding.emit('detach', 1);
         return binding;
     };
     binding._set = function(newValue){
-        if(same(binding.model.get(key), newValue)){
+        if(same(binding._model.get(key), newValue)){
             return;
         }
-        binding.model.set(key, newValue);
+        binding._model.set(key, newValue);
     };
-    binding._change = function(newValue, emit){
+    binding._change = function(newValue){
         value = newValue;
-        if(emit !== false){
-            binding.emit('change', binding());
-        }
+        binding.emit('change', binding());
     };
     binding.clone = function(){
         return createBinding.apply(null, args);
@@ -160,12 +159,13 @@ function createBinding(keyAndFilter){
             return;
         }
         binding._destroyed = true;
+        binding.emit('destroy');
         binding.detach();
-        binding.model.destroy();
+        binding._model.destroy();
     };
 
-    binding.model._events[filter] = function(){
-        binding._change(binding.model.get(key));
+    binding._model._events[filter] = function(){
+        binding._change(binding._model.get(key));
     }
 
     return binding;

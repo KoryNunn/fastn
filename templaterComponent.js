@@ -34,7 +34,7 @@ module.exports = function(type, fastn, settings, children){
 
         itemModel.set('item', value);
 
-        templater._currentComponent = template(itemModel, templater.scope());
+        templater._currentComponent = template(itemModel, templater.scope(), templater._currentComponent);
 
         if(!templater._currentComponent){
             replaceElement(document.createTextNode(''));
@@ -65,10 +65,10 @@ module.exports = function(type, fastn, settings, children){
         templater.emit('render');
     };
 
-    fastn.property(undefined, 'structure')
+    fastn.property(undefined, settings.dataChanges || 'structure')
         .addTo(templater, 'data')
         .binding(settings.data)
-        .on('update', update);
+        .on('change', update);
 
     templater.on('destroy', function(){
         if(fastn.isComponent(templater._currentComponent)){

@@ -1,13 +1,14 @@
 var Enti = require('enti'),
-    EventEmitter = require('events').EventEmitter,
     WhatChanged = require('what-changed'),
     firmer = require('./firmer'),
     createBinding = require('./binding'),
+    makeFunctionEmitter = require('./makeFunctionEmitter'),
     is = require('./is');
 
 module.exports = function createProperty(currentValue, changes){
     var binding,
         model,
+        attaching,
         previous = new WhatChanged(currentValue, changes || 'value type reference keys');
 
     function property(value){
@@ -15,19 +16,25 @@ module.exports = function createProperty(currentValue, changes){
             return binding && binding() || property._value;
         }
 
+        if(attaching){
+            return property;
+        }
+
         if(!Object.keys(previous.update(value)).length){
             return property;
         }
 
-        property._value = value;
+        if(!property._destroyed){
+            property._value = value;
 
-        if(binding){
-            binding(value);
-            property._value = binding();
+            if(binding){
+                binding(value);
+                property._value = binding();
+            }
+
+            property.emit('change', property._value);
+            property.update();
         }
-
-        property.emit('change', property._value);
-        property.update();
 
         return property;
     }
@@ -36,9 +43,7 @@ module.exports = function createProperty(currentValue, changes){
 
     property._firm = 1;
 
-    for(var emitterKey in EventEmitter.prototype){
-        property[emitterKey] = EventEmitter.prototype[emitterKey];
-    }
+    makeFunctionEmitter(property);
 
     property.binding = function(newBinding){
         if(!arguments.length){
@@ -81,7 +86,9 @@ module.exports = function createProperty(currentValue, changes){
 
         if(binding){
             model = object;
+            attaching = true;
             binding.attach(object, 1);
+            attaching = false;
             property(binding());
         }else{
             property.update();
@@ -102,21 +109,19 @@ module.exports = function createProperty(currentValue, changes){
         return property;
     };
     property.update = function(){
-        if(property._destroyed){
-            return;
+        if(!property._destroyed){
+            property.emit('update', property._value);
         }
-        property.emit('update', property._value);
         return property;
     };
     property.destroy = function(){
-        if(property._destroyed){
-            return;
-        }
-        property._destroyed = true;
-        property.emit('destroy');
-        property.detach();
-        if(binding){
-            binding.destroy(true);
+        if(!property._destroyed){
+            property._destroyed = true;
+            property.emit('destroy');
+            property.detach();
+            if(binding){
+                binding.destroy(true);
+            }
         }
         return property;
     };

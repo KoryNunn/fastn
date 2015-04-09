@@ -116,10 +116,10 @@ module.exports = function(type, fastn, settings, children){
         this.emit('render');
     };
 
-    fastn.property([], 'structure')
+    fastn.property([], settings.itemChanges || 'structure')
         .addTo(list, 'items')
         .binding(settings.items)
-        .on('update', updateItems);
+        .on('change', updateItems);
 
     return list;
 };
