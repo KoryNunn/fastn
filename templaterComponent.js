@@ -65,10 +65,10 @@ module.exports = function(type, fastn, settings, children){
         templater.emit('render');
     };
 
-    fastn.property(undefined, settings.dataChanges || 'structure')
+    fastn.property(undefined, settings.dataChanges || 'type structure')
         .addTo(templater, 'data')
         .binding(settings.data)
-        .on('change', update);
+        .on('update', update);
 
     templater.on('destroy', function(){
         if(fastn.isComponent(templater._currentComponent)){

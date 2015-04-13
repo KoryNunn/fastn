@@ -17,6 +17,25 @@ var fancyProps = {
             return element.textContent;
         }
         element.textContent = (value == null ? '' : value);
+    },
+    value: function(element, value){
+        if(element.nodeName === 'INPUT' && element.type === 'date'){
+            if(arguments.length === 1){
+                return new Date(element.value);
+            }
+            value = new Date(value);
+            if(isNaN(value)){
+                element.value = null;
+            }else{
+                element.value = (value.toJSON() + '').split('T').shift();
+            }
+            return;
+        }
+
+        if(arguments.length === 1){
+            return element.value;
+        }
+        element.value = value;
     }
 };
 
