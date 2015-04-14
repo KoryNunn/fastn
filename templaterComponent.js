@@ -65,7 +65,7 @@ module.exports = function(type, fastn, settings, children){
         templater.emit('render');
     };
 
-    fastn.property(undefined, settings.dataChanges || 'type structure')
+    fastn.property(undefined, settings.dataChanges || 'value structure')
         .addTo(templater, 'data')
         .binding(settings.data)
         .on('update', update);
