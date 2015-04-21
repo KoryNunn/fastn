@@ -58,7 +58,8 @@ function inflateProperties(component, settings){
 
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
-        binding;
+        binding,
+        scope = new Enti();
 
     settings = dereferenceSettings(settings || {});
     children = flatten(children);
@@ -94,7 +95,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     };
 
     component.scope = function(){
-        return new Enti(binding());
+        return scope;
     };
 
     component.destroy = function(){
@@ -113,6 +114,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         var newBound = binding();
         if(newBound !== lastBound){
             lastBound = newBound;
+            scope.attach(lastBound);
             component.emit('attach', lastBound, 1);
         }
     }
