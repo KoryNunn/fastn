@@ -68,7 +68,7 @@ module.exports = function(type, fastn, settings, children){
     fastn.property(undefined, settings.dataChanges || 'value structure')
         .addTo(templater, 'data')
         .binding(settings.data)
-        .on('update', update);
+        .on('change', update);
 
     templater.on('destroy', function(){
         if(fastn.isComponent(templater._currentComponent)){
