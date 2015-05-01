@@ -59,7 +59,7 @@ function inflateProperties(component, settings){
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
         binding,
-        scope = new Enti();
+        scope = new Enti(false);
 
     settings = dereferenceSettings(settings || {});
     children = flatten(children);
@@ -105,6 +105,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         component._destroyed = true;
         component.emit('destroy');
         component.element = null;
+        scope.destroy();
         binding.destroy();
         return component;
     };
@@ -148,6 +149,10 @@ module.exports = function createComponent(type, fastn, settings, children, compo
             return child.clone();
         }), components);
     };
+
+    component.children = function(){
+        return component._children.slice();
+    }
 
     inflateProperties(component, settings);
 

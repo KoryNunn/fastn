@@ -35,6 +35,9 @@ var fancyProps = {
         if(arguments.length === 1){
             return element.value;
         }
+        if(value === undefined){
+            value = null;
+        }
         element.value = value;
     }
 };
@@ -53,12 +56,13 @@ function createProperty(fastn, generic, key, settings){
         property = fastn.property();
         property(value);
         property.on('update', function(value){
-            if(!generic.element){
+            var element = generic.getContainerElement();
+
+            if(!element){
                 return;
             }
 
-            var element = generic.element,
-                isProperty = key in element,
+            var isProperty = key in element,
                 fancyProp = fancyProps[key],
                 previous = fancyProp ? fancyProp(element) : isProperty ? element[key] : element.getAttribute(key);
 
@@ -98,14 +102,15 @@ function createProperties(fastn, generic, settings){
 }
 
 function addUpdateHandler(generic, eventName, settings){
-    var handler = function(event){
-        generic.emit(eventName, event, generic.scope());
-    };
+    var element = generic.getContainerElement(),
+        handler = function(event){
+            generic.emit(eventName, event, generic.scope());
+        };
 
-    generic.element.addEventListener(eventName, handler);
+    element.addEventListener(eventName, handler);
 
     generic.on('destroy', function(){
-        generic.element.removeEventListener(eventName, handler);
+        element.removeEventListener(eventName, handler);
     });
 }
 
@@ -114,19 +119,20 @@ function addAutoHandler(generic, key, settings){
         return;
     }
 
-    var autoEvent = settings[key].split(':'),
+    var element = generic.getContainerElement(),
+        autoEvent = settings[key].split(':'),
         eventName = key.slice(2);
         
     delete settings[key];
 
     var handler = function(event){
-        generic[autoEvent[0]](generic.element[autoEvent[1]]);
+        generic[autoEvent[0]](element[autoEvent[1]]);
     };
 
-    generic.element.addEventListener(eventName, handler);
+    element.addEventListener(eventName, handler);
 
     generic.on('destroy', function(){
-        generic.element.removeEventListener(eventName, handler);
+        element.removeEventListener(eventName, handler);
     });
 }
 
@@ -144,15 +150,16 @@ module.exports = function(type, fastn, settings, children){
     };
 
     generic.on('render', function(){
+        var element = generic.getContainerElement();
 
         for(var key in settings){
-            if(key.slice(0,2) === 'on' && key in generic.element){
+            if(key.slice(0,2) === 'on' && key in element){
                 addAutoHandler(generic, key, settings);
             }
         }
 
         for(var key in generic._events){
-            if('on' + key.toLowerCase() in generic.element){
+            if('on' + key.toLowerCase() in element){
                 addUpdateHandler(generic, key);
             }
         }

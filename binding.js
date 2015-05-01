@@ -96,7 +96,7 @@ function createBinding(keyAndFilter){
     };
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
-    binding._model = new Enti(),
+    binding._model = new Enti(false),
     binding._fastn_binding = key;
     binding._firm = 1;
     binding._model._events = {};

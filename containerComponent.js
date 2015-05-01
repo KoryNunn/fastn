@@ -15,21 +15,12 @@ module.exports = function(type, fastn){
             return container;
         }
 
-        if(crel.isNode(component)){
-            var element = component;
-            component = fastn(component.tagName);
-            component.element = element;
-        }
-
-        var currentIndex = container._children.indexOf(component);
+        var currentIndex = container._children.indexOf(component),
+            newComponent = fastn.toComponent(component);
 
         if(!is.component(component)){
-            component = fastn('text', {
-                text: component
-            });
-
             if(~currentIndex){
-                container._children.splice(currentIndex, 1, component);
+                container._children.splice(currentIndex, 1, newComponent);
             }
         }
 
@@ -40,16 +31,16 @@ module.exports = function(type, fastn){
             if(~currentIndex){
                 container._children.splice(currentIndex, 1);
             }
-            container._children.splice(index, 0, component);
+            container._children.splice(index, 0, newComponent);
         }
 
-        if(container.element && !component.element){
-            component.render();
+        if(container.getContainerElement() && !newComponent.element){
+            newComponent.render();
         }
 
-        component.attach(container.scope(), 1);
+        newComponent.attach(container.scope(), 1);
         
-        container._insert(component.element, index);
+        container._insert(newComponent.element, index);
 
         return container;
     };
@@ -57,15 +48,16 @@ module.exports = function(type, fastn){
     var x = 0;
 
     container._insert = function(element, index){
-        if(!container.element){
+        var containerElement = container.getContainerElement();
+        if(!containerElement){
             return;
         }
 
-        if(container.element.childNodes[index] === element){
+        if(containerElement.childNodes[index] === element){
             return;
         }
         
-        container.element.insertBefore(element, container.element.childNodes[index]);
+        containerElement.insertBefore(element, containerElement.childNodes[index]);
     };
 
     container.remove = function(component){
@@ -74,16 +66,31 @@ module.exports = function(type, fastn){
             container._children.splice(index,1);
         }
 
+        component.detach(1);
+
         if(component.element){
             container._remove(component.element);
         }
     };
 
     container._remove = function(element){
-        if(!element || !container.element || element.parentNode !== container.element){
+        var containerElement = container.getContainerElement();
+
+        if(!element || !containerElement || element.parentNode !== containerElement){
             return;
         }
-        container.element.removeChild(element);
+
+        containerElement.removeChild(element);
+    }
+
+    container.empty = function(){
+        while(container._children.length){
+            container._remove(container._children.pop().detach(1).element);
+        }
+    };
+
+    container.getContainerElement = function(){
+        return container.containerElement || container.element;
     }
 
     container.on('render', function(){

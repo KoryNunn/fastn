@@ -2,6 +2,7 @@ var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
     createBinding = require('./binding'),
+    crel = require('crel'),
     is = require('./is');
 
 module.exports = function(components, debug){
@@ -28,6 +29,21 @@ module.exports = function(components, debug){
     fastn.property = createProperty;
 
     fastn.binding = createBinding;
+
+    fastn.toComponent = function(component){
+        if(is.component(component)){
+            return component;
+        }
+        if(typeof component !== 'object'){
+            return fastn('text', {text: component});
+        }
+        if(crel.isElement(component)){
+            return fastn(component);
+        }
+        if(crel.isNode(component)){
+            return fastn('text', {text: component.textContent});
+        }
+    };
 
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;
