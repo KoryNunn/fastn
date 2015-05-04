@@ -46,11 +46,11 @@ function createProperty(fastn, generic, key, settings){
     var setting = settings[key],
         binding = fastn.isBinding(setting) && setting,
         property = fastn.isProperty(setting) && setting,
-        value = !binding && !property && setting || null;
+        value = !binding && !property && setting;
 
     if(typeof value === 'function'){
         return;
-    } 
+    }
 
     if(!property){
         property = fastn.property();
@@ -122,11 +122,14 @@ function addAutoHandler(generic, key, settings){
     var element = generic.getContainerElement(),
         autoEvent = settings[key].split(':'),
         eventName = key.slice(2);
-        
+
     delete settings[key];
 
     var handler = function(event){
-        generic[autoEvent[0]](element[autoEvent[1]]);
+        var fancyProp = fancyProps[autoEvent[1]],
+            value = fancyProp ? fancyProp(element) : element[autoEvent[1]];
+
+        generic[autoEvent[0]](value);
     };
 
     element.addEventListener(eventName, handler);

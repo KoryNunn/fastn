@@ -1,6 +1,7 @@
 var components = {
     _generic: require('../genericComponent'),
-    list: require('../listComponent')
+    list: require('../listComponent'),
+    text: require('../textComponent')
 };
 
 var fastn = require('../')(components),
@@ -13,6 +14,10 @@ var model = {
         }
     },
     enti = new Enti(model);
+
+setInterval(function(){
+    enti.set('attachedEntis', enti.attachedCount());
+},1000);
 
 var users = require('./users.json');
 
@@ -40,6 +45,7 @@ window.onload = function(){
         });
 
     var app = fastn('div',
+        fastn.binding('attachedEntis'),
         require('./header')(fastn, searchModel, userSearch),
         fastn('input', {value: userSearch})
             .on('keyup', function(){

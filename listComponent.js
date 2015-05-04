@@ -78,7 +78,7 @@ module.exports = function(type, fastn, settings, children){
             while(index < list._children.length && list._children[index]._templated && !~items.indexOf(list._children[index]._listItem)){
                 index++
             }
-        
+
             var child,
                 model = new Enti({
                     item: item,
@@ -86,7 +86,7 @@ module.exports = function(type, fastn, settings, children){
                 });
 
             if(!itemsMap.has(item)){
-                child = template(model, list.scope());
+                child = fastn.toComponent(template(model, list.scope()));
                 child._listItem = item;
                 child._templated = true;
 
@@ -94,13 +94,13 @@ module.exports = function(type, fastn, settings, children){
             }else{
                 child = itemsMap.get(item);
             }
-            
+
             if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
                 child.attach(model, 2);
             }
 
             list.insert(child, index);
-            index++
+            index++;
         });
     }
 
@@ -119,7 +119,7 @@ module.exports = function(type, fastn, settings, children){
     fastn.property([], settings.itemChanges || 'structure')
         .addTo(list, 'items')
         .binding(settings.items)
-        .on('change', updateItems);
+        .on('update', updateItems);
 
     return list;
 };

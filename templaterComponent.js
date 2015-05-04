@@ -34,7 +34,7 @@ module.exports = function(type, fastn, settings, children){
 
         itemModel.set('item', value);
 
-        templater._currentComponent = template(itemModel, templater.scope(), templater._currentComponent);
+        templater._currentComponent = fastn.toComponent(template(itemModel, templater.scope(), templater._currentComponent));
 
         if(!templater._currentComponent){
             replaceElement(document.createTextNode(''));

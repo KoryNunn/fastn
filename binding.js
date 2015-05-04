@@ -142,6 +142,9 @@ function createBinding(keyAndFilter){
         if(same(binding._model.get(key), newValue)){
             return;
         }
+        if(!binding._model.isAttached()){
+            binding._model.attach(binding._model.get('.'));
+        }
         binding._model.set(key, newValue);
     };
     binding._change = function(newValue){
