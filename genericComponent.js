@@ -161,9 +161,9 @@ module.exports = function(type, fastn, settings, children){
             }
         }
 
-        for(var key in generic._events){
-            if('on' + key.toLowerCase() in element){
-                addUpdateHandler(generic, key);
+        for(var eventKey in generic._events){
+            if('on' + eventKey.toLowerCase() in element){
+                addUpdateHandler(generic, eventKey);
             }
         }
     });

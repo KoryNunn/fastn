@@ -76,7 +76,7 @@ module.exports = function(type, fastn, settings, children){
 
         each(value, function(item, key){
             while(index < list._children.length && list._children[index]._templated && !~items.indexOf(list._children[index]._listItem)){
-                index++
+                index++;
             }
 
             var child,
@@ -105,11 +105,11 @@ module.exports = function(type, fastn, settings, children){
     }
 
     list.removeItem = function(item, itemsMap){
-        var component = itemsMap.get(item)
+        var component = itemsMap.get(item);
         list.remove(component);
         component.destroy();
         itemsMap.delete(item);
-    }
+    };
 
     list.render = function(){
         this.element = crel(settings.tagName || 'div');
