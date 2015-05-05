@@ -23,11 +23,14 @@ function dereferenceSettings(settings){
 
 function flatten(item){
     return Array.isArray(item) ? item.reduce(function(result, element){
+        if(element == null){
+            return result;
+        }
         return result.concat(flatten(element));
     },[]) : item;
 }
 
-function forEachProperty(component, call, arguments){
+function forEachProperty(component, call, args){
     var keys = Object.keys(component);
 
     for(var i = 0; i < keys.length; i++){
@@ -37,14 +40,14 @@ function forEachProperty(component, call, arguments){
             continue;
         }
 
-        property[call].apply(null, arguments);
+        property[call].apply(null, args);
     }
 }
 
 function inflateProperties(component, settings){
     for(var key in settings){
         if(is.property(settings[key])){
-            component[key] = settings[key]
+            component[key] = settings[key];
         }else if(is.property(component[key])){
             if(is.binding(settings[key])){
                 component[key].binding(settings[key]);
@@ -152,7 +155,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.children = function(){
         return component._children.slice();
-    }
+    };
 
     inflateProperties(component, settings);
 
@@ -183,4 +186,4 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     }
 
     return component;
-}
+};

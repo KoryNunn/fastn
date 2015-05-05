@@ -13,7 +13,7 @@ module.exports = function(type, fastn, settings, children){
             templater.element.parentNode.replaceChild(element, templater.element);
         }
         templater.element = element;
-    };
+    }
 
     function update(){
         var value = templater.data(),
@@ -53,7 +53,7 @@ module.exports = function(type, fastn, settings, children){
                 replaceElement(templater._currentComponent.element);
             }
         }
-    };
+    }
 
     templater.render = function(){
         var element;

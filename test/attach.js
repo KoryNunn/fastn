@@ -1,6 +1,6 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js')
+    doc = require('doc-js'),
     createFastn = require('./createFastn');
 
 test('manual attach', function(t){
@@ -58,7 +58,6 @@ test('weak attach attempt', function(t){
     });
 
     t.equal(parent.scope().get('.'), child.scope().get('.'));
-
 });
 
 test('firmer attach attempt', function(t){
@@ -89,7 +88,6 @@ test('firmer attach attempt', function(t){
     });
 
     t.notEqual(parent.scope().get('.'), child.scope().get('.'));
-
 });
 
 test('firmest attach', function(t){
@@ -120,5 +118,4 @@ test('firmest attach', function(t){
     });
 
     t.notEqual(parent.scope().get('.'), child.scope().get('.'));
-
 });

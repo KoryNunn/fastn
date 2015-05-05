@@ -1,6 +1,6 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js')
+    doc = require('doc-js'),
     createFastn = require('./createFastn');
 
 test('value items', function(t){

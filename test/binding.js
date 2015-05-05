@@ -36,7 +36,7 @@ test('simple binding set', function(t){
 });
 
 test('simple binding event', function(t){
-    t.plan(2);
+    t.plan(3);
 
     var binding = createBinding('foo');
 
@@ -47,6 +47,7 @@ test('simple binding event', function(t){
 
     binding.once('change', function(value){
         t.equal(value, 'bar');
+        t.equal(binding(), 'bar');
     });
 
     enti.set('foo', 'bar');
