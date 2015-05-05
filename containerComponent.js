@@ -39,7 +39,7 @@ module.exports = function(type, fastn){
         }
 
         newComponent.attach(container.scope(), 1);
-        
+
         container._insert(newComponent.element, index);
 
         return container;
@@ -56,7 +56,7 @@ module.exports = function(type, fastn){
         if(containerElement.childNodes[index] === element){
             return;
         }
-        
+
         containerElement.insertBefore(element, containerElement.childNodes[index]);
     };
 
@@ -81,7 +81,7 @@ module.exports = function(type, fastn){
         }
 
         containerElement.removeChild(element);
-    }
+    };
 
     container.empty = function(){
         while(container._children.length){
@@ -91,7 +91,7 @@ module.exports = function(type, fastn){
 
     container.getContainerElement = function(){
         return container.containerElement || container.element;
-    }
+    };
 
     container.on('render', function(){
         container.insert(container._children);
