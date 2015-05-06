@@ -25,31 +25,32 @@ module.exports = function(type, fastn, settings, children){
 
         lastValue = value;
 
-        if(templater._currentComponent){
+        itemModel.set('item', value);
+
+        var newComponent = fastn.toComponent(template(itemModel, templater.scope(), templater._currentComponent));
+
+        if(templater._currentComponent && templater._currentComponent !== newComponent){
             if(fastn.isComponent(templater._currentComponent)){
                 templater._currentComponent.destroy();
             }
-            templater._currentComponent = null;
         }
 
-        itemModel.set('item', value);
+        templater._currentComponent = newComponent;
 
-        templater._currentComponent = fastn.toComponent(template(itemModel, templater.scope(), templater._currentComponent));
-
-        if(!templater._currentComponent){
+        if(!newComponent){
             replaceElement(document.createTextNode(''));
             return;
         }
 
-        if(fastn.isComponent(templater._currentComponent)){
+        if(fastn.isComponent(newComponent)){
             if(templater._settings.attachTemplates !== false){
-                templater._currentComponent.attach(itemModel, 2);
+                newComponent.attach(itemModel, 2);
             }else{
-                templater._currentComponent.attach(templater.scope(), 1);
+                newComponent.attach(templater.scope(), 1);
             }
 
             if(templater.element){
-                templater._currentComponent.render();
+                newComponent.render();
                 replaceElement(templater._currentComponent.element);
             }
         }

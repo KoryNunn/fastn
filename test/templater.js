@@ -155,3 +155,26 @@ test('undefined template', function(t){
     });
 
 });
+
+test('reuse template', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var template = fastn('templater', {
+            data: 'foo',
+            template: function(model, scope, lastTemplate){
+                if(lastTemplate){
+                    return lastTemplate;
+                }
+                t.pass();
+                return fastn('text');
+            }
+        });
+
+    template.render();
+
+    template.data('bar');
+
+});
