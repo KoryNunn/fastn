@@ -178,3 +178,48 @@ test('reuse template', function(t){
     template.data('bar');
 
 });
+
+test('reuse template same element', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn();
+
+    var template = fastn('templater', {
+            data: 'foo',
+            template: function(model, scope, lastTemplate){
+                if(lastTemplate){
+                    return lastTemplate;
+                }
+                return fastn.binding('item');
+            }
+        });
+
+    template.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(template.element);
+
+        t.equal(document.body.innerText, 'foo');
+
+        var lastNode = document.body.childNodes[1];
+
+        // Don't re-render or re-insert the template if it is already rendered or inserted
+        document.body.replaceChild = function(){
+            t.fail();
+        };
+
+        template.data('bar');
+
+        t.equal(document.body.innerText, 'bar');
+
+        t.equal(lastNode, document.body.childNodes[1]);
+
+        template.element.remove();
+        template.destroy();
+
+    });
+
+
+});

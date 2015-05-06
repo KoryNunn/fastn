@@ -1,1 +1,16 @@
+<script>
+    var oldLog = console.log,
+        logs = [];
+    console.log = function(line){
+        logs.push(line);
+        oldLog.apply(this, arguments);
+
+        if(line.match(/^# (?:not)?[oO]k$/)){
+            logs.forEach(function(log){
+                document.write(log + '<br>');
+            });
+            document.body.scrollTop = Infinity;
+        }
+    };
+</script>
 <script src="index.browser.js"></script>

@@ -49,8 +49,8 @@ module.exports = function(type, fastn, settings, children){
                 newComponent.attach(templater.scope(), 1);
             }
 
-            if(templater.element){
-                newComponent.render();
+            if(templater.element && templater.element !== newComponent.element){
+                newComponent.element == null && newComponent.render();
                 replaceElement(templater._currentComponent.element);
             }
         }
