@@ -171,3 +171,57 @@ test('bound items remove', function(t){
     });
 
 });
+
+test('null items', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: null,
+            template: function(model){
+                return fastn.binding('item');
+            }
+        });
+
+    list.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(list.element);
+
+        t.equal(document.body.innerText, '');
+
+        list.element.remove();
+        list.destroy();
+    });
+
+
+});
+
+test('null template', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: [1,2,3,4],
+            template: function(model){}
+        });
+
+    list.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(list.element);
+
+        t.equal(document.body.innerText, '');
+
+        list.element.remove();
+        list.destroy();
+    });
+
+
+});

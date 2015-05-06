@@ -103,3 +103,55 @@ test('bound data changing', function(t){
     });
 
 });
+
+test('null data', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var template = fastn('templater', {
+            data: null,
+            template: function(model){}
+        });
+
+    template.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(template.element);
+
+        t.equal(document.body.innerText, '');
+
+        template.element.remove();
+        template.destroy();
+
+    });
+
+});
+
+test('undefined template', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var template = fastn('templater', {
+            data: null,
+            template: function(model){}
+        });
+
+    template.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(template.element);
+
+        t.equal(document.body.innerText, '');
+
+        template.element.remove();
+        template.destroy();
+
+    });
+
+});

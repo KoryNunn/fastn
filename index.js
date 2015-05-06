@@ -31,6 +31,9 @@ module.exports = function(components, debug){
     fastn.binding = createBinding;
 
     fastn.toComponent = function(component){
+        if(component == null){
+            return;
+        }
         if(is.component(component)){
             return component;
         }

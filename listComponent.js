@@ -87,6 +87,9 @@ module.exports = function(type, fastn, settings, children){
 
             if(!itemsMap.has(item)){
                 child = fastn.toComponent(template(model, list.scope()));
+                if(!child){
+                    child = fastn('template');
+                }
                 child._listItem = item;
                 child._templated = true;
 
@@ -117,9 +120,12 @@ module.exports = function(type, fastn, settings, children){
     };
 
     fastn.property([], settings.itemChanges || 'structure')
-        .addTo(list, 'items')
-        .binding(settings.items)
-        .on('update', updateItems);
+        .addTo(list, 'items');
+
+    if(settings.items){
+        list.items.binding(settings.items)
+            .on('change', updateItems);
+    }
 
     return list;
 };
