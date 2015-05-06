@@ -79,7 +79,7 @@ function createBinding(keyAndFilter){
         filter = keyAndFilterParts[1] ? ((key === '.' ? '' : key + '.') + keyAndFilterParts[1]) : key;
 
     if(filter === '.'){
-        filter = '*';
+        filter = null;
     }
 
     var value,
@@ -167,9 +167,11 @@ function createBinding(keyAndFilter){
         binding._model.destroy();
     };
 
-    binding._model._events[filter] = function(){
-        binding._change(binding._model.get(key));
-    };
+    if(filter){
+        binding._model._events[filter] = function(){
+            binding._change(binding._model.get(key));
+        };
+    }
 
     return binding;
 }
