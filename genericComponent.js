@@ -1,5 +1,6 @@
 var crel = require('crel'),
-    containerComponent = require('./containerComponent');
+    containerComponent = require('./containerComponent'),
+    setInputValue = require('set-input-value');
 
 var fancyProps = {
     class: function(generic, element, value){
@@ -44,7 +45,13 @@ var fancyProps = {
         if(value === undefined){
             value = null;
         }
-        element.value = value;
+
+        if(element.getAttribute('type') === 'number'){
+            element.value = value;
+            return;
+        }
+
+        setInputValue(element, value);
     }
 };
 
