@@ -2,8 +2,14 @@ var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
 var fancyProps = {
-    disabled: function(element, value){
-        if(arguments.length === 1){
+    class: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.className.slice(generic._initialClasses.length);
+        }
+        element.className = generic._initialClasses + ' ' + value;
+    },
+    disabled: function(generic, element, value){
+        if(arguments.length === 2){
             return element.hasAttribute('disabled');
         }
         if(value){
@@ -12,15 +18,15 @@ var fancyProps = {
             element.removeAttribute('disabled');
         }
     },
-    textContent: function(element, value){
-        if(arguments.length === 1){
+    textContent: function(generic, element, value){
+        if(arguments.length === 2){
             return element.textContent;
         }
         element.textContent = (value == null ? '' : value);
     },
-    value: function(element, value){
+    value: function(generic, element, value){
         if(element.nodeName === 'INPUT' && element.type === 'date'){
-            if(arguments.length === 1){
+            if(arguments.length === 2){
                 return new Date(element.value);
             }
             value = new Date(value);
@@ -32,7 +38,7 @@ var fancyProps = {
             return;
         }
 
-        if(arguments.length === 1){
+        if(arguments.length === 2){
             return element.value;
         }
         if(value === undefined){
@@ -64,7 +70,7 @@ function createProperty(fastn, generic, key, settings){
 
             var isProperty = key in element,
                 fancyProp = fancyProps[key],
-                previous = fancyProp ? fancyProp(element) : isProperty ? element[key] : element.getAttribute(key);
+                previous = fancyProp ? fancyProp(generic, element) : isProperty ? element[key] : element.getAttribute(key);
 
             if(!fancyProp && !isProperty && value == null){
                 value = '';
@@ -72,7 +78,7 @@ function createProperty(fastn, generic, key, settings){
 
             if(value !== previous){
                 if(fancyProp){
-                    fancyProp(element, value);
+                    fancyProp(generic, element, value);
                     return;
                 }
 
@@ -127,7 +133,7 @@ function addAutoHandler(generic, key, settings){
 
     var handler = function(event){
         var fancyProp = fancyProps[autoEvent[1]],
-            value = fancyProp ? fancyProp(element) : element[autoEvent[1]];
+            value = fancyProp ? fancyProp(generic, element) : element[autoEvent[1]];
 
         generic[autoEvent[0]](value);
     };
@@ -154,6 +160,8 @@ module.exports = function(type, fastn, settings, children){
 
     generic.on('render', function(){
         var element = generic.getContainerElement();
+
+        generic._initialClasses = element.className;
 
         for(var key in settings){
             if(key.slice(0,2) === 'on' && key in element){

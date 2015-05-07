@@ -499,8 +499,14 @@ var crel = require('crel'),
     containerComponent = require('./containerComponent');
 
 var fancyProps = {
-    disabled: function(element, value){
-        if(arguments.length === 1){
+    class: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.className.slice(generic._initialClasses.length);
+        }
+        element.className = generic._initialClasses + ' ' + value;
+    },
+    disabled: function(generic, element, value){
+        if(arguments.length === 2){
             return element.hasAttribute('disabled');
         }
         if(value){
@@ -509,15 +515,15 @@ var fancyProps = {
             element.removeAttribute('disabled');
         }
     },
-    textContent: function(element, value){
-        if(arguments.length === 1){
+    textContent: function(generic, element, value){
+        if(arguments.length === 2){
             return element.textContent;
         }
         element.textContent = (value == null ? '' : value);
     },
-    value: function(element, value){
+    value: function(generic, element, value){
         if(element.nodeName === 'INPUT' && element.type === 'date'){
-            if(arguments.length === 1){
+            if(arguments.length === 2){
                 return new Date(element.value);
             }
             value = new Date(value);
@@ -529,7 +535,7 @@ var fancyProps = {
             return;
         }
 
-        if(arguments.length === 1){
+        if(arguments.length === 2){
             return element.value;
         }
         if(value === undefined){
@@ -561,7 +567,7 @@ function createProperty(fastn, generic, key, settings){
 
             var isProperty = key in element,
                 fancyProp = fancyProps[key],
-                previous = fancyProp ? fancyProp(element) : isProperty ? element[key] : element.getAttribute(key);
+                previous = fancyProp ? fancyProp(generic, element) : isProperty ? element[key] : element.getAttribute(key);
 
             if(!fancyProp && !isProperty && value == null){
                 value = '';
@@ -569,7 +575,7 @@ function createProperty(fastn, generic, key, settings){
 
             if(value !== previous){
                 if(fancyProp){
-                    fancyProp(element, value);
+                    fancyProp(generic, element, value);
                     return;
                 }
 
@@ -624,7 +630,7 @@ function addAutoHandler(generic, key, settings){
 
     var handler = function(event){
         var fancyProp = fancyProps[autoEvent[1]],
-            value = fancyProp ? fancyProp(element) : element[autoEvent[1]];
+            value = fancyProp ? fancyProp(generic, element) : element[autoEvent[1]];
 
         generic[autoEvent[0]](value);
     };
@@ -651,6 +657,8 @@ module.exports = function(type, fastn, settings, children){
 
     generic.on('render', function(){
         var element = generic.getContainerElement();
+
+        generic._initialClasses = element.className;
 
         for(var key in settings){
             if(key.slice(0,2) === 'on' && key in element){
@@ -1801,7 +1809,8 @@ function matchDeep(path){
 }
 
 function isDeep(path){
-    return ~(path + '').indexOf('.');
+    var stringPath = (path + '');
+    return ~stringPath.indexOf('.') || ~stringPath.indexOf('**');
 }
 
 var attachedEnties = new Set(),
@@ -1857,7 +1866,7 @@ function removeHandler(object, key, handler){
     handlers.delete(handler);
 }
 
-function trackObjects(enti, eventName, weakMap, handler, object, key, path){
+function trackObjects(eventName, weakMap, handler, object, key, path){
     if(!object || typeof object !== 'object'){
         return;
     }
@@ -1871,20 +1880,12 @@ function trackObjects(enti, eventName, weakMap, handler, object, key, path){
     }
 
     var handle = function(value, event, emitKey){
-        if(enti._trackedObjects[eventName] !== weakMap){
-            if(targetIsObject){
-                weakMap.delete(target);
-            }
-            removeHandler(object, eventKey, handle);
-            return;
-        }
-
         if(eventKey !== '*' && typeof object[eventKey] === 'object' && object[eventKey] !== target){
             if(targetIsObject){
                 weakMap.delete(target);
             }
             removeHandler(object, eventKey, handle);
-            trackObjects(enti, eventName, weakMap, handler, object, key, path);
+            trackObjects(eventName, weakMap, handler, object, key, path);
             return;
         }
 
@@ -1896,16 +1897,18 @@ function trackObjects(enti, eventName, weakMap, handler, object, key, path){
             return;
         }
 
-        handler(value, event, emitKey);
+        if(key !== '**' || !path){
+            handler(value, event, emitKey);
+        }
     }
 
     function trackKeys(target, root, rest){
         var keys = Object.keys(target);
         for(var i = 0; i < keys.length; i++){
             if(isFeralcardKey(root)){
-                trackObjects(enti, eventName, weakMap, handler, target, keys[i], '**' + (rest ? '.' : '') + (rest || ''));
+                trackObjects(eventName, weakMap, handler, target, keys[i], '**' + (rest ? '.' : '') + (rest || ''));
             }else{
-                trackObjects(enti, eventName, weakMap, handler, target, keys[i], rest);
+                trackObjects(eventName, weakMap, handler, target, keys[i], rest);
             }
         }
     }
@@ -1940,26 +1943,57 @@ function trackObjects(enti, eventName, weakMap, handler, object, key, path){
         trackKeys(target, root, rest);
     }
 
-    trackObjects(enti, eventName, weakMap, handler, target, root, rest);
+    trackObjects(eventName, weakMap, handler, target, root, rest);
 }
 
-function trackPath(enti, eventName){
-    var entiTrackedObjects = enti._trackedObjects[eventName];
+var trackedEvents = new WeakMap();
 
-    if(!entiTrackedObjects){
-        entiTrackedObjects = new WeakMap();
-        enti._trackedObjects[eventName] = entiTrackedObjects;
+function trackPath(enti, eventName){
+    var object = enti._model,
+        trackedObjectPaths = trackedEvents.get(object);
+
+    if(!trackedObjectPaths){
+        trackedObjectPaths = {};
+        trackedEvents.set(object, trackedObjectPaths);
     }
+
+    var trackedPaths = trackedObjectPaths[eventName];
+
+    if(!trackedPaths){
+        trackedPaths = {
+            entis: new Set(),
+            trackedObjects: new WeakMap()
+        };
+        trackedObjectPaths[eventName] = trackedPaths;
+    }
+
+    if(trackedPaths.entis.has(enti)){
+        return;
+    }
+
+    trackedPaths.entis.add(enti);
 
     var handler = function(value, event, emitKey){
-        if(enti._emittedEvents[eventName] === emitKey){
-            return;
-        }
-        enti._emittedEvents[eventName] = emitKey;
-        enti.emit(eventName, value, event);
+        trackedPaths.entis.forEach(function(enti){
+            if(enti._model !== object){
+                trackedPaths.entis.delete(enti);
+                if(trackedPaths.entis.size === 0){
+                    delete trackedObjectPaths[eventName];
+                    if(!Object.keys(trackedObjectPaths).length){
+                        trackedEvents.delete(object);
+                    }
+                }
+                return;
+            }
+            if(enti._emittedEvents[eventName] === emitKey){
+                return;
+            }
+            enti._emittedEvents[eventName] = emitKey;
+            enti.emit(eventName, value, event);
+        });
     }
 
-    trackObjects(enti, eventName, entiTrackedObjects, handler, enti, '_model', eventName);
+    trackObjects(eventName, trackedPaths.trackedObjects, handler, {model:object}, 'model', eventName);
 }
 
 function trackPaths(enti, target){
@@ -2030,7 +2064,6 @@ function Enti(model){
         model = {};
     }
 
-    this._trackedObjects = {};
     this._emittedEvents = {};
     if(detached){
         this._model = {};
@@ -2282,7 +2315,6 @@ Enti.prototype.detach = function(){
         attachedEnties.delete(this);
     }
 
-    this._trackedObjects = {};
     this._emittedEvents = {};
     this._model = {};
     this._attached = false;
