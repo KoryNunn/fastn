@@ -26,7 +26,9 @@ var fancyProps = {
         element.textContent = (value == null ? '' : value);
     },
     value: function(generic, element, value){
-        if(element.nodeName === 'INPUT' && element.type === 'date'){
+        var inputType = element.type;
+
+        if(element.nodeName === 'INPUT' && inputType == 'date'){
             if(arguments.length === 2){
                 return new Date(element.value);
             }
@@ -46,7 +48,8 @@ var fancyProps = {
             value = null;
         }
 
-        if(element.getAttribute('type') === 'number'){
+        // Some input types don't like having selection set, and throw errors.
+        if(~['number', 'email', 'time', 'color', 'month', 'range'].indexOf(inputType)){
             element.value = value;
             return;
         }
