@@ -1,11 +1,14 @@
 var crel = require('crel'),
     containerComponent = require('./containerComponent'),
-    setInputValue = require('set-input-value');
+    setify = require('setify');
 
 var fancyProps = {
     class: function(generic, element, value){
         if(arguments.length === 2){
             return element.className.slice(generic._initialClasses.length);
+        }
+        if(Array.isArray(value)){
+            value = value.join(' ');
         }
         element.className = generic._initialClasses + ' ' + value;
     },
@@ -48,13 +51,18 @@ var fancyProps = {
             value = null;
         }
 
-        // Some input types don't like having selection set, and throw errors.
-        if(~['number', 'email', 'time', 'color', 'month', 'range'].indexOf(inputType)){
-            element.value = value;
-            return;
+        setify(element, value);
+    },
+    style: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.style;
         }
 
-        setInputValue(element, value);
+        var result = '';
+
+        for(var key in value){
+            element.style[key] = value[key];
+        }
     }
 };
 
