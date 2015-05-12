@@ -52,7 +52,9 @@ module.exports = function(type, fastn, settings, children){
         itemsMap = new Map();
 
     function updateItems(value){
-        var template = list._settings.template;
+        var template = list._settings.template,
+            emptyTemplate = list._settings.emptyTemplate;
+
         if(!template){
             return;
         }
@@ -70,9 +72,7 @@ module.exports = function(type, fastn, settings, children){
             }
         });
 
-        var index = 0,
-            newItems = [],
-            newComponents = [];
+        var index = 0;
 
         each(value, function(item, key){
             while(index < list._children.length && list._children[index]._templated && !~items.indexOf(list._children[index]._listItem)){
@@ -105,6 +105,18 @@ module.exports = function(type, fastn, settings, children){
             list.insert(child, index);
             index++;
         });
+
+        if(index === 0 && emptyTemplate){
+            var child = fastn.toComponent(emptyTemplate(list.scope()));
+            if(!child){
+                child = fastn('template');
+            }
+            child._templated = true;
+
+            itemsMap.set({}, child);
+
+            list.insert(child);
+        }
     }
 
     list.removeItem = function(item, itemsMap){
@@ -124,7 +136,7 @@ module.exports = function(type, fastn, settings, children){
 
     if(settings.items){
         list.items.binding(settings.items)
-            .on('change', updateItems);
+            .on('update', updateItems);
     }
 
     return list;
