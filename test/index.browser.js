@@ -497,12 +497,15 @@ module.exports = function(entity, firm){
 },{}],5:[function(require,module,exports){
 var crel = require('crel'),
     containerComponent = require('./containerComponent'),
-    setInputValue = require('set-input-value');
+    setify = require('setify');
 
 var fancyProps = {
     class: function(generic, element, value){
         if(arguments.length === 2){
             return element.className.slice(generic._initialClasses.length);
+        }
+        if(Array.isArray(value)){
+            value = value.join(' ');
         }
         element.className = generic._initialClasses + ' ' + value;
     },
@@ -523,7 +526,9 @@ var fancyProps = {
         element.textContent = (value == null ? '' : value);
     },
     value: function(generic, element, value){
-        if(element.nodeName === 'INPUT' && element.type === 'date'){
+        var inputType = element.type;
+
+        if(element.nodeName === 'INPUT' && inputType == 'date'){
             if(arguments.length === 2){
                 return new Date(element.value);
             }
@@ -543,12 +548,18 @@ var fancyProps = {
             value = null;
         }
 
-        if(element.getAttribute('type') === 'number'){
-            element.value = value;
-            return;
+        setify(element, value);
+    },
+    style: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.style;
         }
 
-        setInputValue(element, value);
+        var result = '';
+
+        for(var key in value){
+            element.style[key] = value[key];
+        }
     }
 };
 
@@ -556,7 +567,7 @@ function createProperty(fastn, generic, key, settings){
     var setting = settings[key],
         binding = fastn.isBinding(setting) && setting,
         property = fastn.isProperty(setting) && setting,
-        value = !binding && !property && setting;
+        value = !binding && !property && (key in settings) ? setting : undefined;
 
     if(typeof value === 'function'){
         return;
@@ -682,7 +693,7 @@ module.exports = function(type, fastn, settings, children){
 
     return generic;
 };
-},{"./containerComponent":3,"crel":10,"set-input-value":213}],6:[function(require,module,exports){
+},{"./containerComponent":3,"crel":10,"setify":213}],6:[function(require,module,exports){
 var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
@@ -825,7 +836,9 @@ module.exports = function(type, fastn, settings, children){
         itemsMap = new Map();
 
     function updateItems(value){
-        var template = list._settings.template;
+        var template = list._settings.template,
+            emptyTemplate = list._settings.emptyTemplate;
+
         if(!template){
             return;
         }
@@ -843,9 +856,7 @@ module.exports = function(type, fastn, settings, children){
             }
         });
 
-        var index = 0,
-            newItems = [],
-            newComponents = [];
+        var index = 0;
 
         each(value, function(item, key){
             while(index < list._children.length && list._children[index]._templated && !~items.indexOf(list._children[index]._listItem)){
@@ -878,6 +889,18 @@ module.exports = function(type, fastn, settings, children){
             list.insert(child, index);
             index++;
         });
+
+        if(index === 0 && emptyTemplate){
+            var child = fastn.toComponent(emptyTemplate(list.scope()));
+            if(!child){
+                child = fastn('template');
+            }
+            child._templated = true;
+
+            itemsMap.set({}, child);
+
+            list.insert(child);
+        }
     }
 
     list.removeItem = function(item, itemsMap){
@@ -892,12 +915,12 @@ module.exports = function(type, fastn, settings, children){
         this.emit('render');
     };
 
-    fastn.property([], settings.itemChanges || 'structure')
+    fastn.property([], settings.itemChanges || 'type structure')
         .addTo(list, 'items');
 
     if(settings.items){
         list.items.binding(settings.items)
-            .on('change', updateItems);
+            .on('update', updateItems);
     }
 
     return list;
@@ -4277,32 +4300,23 @@ module.exports = function isSame(a, b){
     return a + '' === b + '';
 };
 },{}],213:[function(require,module,exports){
-"use strict";
+var unsupportedTypes = ['number', 'email', 'time', 'color', 'month', 'range', 'date'];
 
-// Set an input's value without losing the user's cursor position.
-// input: input element to change value of
-// value: new value
-// shift: amount to shift the previous cursor by (default 0)
-module.exports = function(input, value, shift) {
-	// Just set the value for unsupported browsers
-	if ( ! input.setSelectionRange) {
-		input.value = value;
-		return;
-	}
+module.exports = function(element, value){
+    var canSet = element.setSelectionRange &&
+                !~unsupportedTypes.indexOf(element.type) &&
+                element === document.activeElement;
 
-	shift = shift || 0;
+    if (canSet) {
+        var start = element.selectionStart,
+            end = element.selectionEnd;
 
-	// Store current selection
-	var start = input.selectionStart,
-		end = input.selectionEnd;
-
-	// Update input value
-	input.value = value;
-
-	// Set new selection
-	input.setSelectionRange(start + shift, end + shift);
+        element.value = value;
+        element.setSelectionRange(start, end);
+    } else {
+        element.value = value;
+    }
 };
-
 },{}],214:[function(require,module,exports){
 (function (process){
 var defined = require('defined');
@@ -7000,6 +7014,42 @@ test('null template', function(t){
         list.destroy();
     });
 
+
+});
+
+test('array to undefined', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: fastn.binding('items|*'),
+            template: function(model){
+                return fastn.binding('item');
+            }
+        }),
+        model = new Enti({
+            items: [1,2,3,4]
+        });
+
+    list.attach(model);
+    list.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(list.element);
+
+        t.equal(document.body.innerText, '1234');
+
+        model.remove('items');
+
+        t.equal(document.body.innerText, '');
+
+        list.element.remove();
+        list.destroy();
+
+    });
 
 });
 },{"./createFastn":236,"doc-js":12,"enti":16,"tape":214}],241:[function(require,module,exports){

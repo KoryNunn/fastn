@@ -70,7 +70,7 @@ function createProperty(fastn, generic, key, settings){
     var setting = settings[key],
         binding = fastn.isBinding(setting) && setting,
         property = fastn.isProperty(setting) && setting,
-        value = !binding && !property && setting;
+        value = !binding && !property && (key in settings) ? setting : undefined;
 
     if(typeof value === 'function'){
         return;

@@ -131,7 +131,7 @@ module.exports = function(type, fastn, settings, children){
         this.emit('render');
     };
 
-    fastn.property([], settings.itemChanges || 'structure')
+    fastn.property([], settings.itemChanges || 'type structure')
         .addTo(list, 'items');
 
     if(settings.items){

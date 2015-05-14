@@ -225,3 +225,39 @@ test('null template', function(t){
 
 
 });
+
+test('array to undefined', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: fastn.binding('items|*'),
+            template: function(model){
+                return fastn.binding('item');
+            }
+        }),
+        model = new Enti({
+            items: [1,2,3,4]
+        });
+
+    list.attach(model);
+    list.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(list.element);
+
+        t.equal(document.body.innerText, '1234');
+
+        model.remove('items');
+
+        t.equal(document.body.innerText, '');
+
+        list.element.remove();
+        list.destroy();
+
+    });
+
+});
