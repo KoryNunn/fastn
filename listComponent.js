@@ -8,14 +8,12 @@ function each(value, fn){
         return;
     }
 
-    var isArray = Array.isArray(value);
-
-    for(var key in value){
-        if(isArray && isNaN(key)){
-            continue;
+    if(Array.isArray(value)){
+        value.forEach(fn);
+    }else{
+        for(var key in value){
+            fn(value[key], key);
         }
-
-        fn(value[key], key);
     }
 }
 
