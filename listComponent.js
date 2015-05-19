@@ -133,7 +133,7 @@ module.exports = function(type, fastn, settings, children){
         .addTo(list, 'items');
 
     if(settings.items){
-        list.items.binding(settings.items)
+        list.items
             .on('update', updateItems);
     }
 

@@ -917,7 +917,7 @@ module.exports = function(type, fastn, settings, children){
         .addTo(list, 'items');
 
     if(settings.items){
-        list.items.binding(settings.items)
+        list.items
             .on('update', updateItems);
     }
 
@@ -6082,12 +6082,8 @@ module.exports = function(type, fastn, settings, children){
     };
 
     fastn.property(undefined, settings.dataChanges || 'value structure')
-        .addTo(templater, 'data');
-
-    if(settings.data){
-        templater.data.binding(settings.data)
-            .on('change', update);
-    }
+        .addTo(templater, 'data')
+        .on('change', update);
 
     templater.on('destroy', function(){
         if(fastn.isComponent(templater._currentComponent)){
