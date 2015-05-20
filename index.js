@@ -3,6 +3,7 @@ var merge = require('flat-merge'),
     createProperty = require('./property'),
     createBinding = require('./binding'),
     crel = require('crel'),
+    Enti = require('enti'),
     is = require('./is');
 
 module.exports = function(components, debug){
@@ -53,6 +54,7 @@ module.exports = function(components, debug){
     fastn.isDefaultBinding = is.defaultBinding;
     fastn.isBindingObject = is.bindingObject;
     fastn.isProperty = is.property;
+    fastn.Model = Enti;
 
     return fastn;
 };

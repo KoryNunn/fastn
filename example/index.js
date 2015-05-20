@@ -5,18 +5,17 @@ var components = {
 };
 
 var fastn = require('../')(components),
-    Enti = require('enti'),
     crel = require('crel');
 
-var model = {
+var data = {
         uiState: {
             foo: 'bar'
         }
     },
-    enti = new Enti(model);
+    model = new fastn.Model(data);
 
 setInterval(function(){
-    enti.set('attachedEntis', enti.attachedCount());
+    model.set('attachedEntis', model.attachedCount());
 },1000);
 
 var users = require('./users.json');
@@ -27,8 +26,6 @@ users = users.map(function(user){
     return user;
 });
 
-window.enti = enti;
-
 window.onload = function(){
     var searchModel = {
             userSearch: '',
@@ -36,16 +33,20 @@ window.onload = function(){
         },
         userSearch = fastn.binding('userSearch').attach(searchModel).on('change', function(search){
             if(!search){
-                Enti.set(searchModel, 'result', null);
+                fastn.Model.set(searchModel, 'result', null);
                 return;
             }
-            Enti.set(searchModel, 'result', users.filter(function(user){
+            fastn.Model.set(searchModel, 'result', users.filter(function(user){
                 return user.name && (user.name.first && ~user.name.first.indexOf(search)) || (user.name.last && ~user.name.last.indexOf(search));
             }));
         });
 
     var app = fastn('div',
-        fastn.binding('attachedEntis'),
+        fastn('div',
+            'This example has ',
+            fastn.binding('attachedEntis'),
+            ' attached model instances'
+        ),
         require('./header')(fastn, searchModel, userSearch),
         fastn('input', {value: userSearch})
             .on('keyup', function(){
@@ -54,14 +55,14 @@ window.onload = function(){
         require('./userList')(fastn, searchModel, userSearch)
     );
 
-    app.attach(model);
+    app.attach(data);
     app.render();
 
     window.app = app;
-    window.enti = enti;
+    window.model = model;
 
     setTimeout(function(){
-        enti.set('users', users);
+        model.set('users', users);
     });
 
     crel(document.body, app.element);

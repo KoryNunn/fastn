@@ -1,5 +1,3 @@
-var Enti = require('enti');
-
 module.exports = function(fastn, userSearch, selectedUser, deleteUser){
 
     return fastn('div', {

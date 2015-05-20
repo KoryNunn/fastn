@@ -1,5 +1,4 @@
-var Enti = require('enti'),
-    createBinding = require('./binding'),
+var createBinding = require('./binding'),
     is = require('./is');
 
 function dereferenceSettings(settings){
@@ -62,7 +61,7 @@ function inflateProperties(component, settings){
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
         binding,
-        scope = new Enti(false);
+        scope = new fastn.Model(false);
 
     settings = dereferenceSettings(settings || {});
     children = flatten(children);

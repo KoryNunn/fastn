@@ -65,21 +65,13 @@ function fuseBinding(){
     return resultBinding;
 }
 
-function createBinding(keyAndFilter){
+function createBinding(path){
     if(arguments.length > 1){
         return fuseBinding.apply(null, arguments);
     }
 
-    if(keyAndFilter == null){
+    if(path == null){
         throw "bindings must be created with a key (and or filter)";
-    }
-
-    var keyAndFilterParts = (keyAndFilter + '').split('|'),
-        key = keyAndFilterParts[0],
-        filter = keyAndFilterParts[1] ? ((key === '.' ? '' : key + '.') + keyAndFilterParts[1]) : key;
-
-    if(filter === '.'){
-        filter = null;
     }
 
     var value,
@@ -88,7 +80,7 @@ function createBinding(keyAndFilter){
             return value;
         }
 
-        if(key === '.'){
+        if(path === '.'){
             return;
         }
 
@@ -97,7 +89,7 @@ function createBinding(keyAndFilter){
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
     binding._model = new Enti(false);
-    binding._fastn_binding = key;
+    binding._fastn_binding = path;
     binding._firm = 1;
     binding._model._events = {};
 
@@ -124,7 +116,7 @@ function createBinding(keyAndFilter){
         }
 
         binding._model.attach(object);
-        binding._change(binding._model.get(key));
+        binding._change(binding._model.get(path));
         binding.emit('attach', object, 1);
         return binding;
     };
@@ -139,13 +131,13 @@ function createBinding(keyAndFilter){
         return binding;
     };
     binding._set = function(newValue){
-        if(same(binding._model.get(key), newValue)){
+        if(same(binding._model.get(path), newValue)){
             return;
         }
         if(!binding._model.isAttached()){
             binding._model.attach(binding._model.get('.'));
         }
-        binding._model.set(key, newValue);
+        binding._model.set(path, newValue);
     };
     binding._change = function(newValue){
         value = newValue;
@@ -167,9 +159,9 @@ function createBinding(keyAndFilter){
         binding._model.destroy();
     };
 
-    if(filter){
-        binding._model._events[filter] = function(){
-            binding._change(binding._model.get(key));
+    if(path !== '.'){
+        binding._model._events[path] = function(){
+            binding._change(binding._model.get(path));
         };
     }
 

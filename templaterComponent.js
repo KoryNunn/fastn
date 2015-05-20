@@ -1,12 +1,11 @@
 var crel = require('crel'),
-    Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     genericComponent = require('./genericComponent');
 
 module.exports = function(type, fastn, settings, children){
     var templater = new EventEmitter(),
         lastValue = {},
-        itemModel = new Enti({});
+        itemModel = new fastn.Model({});
 
     function replaceElement(element){
         if(templater.element && templater.element.parentNode){

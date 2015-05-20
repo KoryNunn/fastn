@@ -1,5 +1,4 @@
 var crel = require('crel'),
-    Enti = require('enti'),
     Map = require('es6-map'),
     genericComponent = require('./genericComponent');
 
@@ -78,7 +77,7 @@ module.exports = function(type, fastn, settings, children){
             }
 
             var child,
-                model = new Enti({
+                model = new fastn.Model({
                     item: item,
                     key: key
                 });
@@ -133,7 +132,7 @@ module.exports = function(type, fastn, settings, children){
         .addTo(list, 'items');
 
     if(settings.items){
-        list.items
+        list.items.binding(settings.items)
             .on('update', updateItems);
     }
 
