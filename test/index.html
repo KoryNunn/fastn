@@ -1,16 +1,26 @@
 <script>
     var oldLog = console.log,
         logs = [];
+
+    function printResults(){
+        logs.forEach(function(log){
+            document.write(log + '<br>');
+        });
+        document.body.scrollTop = Infinity;
+    }
+
     console.log = function(line){
         logs.push(line);
         oldLog.apply(this, arguments);
 
-        if(line.match(/^# (?:not)?[oO]k$/)){
-            logs.forEach(function(log){
-                document.write(log + '<br>');
-            });
-            document.body.scrollTop = Infinity;
+        if(line.match(/^# ok$/)){
+            printResults();
+        }
+        if(line.match(/^# fail .*?$/)){
+            printResults();
         }
     };
+
+    window.onerror = printResults;
 </script>
 <script src="index.browser.js"></script>

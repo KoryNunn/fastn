@@ -5,11 +5,15 @@ var Enti = require('enti'),
     same = require('same-value');
 
 function fuseBinding(){
-    var bindings = Array.prototype.slice.call(arguments),
+    var args = Array.prototype.slice.call(arguments);
+
+    var bindings = args.slice(),
         transform = bindings.pop(),
         updateTransform,
         resultBinding = createBinding('result'),
         selfChanging;
+
+    resultBinding._arguments = args;
 
     if(typeof bindings[bindings.length-1] === 'function' && !is.binding(bindings[bindings.length-1])){
         updateTransform = transform;
@@ -88,6 +92,7 @@ function createBinding(path){
     };
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
+    binding._arguments = Array.prototype.slice.call(arguments);
     binding._model = new Enti(false);
     binding._fastn_binding = path;
     binding._firm = 1;
@@ -143,8 +148,14 @@ function createBinding(path){
         value = newValue;
         binding.emit('change', binding());
     };
-    binding.clone = function(){
-        return createBinding.apply(null, args);
+    binding.clone = function(keepAttachment){
+        var newBinding = createBinding.apply(null, binding._arguments);
+
+        if(keepAttachment){
+            newBinding.attach(binding._model, binding._firm);
+        }
+
+        return newBinding;
     };
     binding.destroy = function(soft){
         if(binding._destroyed){

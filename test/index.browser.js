@@ -6,11 +6,15 @@ var Enti = require('enti'),
     same = require('same-value');
 
 function fuseBinding(){
-    var bindings = Array.prototype.slice.call(arguments),
+    var args = Array.prototype.slice.call(arguments);
+
+    var bindings = args.slice(),
         transform = bindings.pop(),
         updateTransform,
         resultBinding = createBinding('result'),
         selfChanging;
+
+    resultBinding._arguments = args;
 
     if(typeof bindings[bindings.length-1] === 'function' && !is.binding(bindings[bindings.length-1])){
         updateTransform = transform;
@@ -89,6 +93,7 @@ function createBinding(path){
     };
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
+    binding._arguments = Array.prototype.slice.call(arguments);
     binding._model = new Enti(false);
     binding._fastn_binding = path;
     binding._firm = 1;
@@ -144,8 +149,14 @@ function createBinding(path){
         value = newValue;
         binding.emit('change', binding());
     };
-    binding.clone = function(){
-        return createBinding.apply(null, args);
+    binding.clone = function(keepAttachment){
+        var newBinding = createBinding.apply(null, binding._arguments);
+
+        if(keepAttachment){
+            newBinding.attach(binding._model, binding._firm);
+        }
+
+        return newBinding;
     };
     binding.destroy = function(soft){
         if(binding._destroyed){
@@ -171,8 +182,7 @@ function createBinding(path){
 
 module.exports = createBinding;
 },{"./firmer":4,"./is":7,"./makeFunctionEmitter":9,"enti":16,"same-value":189}],2:[function(require,module,exports){
-var Enti = require('enti'),
-    createBinding = require('./binding'),
+var createBinding = require('./binding'),
     is = require('./is');
 
 function dereferenceSettings(settings){
@@ -235,7 +245,7 @@ function inflateProperties(component, settings){
 module.exports = function createComponent(type, fastn, settings, children, components){
     var component,
         binding,
-        scope = new Enti(false);
+        scope = new fastn.Model(false);
 
     settings = dereferenceSettings(settings || {});
     children = flatten(children);
@@ -361,7 +371,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
     return component;
 };
 
-},{"./binding":1,"./is":7,"enti":16}],3:[function(require,module,exports){
+},{"./binding":1,"./is":7}],3:[function(require,module,exports){
 var crel = require('crel'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is');
@@ -777,7 +787,6 @@ module.exports = {
 };
 },{}],8:[function(require,module,exports){
 var crel = require('crel'),
-    Enti = require('enti'),
     Map = require('es6-map'),
     genericComponent = require('./genericComponent');
 
@@ -856,7 +865,7 @@ module.exports = function(type, fastn, settings, children){
             }
 
             var child,
-                model = new Enti({
+                model = new fastn.Model({
                     item: item,
                     key: key
                 });
@@ -911,13 +920,13 @@ module.exports = function(type, fastn, settings, children){
         .addTo(list, 'items');
 
     if(settings.items){
-        list.items
+        list.items.binding(settings.items)
             .on('update', updateItems);
     }
 
     return list;
 };
-},{"./genericComponent":5,"crel":10,"enti":16,"es6-map":70}],9:[function(require,module,exports){
+},{"./genericComponent":5,"crel":10,"es6-map":70}],9:[function(require,module,exports){
 /**
 
     This function is used to add EventEmitter methods to functions,
@@ -5976,14 +5985,13 @@ module.exports = function createProperty(currentValue, changes){
 };
 },{"./binding":1,"./firmer":4,"./is":7,"./makeFunctionEmitter":9,"enti":16,"what-changed":203}],209:[function(require,module,exports){
 var crel = require('crel'),
-    Enti = require('enti'),
     EventEmitter = require('events').EventEmitter,
     genericComponent = require('./genericComponent');
 
 module.exports = function(type, fastn, settings, children){
     var templater = new EventEmitter(),
         lastValue = {},
-        itemModel = new Enti({});
+        itemModel = new fastn.Model({});
 
     function replaceElement(element){
         if(templater.element && templater.element.parentNode){
@@ -6055,7 +6063,7 @@ module.exports = function(type, fastn, settings, children){
 
     return templater;
 };
-},{"./genericComponent":5,"crel":10,"enti":16,"events":227}],210:[function(require,module,exports){
+},{"./genericComponent":5,"crel":10,"events":227}],210:[function(require,module,exports){
 var test = require('tape'),
     Enti = require('enti'),
     doc = require('doc-js'),
@@ -6449,6 +6457,60 @@ test('things', function(t){
     model.set('foo', [{}]);
 
     Enti.set(data.foo[0], 'bar', true);
+});
+
+test('clone', function(t){
+    t.plan(4);
+
+    var data1 = {foo:1},
+        data2 = {foo:2},
+        binding = createBinding('foo');
+
+    binding.attach(data1);
+
+    t.equal(binding(), 1, 'Original binding has correct data');
+
+    var newBinding = binding.clone();
+
+    t.equal(newBinding(), undefined, 'New binding has no data');
+
+    newBinding.attach(data2);
+
+    t.equal(newBinding(), 2, 'New binding has new data');
+
+    t.equal(binding(), 1, 'Original binding still has original data');
+});
+
+test('clone with attachment', function(t){
+    t.plan(2);
+
+    var data1 = {foo:1},
+        binding = createBinding('foo');
+
+    binding.attach(data1);
+
+    t.equal(binding(), 1, 'Original binding has correct data');
+
+    var newBinding = binding.clone(true);
+
+    t.equal(newBinding(), 1, 'New binding has same data');
+});
+
+test('clone fuse', function(t){
+    t.plan(2);
+
+    var data1 = {foo:1, bar:2},
+        binding = createBinding('foo', 'bar', function(foo, bar){
+            return foo + bar;
+        });
+
+    binding.attach(data1);
+
+    t.equal(binding(), 3, 'Original binding has correct data');
+
+    var newBinding = binding.clone(true);
+
+    t.equal(newBinding(), 3, 'New binding has same data');
 });
 
 },{"../binding":1,"enti":16,"tape":191}],212:[function(require,module,exports){

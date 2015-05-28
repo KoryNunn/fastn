@@ -269,3 +269,57 @@ test('things', function(t){
 
     Enti.set(data.foo[0], 'bar', true);
 });
+
+test('clone', function(t){
+    t.plan(4);
+
+    var data1 = {foo:1},
+        data2 = {foo:2},
+        binding = createBinding('foo');
+
+    binding.attach(data1);
+
+    t.equal(binding(), 1, 'Original binding has correct data');
+
+    var newBinding = binding.clone();
+
+    t.equal(newBinding(), undefined, 'New binding has no data');
+
+    newBinding.attach(data2);
+
+    t.equal(newBinding(), 2, 'New binding has new data');
+
+    t.equal(binding(), 1, 'Original binding still has original data');
+});
+
+test('clone with attachment', function(t){
+    t.plan(2);
+
+    var data1 = {foo:1},
+        binding = createBinding('foo');
+
+    binding.attach(data1);
+
+    t.equal(binding(), 1, 'Original binding has correct data');
+
+    var newBinding = binding.clone(true);
+
+    t.equal(newBinding(), 1, 'New binding has same data');
+});
+
+test('clone fuse', function(t){
+    t.plan(2);
+
+    var data1 = {foo:1, bar:2},
+        binding = createBinding('foo', 'bar', function(foo, bar){
+            return foo + bar;
+        });
+
+    binding.attach(data1);
+
+    t.equal(binding(), 3, 'Original binding has correct data');
+
+    var newBinding = binding.clone(true);
+
+    t.equal(newBinding(), 3, 'New binding has same data');
+});
