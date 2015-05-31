@@ -7,7 +7,7 @@ body{
     margin:0;
     background: #f6f6fa;
     padding-bottom: 100px;
-    padding-top: 164px;
+    padding-top: 140px;
 }
 
 a{
@@ -76,17 +76,21 @@ form button{
     display: flex;
     flex-flow: row wrap;
     align-items: center;
-    padding: 8px;
 }
 
 .mainHeader img{
     height: 70px;
+    margin: 4px;
     margin-right: -25px;
 }
 
 .mainHeader h1{
     margin: 16px;
     font-size: 1.3em;
+}
+
+.mainHeader span{
+    font-size: 0.8em;
 }
 
 .mainHeader *:not(:last-child):not(:first-child){
@@ -100,6 +104,7 @@ form button{
 .search{
     color: white;
     padding: 8px;
+    padding-top: 0;
     display: flex;
     align-items: center;
     flex:1;
@@ -136,6 +141,8 @@ form button{
     transition: all 0.25s cubic-bezier(.29,.7,0,.99);
     height: 98px;
     overflow: hidden;
+    display: flex;
+    align-items: center;
 }
 
 .user button.remove{
@@ -164,9 +171,13 @@ form button{
 }
 
 .user .info{
-    display: inline-block;
     vertical-align: middle;
     margin: 5px;
+    display: none;
+}
+
+.user.selected .info{
+    display: inline-block;
 }
 
 .user .name{
@@ -203,6 +214,7 @@ form button{
     background-color: white;
     background-image: url(http://upload.wikimedia.org/wikipedia/commons/0/0e/Lakeyboy_Silhouette.PNG);
     background-size: 100%;
+    flex:none;
 }
 
 .user.selected img{
@@ -266,6 +278,7 @@ button.add{
     padding:16px;
     background: white;
     box-shadow: 0 3px 3px 3px rgba(0,0,0,0.4);
+    font-size: 0.8em;
 }
 
 @keyframes show {
