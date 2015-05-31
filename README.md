@@ -2,6 +2,8 @@
 
 Create ultra-lightweight UI components
 
+![fastn](fastn.png "fastn")
+
 # Usage
 
 The absolute minimum required to make a fastn component:
