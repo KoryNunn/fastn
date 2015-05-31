@@ -1,21 +1,32 @@
-module.exports = function(fastn, searchModel){
+var fastn = require('./fastn');
+
+module.exports = function(searchModel){
     return fastn('header', {'class':'mainHeader'},
-        fastn('h1', fastn.binding('users|*.deleted', fastn.binding('result').attach(searchModel),  function(users, results){
-            if(!users){
-                users = [];
-            }
+        fastn('img', {src: './fastn-sml.png'}),
+        fastn('h1', 'fastn', fastn('span', {class: 'faint'}, '.js')),
+        fastn('span',
+            'User list example. ',
+            fastn.binding('users|*.deleted', require('./search').result,  function(users, results){
+                if(!users){
+                    users = [];
+                }
 
-            var result = 'Users (';
+                var total = users.filter(function(user){
+                        return !user.deleted;
+                    }).length;
 
-            if(results){
-                result += 'Showing ' + results.length +' of ';
-            }
+                var result = '';
 
-            result += users.filter(function(user){
-                return !user.deleted;
-            }).length + ')';
+                if(results){
+                    result += 'Showing ' + results.length +' of ';
+                }
 
-            return result;
-        }))
+                result += total;
+
+                return result;
+            }),
+            ' users'
+        ),
+        require('./searchBar')()
     );
 };

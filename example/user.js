@@ -1,10 +1,13 @@
-module.exports = function(fastn, userSearch, selectedUser, deleteUser){
+var fastn = require('./fastn');
+
+module.exports = function(selectedUser, deleteUser){
+    var searchResult = require('./search').result;
 
     return fastn('div', {
-            'class': fastn.binding('.', 'name', userSearch, selectedUser, 'deleted', function(user, name, search, selectedUser, deleted){
+            class: fastn.binding('.', 'name', searchResult, selectedUser, 'deleted', function(user, name, searchResult, selectedUser, deleted){
                 var classes = ['user'];
 
-                if(!name || !(name.first && ~name.first.indexOf(search)) && !(name.last && ~name.last.indexOf(search))){
+                if(searchResult && !~searchResult.indexOf(user)){
                     classes.push('hidden');
                 }
                 if(user === selectedUser){
@@ -13,53 +16,47 @@ module.exports = function(fastn, userSearch, selectedUser, deleteUser){
                 if(deleted){
                     classes.push('deleted');
                 }
-                return classes.join(' ');
+                return classes;
             })
         },
 
-        fastn('img', {src: fastn.binding('picture', function(picture){
-                return picture && picture.medium;
+        fastn('img', { 
+            src: fastn.binding('.',  selectedUser, 'picture', function(user, selectedUser, picture){
+                return user === selectedUser ? picture.large : picture.medium;
             })
         }),
 
-        fastn('label', {
-            'class': 'name',
-            textContent: fastn.binding('name.first', 'name.last', function(firstName, surname){
-                return firstName + ' ' + surname;
-            })
-        }),
+        fastn('div', {class: 'details'},
 
-        fastn('input', {
-            value: fastn.binding('name.first')
-        }).on('keyup', function(){
-            this.value(this.element.value);
-        }),
+            fastn('label', {class: 'name'},
+                fastn.binding('name.first'), ' ', fastn.binding('name.last')
+            ),
 
-        fastn('div', {'class': 'details'},
+            fastn('div', {class: 'info'},
 
-            fastn('p', {'class':'extra'},
-                fastn('a', {
-                    textContent: fastn.binding('email'),
-                    href: fastn.binding('email', function(email){
-                        return 'mailto:' + email;
-                    })
-                }),
-                fastn('p', {
-                    textContent: fastn.binding('cell', function(cell){
+                fastn('p', {class:'extra'},
+                    fastn('a', {
+                            href: fastn.binding('email', function(email){
+                                return 'mailto:' + email;
+                            })
+                        },
+                        fastn.binding('email')
+                    ),
+                    fastn('p', fastn.binding('cell', function(cell){
                         return 'Mobile: ' + cell;
-                    })
-                })
-            )
+                    }))
+                )
 
-        ),
+            ),
 
-        fastn('button', {textContent: 'X', 'class': 'remove'})
-        .on('click', function(event, scope){
-            scope.set('deleted', true);
-            deleteUser();
-        })
+            fastn('button', {class: 'remove'},'X')
+            .on('click', function(event, scope){
+                scope.set('deleted', true);
+                deleteUser();
+            })
+        )
 
     ).on('click', function(event, scope){
-        selectedUser(scope._model);
+        selectedUser(scope.get('.'));
     });
 };
