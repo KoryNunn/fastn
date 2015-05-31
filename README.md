@@ -4,6 +4,8 @@ Create ultra-lightweight UI components
 
 ![fastn](fastn-sml.png)
 
+[Example app](http://korynunn.github.io/fastn/example/)
+
 # Usage
 
 The absolute minimum required to make a fastn component:
@@ -70,8 +72,6 @@ someComponent.scope().set('url', 'http://bing.com');
 
 
 ```
-
-[A similar example in requirebin](http://requirebin.com/?code=797790e7cfe624776414)
 
 ## A little deeper..
 
