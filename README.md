@@ -2,7 +2,7 @@
 
 Create ultra-lightweight UI components
 
-![fastn](fastn.png =150x)
+![fastn](fastn-sml.png)
 
 # Usage
 
