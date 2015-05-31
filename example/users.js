@@ -1,4 +1,4 @@
-[
+var users = [
     {
         "user":{
             "gender":"female",
@@ -3499,4 +3499,8 @@
         },
         "seed":"e57deeb05040343a"
     }
-]
+];
+
+module.exports = users.map(function(user){
+    return user.user;
+});

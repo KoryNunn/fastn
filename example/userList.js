@@ -1,14 +1,26 @@
-module.exports = function(fastn, seatchModel, userSearch){
+var fastn = require('./fastn');
+
+module.exports = function(){
     var selectedUser = fastn.binding('selectedUser').attach({});
 
-    return fastn('list', {items: fastn.binding('users'), template: function(model, scope){
+    return fastn('list', 
+        {
+            class: 'users',
+            items: fastn.binding('users|*'), 
+            template: function(model, scope){
 
-        function deleteUser(){
-            var deletedUsers = scope.get('deletedUsers') ||[];
-            deletedUsers.push(model.get('item'));
-            scope.set('deletedUsers', deletedUsers);
-        }
+                function deleteUser(){
+                    var deletedUsers = scope.get('deletedUsers') ||[];
+                    deletedUsers.push(model.get('item'));
+                    scope.set('deletedUsers', deletedUsers);
+                }
 
-        return require('./user.js')(fastn, userSearch, selectedUser, deleteUser).binding('item');
-    }});
+                    return require('./user.js')(selectedUser, deleteUser).binding('item');
+            }
+        },
+        fastn('button', {class: 'add'}, '+')
+        .on('click', function(event, scope){
+            require('./newUser')(scope);
+        })
+    );
 };
