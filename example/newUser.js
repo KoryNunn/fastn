@@ -43,6 +43,8 @@ module.exports = function(model){
             event.preventDefault();
 
             model.insert('users', scope.get('.'), 0);
+            
+            closeModal();
         })
     )
     .on('click', function(event){
