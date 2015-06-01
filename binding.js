@@ -131,8 +131,12 @@ function createBinding(path){
         }
 
         value = undefined;
-        binding._model.detach();
-        binding.emit('detach', 1);
+        if(binding._model.isAttached()){
+            binding._model.detach();
+        }
+        if('detach' in binding._events){
+            binding.emit('detach', 1);
+        }
         return binding;
     };
     binding._set = function(newValue){
