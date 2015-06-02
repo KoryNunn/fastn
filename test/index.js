@@ -7,3 +7,4 @@ require('./templater.js');
 require('./container.js');
 require('./generic.js');
 require('./attach.js');
+require('./fancyProps.js');
