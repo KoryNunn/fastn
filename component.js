@@ -132,7 +132,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
 
         if(binding){
-            newBinding.attach(binding.model, binding._firm);
+            newBinding.attach(binding._model, binding._firm);
             binding.removeListener('change', emitAttach);
         }
 
