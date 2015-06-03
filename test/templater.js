@@ -223,3 +223,48 @@ test('reuse template same element', function(t){
 
 
 });
+
+test.only('reattach templater with attachTemplates = false', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn();
+
+    var data = {foo: {bar: 1}},
+        template = fastn('templater', {
+            data: fastn.binding('nothing'),
+            attachTemplates: false,
+            template: function(model, scope, lastTemplate){
+                return fastn.binding('bar');
+            }
+        })
+        .attach(data)
+        .binding('foo');
+
+    template.render();
+
+    doc.ready(function(){
+
+        document.body.appendChild(template.element);
+
+        t.equal(document.body.innerText, '1');
+
+        fastn.Model.set(data, 'foo', {
+            bar: 2
+        });
+
+        t.equal(document.body.innerText, '2');
+
+        fastn.Model.set(data, 'foo', {
+            bar: 3
+        });
+
+        t.equal(document.body.innerText, '3');
+
+        template.element.remove();
+        template.destroy();
+
+    });
+
+
+});
