@@ -129,12 +129,8 @@ module.exports = function(type, fastn, settings, children){
     };
 
     fastn.property([], settings.itemChanges || 'type structure')
-        .addTo(list, 'items');
-
-    if(settings.items){
-        list.items.binding(settings.items)
-            .on('update', updateItems);
-    }
+        .addTo(list, 'items')
+        .on('update', updateItems);
 
     return list;
 };
