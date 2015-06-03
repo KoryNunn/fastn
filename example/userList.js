@@ -1,4 +1,5 @@
-var fastn = require('./fastn');
+var fastn = require('./fastn'),
+    usersModel = require('./users');
 
 module.exports = function(){
     var selectedUser = fastn.binding('selectedUser').attach({});
@@ -22,5 +23,6 @@ module.exports = function(){
         .on('click', function(event, scope){
             require('./newUser')(scope);
         })
-    );
+    )
+    .attach(usersModel);
 };

@@ -6,7 +6,8 @@
   "scripts": {
     "test": "browserify ./test/index.js > ./test/index.browser.js; google-chrome ./test/index.html",
     "watch": "watchify test/index.js -o test/index.browser.js -d",
-    "watchexample": "watchify example/index.js -o example/index.browser.js -d"
+    "watchexample": "watchify example/index.js -o example/index.browser.js -d",
+    "buildexample": "browserify example/index.js > example/index.browser.js"
   },
   "author": "",
   "license": "ISC",
@@ -21,6 +22,7 @@
     "what-changed": "^2.1.0"
   },
   "devDependencies": {
+    "cpjax": "^1.0.0",
     "crel": "^2.1.5",
     "doc-js": "^1.2.0",
     "tape": "^3.2.0",

@@ -224,7 +224,7 @@ test('reuse template same element', function(t){
 
 });
 
-test.only('reattach templater with attachTemplates = false', function(t){
+test('reattach templater with attachTemplates = false', function(t){
 
     t.plan(3);
 
