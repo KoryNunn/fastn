@@ -1,4 +1,5 @@
-var fastn = require('./fastn');
+var fastn = require('./fastn'),
+    usersModel = require('./users');
 
 module.exports = function(model){
 
@@ -42,7 +43,7 @@ module.exports = function(model){
         .on('submit', function(event, scope){
             event.preventDefault();
 
-            model.insert('users', scope.get('.'), 0);
+            usersModel.insert('users', scope.get('.'), 0);
             
             closeModal();
         })

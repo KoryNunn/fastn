@@ -56,7 +56,7 @@ test('special properties - input value - dates', function(t){
 
     var input = fastn('input', {
         type: 'date',
-        value: new Date('2015-01-01'),
+        value: new Date('2015/01/01'),
         onchange: 'value:value',
         onclick: 'value:value' // so I can trigger events..
     });
@@ -66,21 +66,21 @@ test('special properties - input value - dates', function(t){
     doc.ready(function(){
         document.body.appendChild(input.element);
 
-        t.equal(document.body.childNodes.length, 1);
-        t.equal(document.body.childNodes[0].tagName, 'INPUT');
-        t.equal(document.body.childNodes[0].value, '2015-01-01');
-        t.deepEqual(input.value(), new Date('2015-01-01'));
+        t.equal(document.body.childNodes.length, 1, 'node added');
+        t.equal(document.body.childNodes[0].tagName, 'INPUT', 'correct tagName');
+        t.equal(document.body.childNodes[0].value, '2015-01-01', 'correct initial input.value');
+        t.deepEqual(input.value(), new Date('2015/01/01'), 'correct initial property()');
 
-        input.value(new Date('2015-02-02'));
+        input.value(new Date('2015/02/02'));
 
-        t.equal(document.body.childNodes[0].value, '2015-02-02');
-        t.deepEqual(input.value(), new Date('2015-02-02'));
+        t.equal(document.body.childNodes[0].value, '2015-02-02', 'correctly set new input.value');
+        t.deepEqual(input.value(), new Date('2015/02/02'), 'correctly set new property()');
 
         input.element.value = '2016-02-02';
         input.element.click();
 
-        t.equal(document.body.childNodes[0].value, '2016-02-02');
-        t.deepEqual(input.value(), new Date('2016-02-02'));
+        t.equal(document.body.childNodes[0].value, '2016-02-02', 'correctly set new input.value 2');
+        t.deepEqual(input.value(), new Date('2016/02/02'), 'correctly set new property() 2');
 
         input.element.remove();
         input.destroy();
