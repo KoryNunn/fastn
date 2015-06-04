@@ -3,9 +3,15 @@ var Enti = require('enti'),
     firmer = require('./firmer'),
     createBinding = require('./binding'),
     makeFunctionEmitter = require('./makeFunctionEmitter'),
+    schedule = require('./schedule'),
     is = require('./is');
 
-module.exports = function createProperty(currentValue, changes){
+function createProperty(currentValue, changes, updater){
+    if(typeof changes === 'function'){
+        updater = changes;
+        changes = null;
+    }
+
     var binding,
         model,
         attaching,
@@ -31,7 +37,7 @@ module.exports = function createProperty(currentValue, changes){
                 binding(value);
                 property._value = binding();
             }
-
+            
             property.emit('change', property._value);
             property.update();
         }
@@ -40,6 +46,7 @@ module.exports = function createProperty(currentValue, changes){
     }
 
     property._value = currentValue;
+    property._update = updater;
 
     property._firm = 1;
 
@@ -110,8 +117,22 @@ module.exports = function createProperty(currentValue, changes){
     };
     property.update = function(){
         if(!property._destroyed){
+
+            if(property._update){
+                schedule(property, function(){
+                    property._update(property._value, property);
+                });
+            }
+
             property.emit('update', property._value);
         }
+        return property;
+    };
+    property.updater = function(fn){
+        if(!arguments.length){
+            return property._update;
+        }
+        property._update = fn;
         return property;
     };
     property.destroy = function(){
@@ -133,3 +154,5 @@ module.exports = function createProperty(currentValue, changes){
 
     return property;
 };
+
+module.exports = createProperty;

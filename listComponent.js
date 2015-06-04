@@ -124,13 +124,14 @@ module.exports = function(type, fastn, settings, children){
     };
 
     list.render = function(){
-        this.element = crel(settings.tagName || 'div');
-        this.emit('render');
+        list.element = crel(settings.tagName || 'div');
+        list.emit('render');
+
+        return list;
     };
 
-    fastn.property([], settings.itemChanges || 'type structure')
-        .addTo(list, 'items')
-        .on('update', updateItems);
+    fastn.property([], settings.itemChanges || 'type structure', updateItems)
+        .addTo(list, 'items');
 
     return list;
 };
