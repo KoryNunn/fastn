@@ -175,9 +175,7 @@ function createBinding(path){
     };
 
     if(path !== '.'){
-        binding._model._events[path] = function(){
-            binding._change(binding._model.get(path));
-        };
+        binding._model._events[path] = binding._change;
     }
 
     return binding;

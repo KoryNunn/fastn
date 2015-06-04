@@ -5,7 +5,8 @@ var crel = require('crel'),
 module.exports = function(type, fastn){
     var container = new EventEmitter();
 
-    container.insert = function(component, index){
+    container.insert = function(child, index){
+        var component = child;
         if(index && typeof index === 'object'){
             component = Array.prototype.slice.call(arguments);
         }
