@@ -1,13 +1,20 @@
-return fastn('div',
+var app = fastn('div',
     fastn('h1', 'My Cool App'),
+
+    // Create a clear button
+    fastn('button', 'Clear')
+        // Clear 'stuff' on click
+        .on('click', function(event, scope){
+            scope.set('stuff', '')
+        }),
 
     // create an input
     fastn('input', {
 
-        //Bind it's value to 'stuff'
+        //Bind its value to 'stuff'
         value: fastn.binding('stuff'),
 
-        // automativally set the components `value` to it's elements `value` on keyup
+        // automatically set the components `value` to its element's `value` on keyup
         onkeyup: 'value:value'
     }),
 
@@ -17,3 +24,5 @@ return fastn('div',
 .attach({
     stuff: 'things'
 });
+
+return app;

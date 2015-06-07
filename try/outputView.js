@@ -4,10 +4,14 @@ var fastn = require('./fastn'),
 module.exports = function(){
     var outputComponent = fastn('div', {class: 'output'});
 
-    codeService.result.on('change', function(result){
+    function update(result){
         outputComponent.empty();
         outputComponent.insert(result);
-    });
+    }
+
+    codeService.result.on('change', update);
+
+    update(codeService.result() || 'No output..');
 
     return outputComponent;
 };

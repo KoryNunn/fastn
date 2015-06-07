@@ -2,10 +2,15 @@
     box-sizing: border-box;
 }
 
+body{
+    font-family: arial;
+}
+
 h1{
     margin: 0;
     padding: 10px;
-    font-size: 1.5em;
+    font-size: 1.7em;
+    text-shadow: 0 3px 3px rgba(0,0,0,0.3);
 }
 
 header{
@@ -14,6 +19,42 @@ header{
     left:0;
     right:0;
     height: 50px;
+    display:flex;
+    align-items: center;
+    box-shadow: 0 3px 3px rgba(0,0,0,0.3);
+    z-index: 2;
+}
+
+header img{
+    height: 70px;
+    filter: drop-shadow(0 3px 3px 0,0,0,0.3);
+    -webkit-filter: drop-shadow(0 3px 1px rgba(0,0,0,0.3));
+    -moz-filter: drop-shadow(0 3px 1px rgba(0,0,0,0.3));
+}
+
+header h1{
+    display: inline-block;
+}
+
+button{
+    border: solid 1px #C80;
+    background: #EA0;
+    padding: 8px;
+    border-radius: 2px;
+    box-shadow: 0 3px 3px rgba(0,0,0,0.3);
+    font-size: 1em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+header button.reset{
+
+}
+
+.errors{
+    display: inline-block;
+    color: red;
+    padding: 10px;
 }
 
 .code, .output{
@@ -25,6 +66,34 @@ header{
     border: solid 1px #bbb;
 }
 
+.preamble{
+    height: 50px;
+    border-bottom: solid 1px #bbb;
+    position: relative;
+}
+
+.preamble.expanded{
+    height: auto;
+}
+
+.preamble > span{
+    position: absolute;
+    display: block;
+    width: 100%;
+    height: 100%;
+    top:0;
+    left:0;
+    z-index: 5;
+    padding: 12px;
+    font-size: 1.3em;
+    text-align: center;
+    background: rgba(255,255,255,0.7);
+}
+
+.preamble.expanded > span{
+    display: none;
+}
+
 .output{
     left:50%;
     padding:10px;
@@ -32,4 +101,8 @@ header{
 
 .CodeMirror{
     height: 100%;
+}
+
+.code.hasError{
+    box-shadow: 0 0 15px 5px rgba(255,0,0,0.5);
 }

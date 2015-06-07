@@ -3,7 +3,10 @@ var fastn = require('./fastn'),
 
 module.exports = function(){
     return fastn('header',
+        fastn('img', {src: './fastn-sml.png'}),
         fastn('h1', 'Fastn try-er..'),
+        fastn('button', {class:'reset'}, 'Reset')
+        .on('click', codeService.reset),
         fastn('div', {class: 'errors'}, codeService.errors)
     );
 };
