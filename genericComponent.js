@@ -13,9 +13,7 @@ function createProperty(fastn, generic, key, settings){
     }
 
     if(!property){
-        property = fastn.property();
-        property(value);
-        property.on('update', function(value){
+        property = fastn.property(value, function(value, property){
             var element = generic.getContainerElement();
 
             if(!element){
