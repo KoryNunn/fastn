@@ -6,6 +6,8 @@ Create ultra-lightweight UI components
 
 [Example app](http://korynunn.github.io/fastn/example/)
 
+[Try it](http://korynunn.github.io/fastn/try/)
+
 # Usage
 
 The absolute minimum required to make a fastn component:
