@@ -13,7 +13,7 @@ module.exports = function(){
                 return ['preamble', state ? 'expanded' : ''];
             })
         },
-            fastn('span', 'Preamble (fastn setup)')
+            fastn('span', 'Fastn setup. Click to view')
             .on('click', function(){
                 state(true);
             })
