@@ -1,6 +1,7 @@
 var fastn = require('./fastn'),
     cpjax = require('cpjax'),
     defaultCode,
+    hash = window.location.hash,
     codeModel = {
         code: ''
     },
@@ -16,10 +17,25 @@ var fastn = require('./fastn'),
             errors(error);
         }
 
-        localStorage.setItem('fastnTryCode', JSON.stringify(code));
+        var stringifiedCode = JSON.stringify(code);
+
+        localStorage.setItem('fastnTryCode', stringifiedCode);
+        window.location.hash = '#' + btoa(stringifiedCode);
     });
 
 var storedCode;
+
+function loadFromHash(){
+    try{
+        var hashSource = JSON.parse(atob(window.location.hash.slice(1)));
+        if(hashSource !== code()){
+            code(hashSource);
+        }
+    }catch(e){}
+}
+
+window.addEventListener('hashchange', loadFromHash);
+loadFromHash();
 
 try{
     storedCode = JSON.parse(localStorage.getItem('fastnTryCode'));
