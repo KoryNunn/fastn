@@ -93,6 +93,10 @@ form button{
     font-size: 0.8em;
 }
 
+.mainHeader .search{
+    min-width: 90%;
+}
+
 .mainHeader *:not(:last-child):not(:first-child){
     margin-right: 20px;
 }
@@ -282,36 +286,36 @@ button.add{
 }
 
 @keyframes show {
-    from { 
-        opacity: 0; 
-    } 
-    to { 
-        opacity:1; 
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity:1;
     }
 }
 @-webkit-keyframes show {
-    from { 
-        opacity: 0; 
-    } 
-    to { 
-        opacity:1; 
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity:1;
     }
 }
 
 @keyframes hide {
-    from { 
-        opacity: 1; 
-    } 
-    to { 
-        opacity: 0; 
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
     }
 }
 @-webkit-keyframes hide {
-    from { 
-        opacity: 1; 
-    } 
-    to { 
-        opacity: 0; 
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
     }
 }
 

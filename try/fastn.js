@@ -9,6 +9,9 @@ module.exports = require('../')({ // Require fastn
     // The list component is used to render items based on a set of data.
     list: require('../listComponent'),
 
+    // The templater component is used to render a component based on arbitrary data.
+    templater: require('../templaterComponent'),
+
     // The text component is used to render text or bindings passed as children to other components.
     text: require('../textComponent'),
 

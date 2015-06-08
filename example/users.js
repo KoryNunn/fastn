@@ -13,7 +13,8 @@ function getUsers(callback){
 };
 
 var usersModel = new fastn.Model({
-    users: []
+    users: [],
+    deletedUsers: []
 });
 
 getUsers(function(error, users){
@@ -24,4 +25,19 @@ getUsers(function(error, users){
     usersModel.set('users', users);
 });
 
-module.exports = usersModel;
+function deleteUser(user){
+    usersModel.push('deletedUsers', user);
+}
+
+function addUser(user){
+    usersModel.insert('users', user, 0);
+}
+
+module.exports = {
+    usersModel: usersModel,
+    users: fastn.binding('users|*').attach(usersModel),
+    deletedUsers: fastn.binding('deletedUsers|*').attach(usersModel),
+    selectedUser: fastn.binding('selected').attach(usersModel),
+    deleteUser: deleteUser,
+    addUser: addUser
+};

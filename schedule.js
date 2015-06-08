@@ -10,7 +10,7 @@ function run(){
         todoKeys.shift();
         todo.shift()();
     }
- 
+
     if(todo.length){
         requestAnimationFrame(run);
     }else{
