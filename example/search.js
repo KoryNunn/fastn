@@ -1,12 +1,12 @@
 var fastn = require('./fastn'),
-    usersModel = require('./users'),
+    usersService = require('./users');
     searchModel = {
         userSearch: '',
         result: null
     },
     userSearch = fastn.binding('userSearch').attach(searchModel)
         .on('change', function(search){
-            var users = usersModel.get('users');
+            var users = usersService.users();
 
             if(!search){
                 fastn.Model.set(searchModel, 'result', null);

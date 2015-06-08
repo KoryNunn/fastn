@@ -1,10 +1,11 @@
 var fastn = require('./fastn');
 
 module.exports = function(selectedUser, deleteUser){
-    var searchResult = require('./search').result;
+    var searchResult = require('./search').result,
+        usersService = require('./users');
 
     return fastn('div', {
-            class: fastn.binding('.', 'name', searchResult, selectedUser, 'deleted', function(user, name, searchResult, selectedUser, deleted){
+            class: fastn.binding('.', 'name', searchResult, usersService.selectedUser, usersService.deletedUsers, function(user, name, searchResult, selectedUser, deletedUsers){
                 var classes = ['user'];
 
                 if(searchResult && !~searchResult.indexOf(user)){
@@ -13,14 +14,14 @@ module.exports = function(selectedUser, deleteUser){
                 if(user === selectedUser){
                     classes.push('selected');
                 }
-                if(deleted){
+                if(~deletedUsers.indexOf(user)){
                     classes.push('deleted');
                 }
                 return classes;
             })
         },
 
-        fastn('img', { 
+        fastn('img', {
             src: fastn.binding('picture.medium')
         }),
 
@@ -49,12 +50,11 @@ module.exports = function(selectedUser, deleteUser){
 
             fastn('button', {class: 'remove'},'X')
             .on('click', function(event, scope){
-                scope.set('deleted', true);
-                deleteUser();
+                usersService.deleteUser(scope.get('.'));
             })
         )
 
     ).on('click', function(event, scope){
-        selectedUser(scope.get('.'));
+        usersService.selectedUser(scope.get('.'));
     });
 };

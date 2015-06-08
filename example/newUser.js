@@ -1,10 +1,10 @@
 var fastn = require('./fastn'),
-    usersModel = require('./users');
+    usersService = require('./users');
 
-module.exports = function(model){
+module.exports = function(){
 
     var newUserDialog = fastn('div', {class:'newUser dialog'},
-        fastn('form', {class: 'modal'}, 
+        fastn('form', {class: 'modal'},
 
             fastn('field',
                 fastn('label', 'First Name'),
@@ -43,8 +43,8 @@ module.exports = function(model){
         .on('submit', function(event, scope){
             event.preventDefault();
 
-            usersModel.insert('users', scope.get('.'), 0);
-            
+            usersService.addUser(scope.get('.'));
+
             closeModal();
         })
     )
