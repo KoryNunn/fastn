@@ -1,5 +1,6 @@
 var crel = require('crel'),
     containerComponent = require('./containerComponent'),
+    schedule = require('./schedule'),
     fancyProps = require('./fancyProps');
 
 function createProperty(fastn, generic, key, settings){
@@ -12,36 +13,46 @@ function createProperty(fastn, generic, key, settings){
         return;
     }
 
-    if(!property){
-        property = fastn.property(value, function(value, property){
-            var element = generic.getContainerElement();
+    function update(value, property){
+        var element = generic.getContainerElement();
 
-            if(!element){
+        if(!element){
+            return;
+        }
+
+        var isProperty = key in element,
+            fancyProp = fancyProps[key],
+            previous = fancyProp ? fancyProp(generic, element) : isProperty ? element[key] : element.getAttribute(key);
+
+        if(!fancyProp && !isProperty && value == null){
+            value = '';
+        }
+
+        if(value !== previous){
+            if(fancyProp){
+                fancyProp(generic, element, value);
                 return;
             }
 
-            var isProperty = key in element,
-                fancyProp = fancyProps[key],
-                previous = fancyProp ? fancyProp(generic, element) : isProperty ? element[key] : element.getAttribute(key);
-
-            if(!fancyProp && !isProperty && value == null){
-                value = '';
+            if(isProperty){
+                element[key] = value;
+                return;
             }
 
-            if(value !== previous){
-                if(fancyProp){
-                    fancyProp(generic, element, value);
-                    return;
-                }
+            if(typeof value !== 'function' && typeof value !== 'object'){
+                element.setAttribute(key, value);
+            }
+        }
+    }
 
-                if(isProperty){
-                    element[key] = value;
-                    return;
-                }
-
-                if(typeof value !== 'function' && typeof value !== 'object'){
-                    element.setAttribute(key, value);
-                }
+    if(!property){
+        property = fastn.property(value, function(){
+            if(generic.element){
+                genericComponent.schedule(property, function(){
+                    update(property._value, property);
+                });
+            }else{
+                update(property._value, property);
             }
         });
     }
@@ -97,7 +108,7 @@ function addAutoHandler(generic, key, settings){
     });
 }
 
-module.exports = function(type, fastn, settings, children){
+function genericComponent(type, fastn, settings, children){
     var generic = containerComponent(type, fastn);
 
     createProperties(fastn, generic, settings);
@@ -130,3 +141,7 @@ module.exports = function(type, fastn, settings, children){
 
     return generic;
 };
+
+genericComponent.schedule = schedule;
+
+module.exports = genericComponent;

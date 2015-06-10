@@ -1,6 +1,6 @@
 {
   "name": "fastn",
-  "version": "1.10.0",
+  "version": "1.10.5",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,13 +9,14 @@
     "watchexample": "watchify example/index.js -o example/index.browser.js -d",
     "buildexample": "browserify -g uglifyify example/index.js --noparse clone > example/index.browser.js",
     "watchtry": "watchify try/index.js -o try/index.browser.js -d",
-    "buildtry": "browserify -g uglifyify try/index.js --noparse clone > try/index.browser.js"
+    "buildtry": "browserify try/index.js --noparse clone > try/index.browser.js",
+    "build": "npm run buildtry & npm run buildexample"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "crel": "^2.1.5",
-    "enti": "^2.4.0",
+    "enti": "^2.4.3",
     "es6-map": "^0.1.1",
     "flat-merge": "^1.0.0",
     "same-value": "^1.0.0",

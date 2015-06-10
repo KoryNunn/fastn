@@ -28,7 +28,7 @@ function schedule(key, fn){
 
     if(!scheduled){
         scheduled = true;
-        run();
+        requestAnimationFrame(run);
     }
 }
 

@@ -7,6 +7,7 @@ module.exports = function(type, fastn){
 
     container.insert = function(child, index){
         var component = child;
+        
         if(index && typeof index === 'object'){
             component = Array.prototype.slice.call(arguments);
         }

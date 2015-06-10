@@ -69,8 +69,9 @@ function fuseBinding(){
     return resultBinding;
 }
 
-function createBinding(path){
-    if(arguments.length > 1){
+function createBinding(path, more){
+
+    if(more){ // used instead of arguments.length for performance
         return fuseBinding.apply(null, arguments);
     }
 

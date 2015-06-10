@@ -3,7 +3,6 @@ var Enti = require('enti'),
     firmer = require('./firmer'),
     createBinding = require('./binding'),
     makeFunctionEmitter = require('./makeFunctionEmitter'),
-    schedule = require('./schedule'),
     is = require('./is');
 
 function createProperty(currentValue, changes, updater){
@@ -119,9 +118,7 @@ function createProperty(currentValue, changes, updater){
         if(!property._destroyed){
 
             if(property._update){
-                schedule(property, function(){
-                    property._update(property._value, property);
-                });
+                property._update(property._value, property);
             }
 
             property.emit('update', property._value);
