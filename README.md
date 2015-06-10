@@ -2,7 +2,7 @@
 
 Create ultra-lightweight UI components
 
-![fastn](http://korynunn.github.io/fastn/fastn-sml.png)
+![fastn](fastn-sml.png)
 
 ## [Try it](http://korynunn.github.io/fastn/try/)
 
@@ -50,6 +50,7 @@ someComponent.render();
 // Append the components element to the DOM
 document.body.appendChild(someComponent.element);
 ```
+[^ try it](http://korynunn.github.io/fastn/try/#InJldHVybiBmYXN0bignc2VjdGlvbicsXG5cdGZhc3RuKCdoMScsICdJXFwnbSBhIGNvbXBvbmVudCEgOkQnKSxcblx0ZmFzdG4oJ2EnLCB7aHJlZjogJ2h0dHA6Ly9nb29nbGUuY29tJ30sICdBbiBhbmNob3InKVxuKTsi)
 
 You can assign bindings to properties:
 
@@ -78,6 +79,7 @@ someComponent.scope().set('url', 'http://bing.com');
 
 
 ```
+[^ try it](http://korynunn.github.io/fastn/try/#InZhciBzb21lQ29tcG9uZW50ID0gZmFzdG4oJ3NlY3Rpb24nLFxuICAgICAgICBmYXN0bignaDEnLCAnSVxcJ20gYSBjb21wb25lbnQhIDpEJyksXG4gICAgICAgIGZhc3RuKCdhJywge2hyZWY6IGZhc3RuLmJpbmRpbmcoJ3VybCcpfSxcbiAgICAgICAgICAgIGZhc3RuKCdsYWJlbCcsICdUaGlzIGxpbmsgcG9pbnRzIHRvICcpLFxuICAgICAgICAgICAgZmFzdG4oJ2xhYmVsJywgZmFzdG4uYmluZGluZygndXJsJykpXG4gICAgICAgIClcbiAgICApO1xuXG5zb21lQ29tcG9uZW50LmF0dGFjaCh7XG4gICAgdXJsOiAnaHR0cDovL2dvb2dsZS5jb20nXG59KTtcblxuc2V0VGltZW91dChmdW5jdGlvbigpe1xuXHRzb21lQ29tcG9uZW50LnNjb3BlKCkuc2V0KCd1cmwnLCAnaHR0cDovL2JpbmcuY29tJyk7XG59LCAyMDAwKTtcblxucmV0dXJuIHNvbWVDb21wb25lbnQ7Ig==)
 
 ## Special component types
 
@@ -86,10 +88,12 @@ There are a few special component types that are used as shorthands for some sit
 ### `text`
 
 if a string or `binding` is added as a child into a containerComponent, fastn will look for a `text` component, set it's `text` to the string or `binding`, and insert it. This is handy as you don't need to write: `fastn('text', 'foo')` all over the place.
+[^ try it](http://korynunn.github.io/fastn/try/#InJldHVybiBmYXN0bignZGl2Jyxcblx0ZmFzdG4oJ3RleHQnLCB7dGV4dDogJ0V4cGxpY2l0IHRleHQsICd9KSxcblx0J0ltcGxpY2l0IHRleHQsICcsXG4gICAgZmFzdG4uYmluZGluZygnYm91bmRUZXh0JylcbikuYXR0YWNoKHtcbiAgXHRib3VuZFRleHQ6ICdCb3VuZCB0ZXh0J1xufSk7Ig==)
 
 ### `_generic`
 
 if the type passed to fastn does not exactly match any component it knows about, fastn will check for a `_generic` component, and pass all the settings and children through to it. 
+[^ try it](http://korynunn.github.io/fastn/try/#InJldHVybiBmYXN0bignZGl2JyxcbiAgICAgICAgICAgICBcblx0ZmFzdG4oJ3NwYW4nLCAnV29vIGEgc3BhbiEnKSxcbiAgICAgICAgICAgICBcblx0ZmFzdG4oJ2JyJyksIC8vIEJyIGJlY2F1c2Ugd2UgY2FuIVxuICAgICAgICAgICAgIFxuICAgIGZhc3RuKCdhJywge2hyZWY6ICdodHRwczovL2dpdGh1Yi5jb20va29yeW51bm4vZmFzdG4nfSwgJ0FuIGFuY2hvcicpLFxuICAgICAgICAgICAgIFxuXHRmYXN0bignYnInKSwgLy8gQW5vdGhlciBiciBmb3IgcmVhc29uc1xuICAgICAgICAgICAgIFxuICAgIGZhc3RuKCdpbWcnLCB7dGl0bGU6ICdBd2Vzb21lIGxvZ28nLCBzcmM6ICdodHRwOi8va29yeW51bm4uZ2l0aHViLmlvL2Zhc3RuL3RyeS9mYXN0bi1zbWwucG5nJ30pXG4pOyI=)
 
 ## Default components
 
