@@ -78,6 +78,73 @@ someComponent.scope().set('url', 'http://bing.com');
 
 ```
 
+## Special component types
+
+There are a few special component types that are used as shorthands for some situations:
+
+### `text`
+
+if a string or `binding` is added as a child into a containerComponent, fastn will look for a `text` component, set it's `text` to the string or `binding`, and insert it. This is handy as you don't need to write: `fastn('text', 'foo')` all over the place.
+
+### `_generic`
+
+if the type passed to fastn does not exactly match any component it knows about, fastn will check for a `_generic` component, and pass all the settings and children through to it. 
+
+## Default components
+
+fastn includes 4 extremely simple default components that render as DOM. It is not neccisary to use them, and you can replace them with your own to render to anything you want to.
+
+### textComponent
+
+A default handler for the `text` component type that renders a textNode. eg:
+
+```
+fastn('something', // render a thing
+    'Some string passed as a child' // falls into the `text` component, renderes as a textNode
+)
+```
+
+### genericComponent
+
+A default handler for the `_generic` component type that renders DOM nodes based on the type passed, eg:
+
+```
+fastn('div') // no component is assigned to 'div', fastn will search for _generic, and if this component is assigned to it, it will create a div element.
+```
+
+### listComponent
+
+takes a template and inserts children based on the result of its `items` property, eg:
+
+```
+fastn('list', {
+    items: [1,2,3],
+    template: function(){
+        return fastn.binding('item')
+    }
+})
+```
+the templated componets will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
+
+### templaterComponent
+
+takes a tempalte and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted. 
+
+The template funciton will be passed the last component that was rendered by it as the third parameter.
+
+```
+fastn('templater', {
+    data: 'foo',
+    template: function(model, scope, currentComponent){
+        if(model.get('item') === 'foo'){
+            return fastn('img');
+        }else{
+            return null;
+        }
+    }
+})
+```
+
 ## A little deeper..
 
 A component can be created by calling `fastn` with a `type`, like so:
