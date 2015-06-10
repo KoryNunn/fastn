@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "crel": "^2.1.5",
-    "enti": "^2.4.0",
+    "enti": "^2.4.2",
     "es6-map": "^0.1.1",
     "flat-merge": "^1.0.0",
     "same-value": "^1.0.0",
