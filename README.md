@@ -2,7 +2,7 @@
 
 Create ultra-lightweight UI components
 
-![fastn](fastn-sml.png)
+![fastn](http://korynunn.github.io/fastn/fastn-sml.png)
 
 ## [Try it](http://korynunn.github.io/fastn/try/)
 
@@ -28,6 +28,7 @@ something.render();
 
 document.body.appendChild(something.element);
 ```
+[^ try it](http://korynunn.github.io/fastn/try/#InJldHVybiBmYXN0bignaDEnLCAnSGVsbG8gV29ybGQnKTsi)
 
 `fastn` is a function with the signature:
 
