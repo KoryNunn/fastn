@@ -1,6 +1,6 @@
 {
   "name": "fastn",
-  "version": "1.10.4",
+  "version": "1.10.5",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "buildexample": "browserify -g uglifyify example/index.js --noparse clone > example/index.browser.js",
     "watchtry": "watchify try/index.js -o try/index.browser.js -d",
     "buildtry": "browserify try/index.js --noparse clone > try/index.browser.js",
-    "build":"npm run buildtry & npm run buildexample"
+    "build": "npm run buildtry & npm run buildexample"
   },
   "author": "",
   "license": "ISC",
