@@ -589,10 +589,11 @@ function createProperty(fastn, generic, key, settings){
         return;
     }
 
-    function update(value, property){
-        var element = generic.getContainerElement();
+    function update(){
+        var element = generic.getContainerElement(),
+            value = property();
 
-        if(!element){
+        if(!element || generic._destroyed){
             return;
         }
 
@@ -622,13 +623,11 @@ function createProperty(fastn, generic, key, settings){
     }
 
     if(!property){
-        property = fastn.property(value, function(){
-            if(generic.element){
-                genericComponent.schedule(property, function(){
-                    update(property._value, property);
-                });
+        property = fastn.property(value, function(value){
+            if(document.contains(generic.element)){
+                genericComponent.schedule(property, update);
             }else{
-                update(property._value, property);
+                update();
             }
         });
     }
