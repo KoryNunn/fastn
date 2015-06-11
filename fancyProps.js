@@ -10,6 +10,12 @@ module.exports = {
         }
         element.className = generic._initialClasses + ' ' + value;
     },
+    display: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.style.display !== 'none';
+        }
+        element.style.display = value ? null : 'none';
+    },
     disabled: function(generic, element, value){
         if(arguments.length === 2){
             return element.hasAttribute('disabled');

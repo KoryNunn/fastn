@@ -7,13 +7,15 @@ module.exports = function(type, fastn){
 
     container.insert = function(child, index){
         var component = child;
-        
+
         if(index && typeof index === 'object'){
             component = Array.prototype.slice.call(arguments);
         }
 
         if(Array.isArray(component)){
-            component.forEach(container.insert);
+            component.forEach(function(component, i){
+                container.insert(component, i + (index || 0));
+            });
             return container;
         }
 
@@ -29,6 +31,7 @@ module.exports = function(type, fastn){
         if(isNaN(index)){
             index = container._children.length;
         }
+
         if(currentIndex !== index){
             if(~currentIndex){
                 container._children.splice(currentIndex, 1);
@@ -96,7 +99,7 @@ module.exports = function(type, fastn){
     };
 
     container.on('render', function(){
-        container.insert(container._children);
+        container.insert(container._children, 0);
     });
 
     container.on('attach', function(data, firm){

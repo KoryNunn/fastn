@@ -26,7 +26,9 @@ var something = fastn('h1', 'Hello World');
 
 something.render();
 
-document.body.appendChild(something.element);
+window.addEventListener('load', function(){
+    document.body.appendChild(something.element);
+});
 ```
 [^ try it](http://korynunn.github.io/fastn/try/#InJldHVybiBmYXN0bignaDEnLCAnSGVsbG8gV29ybGQnKTsi)
 
