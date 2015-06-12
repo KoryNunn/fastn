@@ -868,11 +868,16 @@ function values(object){
 
 module.exports = function(type, fastn, settings, children){
     var list = genericComponent(type, fastn, settings, children),
-        itemsMap = new Map();
+        itemsMap = new Map(),
+        lastTemplate;
 
-    function updateItems(value){
-        var template = list._settings.template,
-            emptyTemplate = list._settings.emptyTemplate;
+    function updateItems(){
+        var value = list.items(),
+            template = list.template(),
+            emptyTemplate = list.emptyTemplate(),
+            newTemplate = lastTemplate !== template;
+            // template = list._settings.template,
+            // emptyTemplate = list._settings.emptyTemplate;
 
         if(!template){
             return;
@@ -884,7 +889,7 @@ module.exports = function(type, fastn, settings, children){
         itemsMap.forEach(function(component, item){
             var currentIndex = currentItems.indexOf(item);
 
-            if(~currentIndex){
+            if(!newTemplate && ~currentIndex){
                 currentItems.splice(currentIndex,1);
             }else{
                 list.removeItem(item, itemsMap);
@@ -925,6 +930,8 @@ module.exports = function(type, fastn, settings, children){
             index++;
         });
 
+        lastTemplate = template;
+
         if(index === 0 && emptyTemplate){
             var child = fastn.toComponent(emptyTemplate(list.scope()));
             if(!child){
@@ -954,6 +961,14 @@ module.exports = function(type, fastn, settings, children){
 
     fastn.property([], settings.itemChanges || 'type structure', updateItems)
         .addTo(list, 'items');
+
+    fastn.property(undefined, 'value')
+        .addTo(list, 'template')
+        .on('change', updateItems);
+
+    fastn.property(undefined, 'value')
+        .addTo(list, 'emptyTemplate')
+        .on('change', updateItems);
 
     return list;
 };
@@ -13888,7 +13903,8 @@ module.exports = function(type, fastn, settings, children){
 
     function update(){
         var value = templater.data(),
-            template = templater._settings.template;
+            // template = templater._settings.template;
+            template = templater.template();
 
         if(!template){
             return;
@@ -13940,6 +13956,10 @@ module.exports = function(type, fastn, settings, children){
     fastn.property(undefined, settings.dataChanges || 'value structure')
         .addTo(templater, 'data')
         .on('update', update);
+
+    fastn.property(undefined, 'value')
+        .addTo(templater, 'template')
+        .on('change', update);
 
     templater.on('destroy', function(){
         if(fastn.isComponent(templater._currentComponent)){

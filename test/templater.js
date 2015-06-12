@@ -207,6 +207,7 @@ test('reuse template same element', function(t){
 
         // Don't re-render or re-insert the template if it is already rendered or inserted
         document.body.replaceChild = function(){
+            debugger
             t.fail();
         };
 
