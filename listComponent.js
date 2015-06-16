@@ -1,6 +1,4 @@
-var crel = require('crel'),
-    Map = require('es6-map'),
-    genericComponent = require('./genericComponent');
+var Map = require('es6-map');
 
 function each(value, fn){
     if(!value || typeof value !== 'object'){
@@ -45,7 +43,9 @@ function values(object){
 }
 
 module.exports = function(type, fastn, settings, children){
-    var list = genericComponent(type, fastn, settings, children),
+    settings.tagName = settings.tagName || 'div';
+    
+    var list = fastn('_generic', settings, children),
         itemsMap = new Map(),
         lastTemplate;
 
@@ -54,8 +54,6 @@ module.exports = function(type, fastn, settings, children){
             template = list.template(),
             emptyTemplate = list.emptyTemplate(),
             newTemplate = lastTemplate !== template;
-            // template = list._settings.template,
-            // emptyTemplate = list._settings.emptyTemplate;
 
         if(!template){
             return;
@@ -128,13 +126,6 @@ module.exports = function(type, fastn, settings, children){
         list.remove(component);
         component.destroy();
         itemsMap.delete(item);
-    };
-
-    list.render = function(){
-        list.element = crel(settings.tagName || 'div');
-        list.emit('render');
-
-        return list;
     };
 
     fastn.property([], settings.itemChanges || 'type structure', updateItems)
