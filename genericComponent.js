@@ -47,12 +47,8 @@ function createProperty(fastn, generic, key, settings){
     }
 
     if(!property){
-        property = fastn.property(value, function(value){
-            if(document.contains(generic.element)){
-                genericComponent.schedule(property, update);
-            }else{
-                update();
-            }
+        property = fastn.property(value, function(){
+            generic.updateProperty(generic, property, update);
         });
     }
 
@@ -110,10 +106,12 @@ function addAutoHandler(generic, key, settings){
 function genericComponent(type, fastn, settings, children){
     var generic = containerComponent(type, fastn);
 
+    generic.updateProperty = genericComponent.updateProperty;
+    generic.createElement = genericComponent.createElement;
     createProperties(fastn, generic, settings);
 
     generic.render = function(){
-        generic.element = crel(type);
+        generic.element = generic.createElement(settings.tagName || type);
 
         generic.emit('render');
 
@@ -141,6 +139,16 @@ function genericComponent(type, fastn, settings, children){
     return generic;
 };
 
-genericComponent.schedule = schedule;
+genericComponent.updateProperty = function(generic, property, update){
+    if(document.contains(generic.element)){
+        schedule(property, update);
+    }else{
+        update();
+    }
+};
+
+genericComponent.createElement = function(tagName){
+    return document.createElement(tagName);
+};
 
 module.exports = genericComponent;

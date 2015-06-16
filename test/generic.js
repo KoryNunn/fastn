@@ -1,6 +1,5 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js')
     createFastn = require('./createFastn');
 
 test('div', function(t){
@@ -13,15 +12,13 @@ test('div', function(t){
 
     div.render();
 
-    doc.ready(function(){
-        document.body.appendChild(div.element);
+    document.body.appendChild(div.element);
 
-        t.equal(document.body.childNodes.length, 1);
-        t.equal(document.body.childNodes[0].tagName, 'DIV');
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'DIV');
 
-        div.element.remove();
-        div.destroy();
-    });
+    div.element.remove();
+    div.destroy();
 
 });
 
@@ -35,16 +32,14 @@ test('special properties - input value - undefined', function(t){
 
     input.render();
 
-    doc.ready(function(){
-        document.body.appendChild(input.element);
+    document.body.appendChild(input.element);
 
-        t.equal(document.body.childNodes.length, 1);
-        t.equal(document.body.childNodes[0].tagName, 'INPUT');
-        t.equal(document.body.childNodes[0].value, '');
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'INPUT');
+    t.equal(document.body.childNodes[0].value, '');
 
-        input.element.remove();
-        input.destroy();
-    });
+    input.element.remove();
+    input.destroy();
 
 });
 
@@ -63,28 +58,26 @@ test('special properties - input value - dates', function(t){
 
     input.render();
 
-    doc.ready(function(){
-        document.body.appendChild(input.element);
+    document.body.appendChild(input.element);
 
-        t.equal(document.body.childNodes.length, 1, 'node added');
-        t.equal(document.body.childNodes[0].tagName, 'INPUT', 'correct tagName');
-        t.equal(document.body.childNodes[0].value, '2015-01-01', 'correct initial input.value');
-        t.deepEqual(input.value(), new Date('2015/01/01'), 'correct initial property()');
+    t.equal(document.body.childNodes.length, 1, 'node added');
+    t.equal(document.body.childNodes[0].tagName, 'INPUT', 'correct tagName');
+    t.equal(document.body.childNodes[0].value, '2015-01-01', 'correct initial input.value');
+    t.deepEqual(input.value(), new Date('2015/01/01'), 'correct initial property()');
 
-        input.value(new Date('2015/02/02'));
+    input.value(new Date('2015/02/02'));
 
-        t.equal(document.body.childNodes[0].value, '2015-02-02', 'correctly set new input.value');
-        t.deepEqual(input.value(), new Date('2015/02/02'), 'correctly set new property()');
+    t.equal(document.body.childNodes[0].value, '2015-02-02', 'correctly set new input.value');
+    t.deepEqual(input.value(), new Date('2015/02/02'), 'correctly set new property()');
 
-        input.element.value = '2016-02-02';
-        input.element.click();
+    input.element.value = '2016-02-02';
+    input.element.click();
 
-        t.equal(document.body.childNodes[0].value, '2016-02-02', 'correctly set new input.value 2');
-        t.deepEqual(input.value(), new Date('2016/02/02'), 'correctly set new property() 2');
+    t.equal(document.body.childNodes[0].value, '2016-02-02', 'correctly set new input.value 2');
+    t.deepEqual(input.value(), new Date('2016/02/02'), 'correctly set new property() 2');
 
-        input.element.remove();
-        input.destroy();
-    });
+    input.element.remove();
+    input.destroy();
 
 });
 
@@ -101,20 +94,18 @@ test('special properties - disabled', function(t){
 
     button.render();
 
-    doc.ready(function(){
-        document.body.appendChild(button.element);
+    document.body.appendChild(button.element);
 
-        t.equal(document.body.childNodes.length, 1);
-        t.equal(document.body.childNodes[0].tagName, 'BUTTON');
-        t.equal(document.body.childNodes[0].getAttribute('disabled'), null);
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'BUTTON');
+    t.equal(document.body.childNodes[0].getAttribute('disabled'), null);
 
-        button.disabled(true);
+    button.disabled(true);
 
-        t.equal(document.body.childNodes[0].getAttribute('disabled'), 'disabled');
+    t.equal(document.body.childNodes[0].getAttribute('disabled'), 'disabled');
 
-        button.element.remove();
-        button.destroy();
-    });
+    button.element.remove();
+    button.destroy();
 
 });
 
@@ -130,19 +121,17 @@ test('special properties - textContent', function(t){
 
     label.render();
 
-    doc.ready(function(){
-        document.body.appendChild(label.element);
+    document.body.appendChild(label.element);
 
-        t.equal(document.body.childNodes.length, 1);
-        t.equal(document.body.childNodes[0].tagName, 'LABEL');
-        t.equal(document.body.childNodes[0].textContent, 'foo');
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'LABEL');
+    t.equal(document.body.childNodes[0].textContent, 'foo');
 
-        label.textContent(null);
+    label.textContent(null);
 
-        t.equal(document.body.childNodes[0].textContent, '');
+    t.equal(document.body.childNodes[0].textContent, '');
 
-        label.element.remove();
-        label.destroy();
-    });
+    label.element.remove();
+    label.destroy();
 
 });

@@ -1,6 +1,5 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js')
     createFastn = require('./createFastn');
 
 test('value data', function(t){
@@ -18,15 +17,12 @@ test('value data', function(t){
 
     template.render();
 
-    doc.ready(function(){
+    document.body.appendChild(template.element);
 
-        document.body.appendChild(template.element);
+    t.equal(document.body.textContent, 'bar');
 
-        t.equal(document.body.innerText, 'bar');
-
-        template.element.remove();
-        template.destroy();
-    });
+    template.element.remove();
+    template.destroy();
 
 
 });
@@ -52,16 +48,12 @@ test('bound data', function(t){
     });
     template.render();
 
-    doc.ready(function(){
+    document.body.appendChild(template.element);
 
-        document.body.appendChild(template.element);
+    t.equal(document.body.textContent, 'bar');
 
-        t.equal(document.body.innerText, 'bar');
-
-        template.element.remove();
-        template.destroy();
-
-    });
+    template.element.remove();
+    template.destroy();
 
 });
 
@@ -87,20 +79,16 @@ test('bound data changing', function(t){
     template.attach(model);
     template.render();
 
-    doc.ready(function(){
+    document.body.appendChild(template.element);
 
-        document.body.appendChild(template.element);
+    t.equal(document.body.textContent, 'bar');
 
-        t.equal(document.body.innerText, 'bar');
+    model.set('data.foo', 'baz');
 
-        model.set('data.foo', 'baz');
+    t.equal(document.body.textContent, 'baz');
 
-        t.equal(document.body.innerText, 'baz');
-
-        template.element.remove();
-        template.destroy();
-
-    });
+    template.element.remove();
+    template.destroy();
 
 });
 
@@ -117,16 +105,12 @@ test('null data', function(t){
 
     template.render();
 
-    doc.ready(function(){
+    document.body.appendChild(template.element);
 
-        document.body.appendChild(template.element);
+    t.equal(document.body.textContent, '');
 
-        t.equal(document.body.innerText, '');
-
-        template.element.remove();
-        template.destroy();
-
-    });
+    template.element.remove();
+    template.destroy();
 
 });
 
@@ -143,16 +127,12 @@ test('undefined template', function(t){
 
     template.render();
 
-    doc.ready(function(){
+    document.body.appendChild(template.element);
 
-        document.body.appendChild(template.element);
+    t.equal(document.body.textContent, '');
 
-        t.equal(document.body.innerText, '');
-
-        template.element.remove();
-        template.destroy();
-
-    });
+    template.element.remove();
+    template.destroy();
 
 });
 
@@ -197,30 +177,26 @@ test('reuse template same element', function(t){
 
     template.render();
 
-    doc.ready(function(){
+    document.body.appendChild(template.element);
 
-        document.body.appendChild(template.element);
+    t.equal(document.body.textContent, 'foo');
 
-        t.equal(document.body.innerText, 'foo');
+    var lastNode = document.body.childNodes[1];
 
-        var lastNode = document.body.childNodes[1];
+    // Don't re-render or re-insert the template if it is already rendered or inserted
+    document.body.replaceChild = function(){
+        debugger
+        t.fail();
+    };
 
-        // Don't re-render or re-insert the template if it is already rendered or inserted
-        document.body.replaceChild = function(){
-            t.fail();
-        };
+    template.data('bar');
 
-        template.data('bar');
+    t.equal(document.body.textContent, 'bar');
 
-        t.equal(document.body.innerText, 'bar');
+    t.equal(lastNode, document.body.childNodes[1]);
 
-        t.equal(lastNode, document.body.childNodes[1]);
-
-        template.element.remove();
-        template.destroy();
-
-    });
-
+    template.element.remove();
+    template.destroy();
 
 });
 
@@ -243,28 +219,23 @@ test('reattach templater with attachTemplates = false', function(t){
 
     template.render();
 
-    doc.ready(function(){
+    document.body.appendChild(template.element);
 
-        document.body.appendChild(template.element);
+    t.equal(document.body.textContent, '1');
 
-        t.equal(document.body.innerText, '1');
-
-        fastn.Model.set(data, 'foo', {
-            bar: 2
-        });
-
-        t.equal(document.body.innerText, '2');
-
-        fastn.Model.set(data, 'foo', {
-            bar: 3
-        });
-
-        t.equal(document.body.innerText, '3');
-
-        template.element.remove();
-        template.destroy();
-
+    fastn.Model.set(data, 'foo', {
+        bar: 2
     });
 
+    t.equal(document.body.textContent, '2');
+
+    fastn.Model.set(data, 'foo', {
+        bar: 3
+    });
+
+    t.equal(document.body.textContent, '3');
+
+    template.element.remove();
+    template.destroy();
 
 });

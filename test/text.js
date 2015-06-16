@@ -1,6 +1,5 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js')
     createFastn = require('./createFastn');
 
 test('value text', function(t){
@@ -13,14 +12,12 @@ test('value text', function(t){
 
     text.render();
 
-    doc.ready(function(){
-        document.body.appendChild(text.element);
+    document.body.appendChild(text.element);
 
-        t.equal(document.body.innerText, 'foo');
+    t.equal(document.body.textContent, 'foo');
 
-        text.element.remove();
-        text.destroy();
-    });
+    text.element.remove();
+    text.destroy();
 
 
 });
@@ -38,14 +35,12 @@ test('bound text', function(t){
     });
     text.render();
 
-    doc.ready(function(){
-        document.body.appendChild(text.element);
+    document.body.appendChild(text.element);
 
-        t.equal(document.body.innerText, 'foo');
+    t.equal(document.body.textContent, 'foo');
 
-        text.element.remove();
-        text.destroy();
-    });
+    text.element.remove();
+    text.destroy();
 
 
 });
@@ -64,19 +59,16 @@ test('bound text changing', function(t){
     text.attach(model);
     text.render();
 
-    doc.ready(function(){
-        document.body.appendChild(text.element);
+    document.body.appendChild(text.element);
 
-        t.equal(document.body.innerText, 'foo');
+    t.equal(document.body.textContent, 'foo');
 
-        model.set('value', 'bar');
+    model.set('value', 'bar');
 
-        t.equal(document.body.innerText, 'bar');
+    t.equal(document.body.textContent, 'bar');
 
-        text.element.remove();
-        text.destroy();
-    });
-
+    text.element.remove();
+    text.destroy();
 
 });
 
@@ -94,18 +86,15 @@ test('auto binding text', function(t){
     parent.attach(model);
     parent.render();
 
-    doc.ready(function(){
-        document.body.appendChild(parent.element);
+    document.body.appendChild(parent.element);
 
-        t.equal(document.body.innerText, 'foo');
+    t.equal(document.body.textContent, 'foo');
 
-        model.set('value', 'bar');
+    model.set('value', 'bar');
 
-        t.equal(document.body.innerText, 'bar');
+    t.equal(document.body.textContent, 'bar');
 
-        parent.element.remove();
-        parent.destroy();
-    });
-
+    parent.element.remove();
+    parent.destroy();
 
 });
