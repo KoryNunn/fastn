@@ -2,9 +2,10 @@ var crel = require('crel'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is');
 
-module.exports = function(type, fastn, settings){
+function textComponent(type, fastn, settings){
     var text = new EventEmitter();
 
+    text.createTextNode = textComponent.createTextNode;
     text.text = fastn.property('');
     text._updateText = function(value){
         if(!text.element){
@@ -14,7 +15,7 @@ module.exports = function(type, fastn, settings){
         text.element.textContent = value;
     };
     text.render = function(){
-        text.element = document.createTextNode('');
+        text.element = text.createTextNode('');
         text.emit('render');
     };
     text.text.on('update', function(value){
@@ -24,3 +25,9 @@ module.exports = function(type, fastn, settings){
 
     return text;
 };
+
+textComponent.createTextNode = function(text){
+    return document.createTextNode(text);
+};
+
+module.exports = textComponent;

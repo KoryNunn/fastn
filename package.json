@@ -1,6 +1,6 @@
 {
   "name": "fastn",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -28,6 +28,7 @@
     "cpjax": "^1.0.0",
     "crel": "^2.1.5",
     "doc-js": "^1.2.0",
+    "dom-lite": "^0.4.0",
     "laidout": "^1.0.0",
     "tape": "^3.2.0",
     "tape-run": "^1.0.0",

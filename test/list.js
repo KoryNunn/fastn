@@ -1,6 +1,5 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js'),
     createFastn = require('./createFastn');
 
 test('value items', function(t){
@@ -18,16 +17,12 @@ test('value items', function(t){
 
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '1234');
 
-        t.equal(document.body.innerText, '1234');
-
-        list.element.remove();
-        list.destroy();
-    });
-
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -50,16 +45,12 @@ test('bound items', function(t){
     });
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '1234');
 
-        t.equal(document.body.innerText, '1234');
-
-        list.element.remove();
-        list.destroy();
-
-    });
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -83,20 +74,16 @@ test('bound items changing', function(t){
     list.attach(model);
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '1234');
 
-        t.equal(document.body.innerText, '1234');
+    model.set('items.1', 5);
 
-        model.set('items.1', 5);
+    t.equal(document.body.textContent, '1534');
 
-        t.equal(document.body.innerText, '1534');
-
-        list.element.remove();
-        list.destroy();
-
-    });
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -119,20 +106,16 @@ test('bound items add', function(t){
     list.attach(model);
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '1234');
 
-        t.equal(document.body.innerText, '1234');
+    model.set('items.4', 5);
 
-        model.set('items.4', 5);
+    t.equal(document.body.textContent, '12345');
 
-        t.equal(document.body.innerText, '12345');
-
-        list.element.remove();
-        list.destroy();
-
-    });
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -155,20 +138,16 @@ test('bound items remove', function(t){
     list.attach(model);
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '1234');
 
-        t.equal(document.body.innerText, '1234');
+    model.remove('items.3');
 
-        model.remove('items.3');
+    t.equal(document.body.textContent, '123');
 
-        t.equal(document.body.innerText, '123');
-
-        list.element.remove();
-        list.destroy();
-
-    });
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -187,16 +166,12 @@ test('null items', function(t){
 
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '');
 
-        t.equal(document.body.innerText, '');
-
-        list.element.remove();
-        list.destroy();
-    });
-
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -213,16 +188,12 @@ test('null template', function(t){
 
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '');
 
-        t.equal(document.body.innerText, '');
-
-        list.element.remove();
-        list.destroy();
-    });
-
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -245,20 +216,16 @@ test('array to undefined', function(t){
     list.attach(model);
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '1234');
 
-        t.equal(document.body.innerText, '1234');
+    model.remove('items');
 
-        model.remove('items');
+    t.equal(document.body.textContent, '');
 
-        t.equal(document.body.innerText, '');
-
-        list.element.remove();
-        list.destroy();
-
-    });
+    list.element.remove();
+    list.destroy();
 
 });
 
@@ -282,28 +249,23 @@ test('reattach list with templates', function(t){
 
     list.render();
 
-    doc.ready(function(){
+    document.body.appendChild(list.element);
 
-        document.body.appendChild(list.element);
+    t.equal(document.body.textContent, '1');
 
-        t.equal(document.body.innerText, '1');
+    fastn.Model.set(data, 'foo', [{
+        a: 2
+    }]);
 
-        fastn.Model.set(data, 'foo', [{
-            a: 2
-        }]);
+    t.equal(document.body.textContent, '2');
 
-        t.equal(document.body.innerText, '2');
+    fastn.Model.set(data, 'foo', [{
+        a: 3
+    }]);
 
-        fastn.Model.set(data, 'foo', [{
-            a: 3
-        }]);
+    t.equal(document.body.textContent, '3');
 
-        t.equal(document.body.innerText, '3');
-
-        list.element.remove();
-        list.destroy();
-
-    });
-
+    list.element.remove();
+    list.destroy();
 
 });

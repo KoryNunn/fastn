@@ -1,6 +1,5 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js')
     createFastn = require('./createFastn');
 
 test('children are added', function(t){
@@ -16,15 +15,13 @@ test('children are added', function(t){
 
     parent.render();
 
-    doc.ready(function(){
-        document.body.appendChild(parent.element);
+    document.body.appendChild(parent.element);
 
-        t.equal(document.body.childNodes.length, 1);
-        t.equal(parent.element.childNodes.length, 1);
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(parent.element.childNodes.length, 1);
 
-        parent.element.remove();
-        parent.destroy();
-    });
+    parent.element.remove();
+    parent.destroy();
 
 });
 
@@ -43,14 +40,12 @@ test('undefined or null children are ignored', function(t){
 
     parent.render();
 
-    doc.ready(function(){
-        document.body.appendChild(parent.element);
+    document.body.appendChild(parent.element);
 
-        t.equal(parent.element.childNodes.length, 1);
+    t.equal(parent.element.childNodes.length, 1);
 
-        parent.element.remove();
-        parent.destroy();
-    });
+    parent.element.remove();
+    parent.destroy();
 
 });
 
@@ -67,13 +62,11 @@ test('flatten children', function(t){
 
     parent.render();
 
-    doc.ready(function(){
-        document.body.appendChild(parent.element);
+    document.body.appendChild(parent.element);
 
-        t.equal(parent.element.childNodes.length, 3);
+    t.equal(parent.element.childNodes.length, 3);
 
-        parent.element.remove();
-        parent.destroy();
-    });
+    parent.element.remove();
+    parent.destroy();
 
 });

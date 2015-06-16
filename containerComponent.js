@@ -1,5 +1,4 @@
-var crel = require('crel'),
-    EventEmitter = require('events').EventEmitter,
+var EventEmitter = require('events').EventEmitter,
     is = require('./is');
 
 module.exports = function(type, fastn){

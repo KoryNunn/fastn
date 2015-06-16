@@ -16,7 +16,6 @@ module.exports = function(type, fastn, settings, children){
 
     function update(){
         var value = templater.data(),
-            // template = templater._settings.template;
             template = templater.template();
 
         if(!template){

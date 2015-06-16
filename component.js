@@ -45,16 +45,30 @@ function forEachProperty(component, call, args){
 
 function inflateProperties(component, settings){
     for(var key in settings){
+        var setting = settings[key],
+            property = component[key];
+
         if(is.property(settings[key])){
-            component[key] = settings[key];
-        }else if(is.property(component[key])){
-            if(is.binding(settings[key])){
-                component[key].binding(settings[key]);
-            }else{
-                component[key](settings[key]);
+
+            // The componet already has a property at this key.
+            // Destroy it.
+            if(is.property(property)){
+                property.destroy();
             }
-            component[key].addTo(component, key);
+
+            setting.addTo(component, key);
+
+        }else if(is.property(property)){
+
+            if(is.binding(setting)){
+                property.binding(setting);
+            }else{
+                property(setting);
+            }
+
+            property.addTo(component, key);
         }
+
     }
 }
 
@@ -77,6 +91,9 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     if(is.component(component)){
         // The component constructor returned a ready-to-go component.
+
+        inflateProperties(component, settings);
+
         return component;
     }
 
