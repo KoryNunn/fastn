@@ -232,16 +232,30 @@ function forEachProperty(component, call, args){
 
 function inflateProperties(component, settings){
     for(var key in settings){
+        var setting = settings[key],
+            property = component[key];
+
         if(is.property(settings[key])){
-            component[key] = settings[key];
-        }else if(is.property(component[key])){
-            if(is.binding(settings[key])){
-                component[key].binding(settings[key]);
-            }else{
-                component[key](settings[key]);
+
+            // The componet already has a property at this key.
+            // Destroy it.
+            if(is.property(property)){
+                property.destroy();
             }
-            component[key].addTo(component, key);
+
+            setting.addTo(component, key);
+
+        }else if(is.property(property)){
+
+            if(is.binding(setting)){
+                property.binding(setting);
+            }else{
+                property(setting);
+            }
+
+            property.addTo(component, key);
         }
+
     }
 }
 
@@ -264,6 +278,9 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     if(is.component(component)){
         // The component constructor returned a ready-to-go component.
+
+        inflateProperties(component, settings);
+
         return component;
     }
 
@@ -375,8 +392,7 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 };
 
 },{"./binding":1,"./is":8}],3:[function(require,module,exports){
-var crel = require('crel'),
-    EventEmitter = require('events').EventEmitter,
+var EventEmitter = require('events').EventEmitter,
     is = require('./is');
 
 module.exports = function(type, fastn){
@@ -497,7 +513,7 @@ module.exports = function(type, fastn){
 
     return container;
 };
-},{"./is":8,"crel":16,"events":191}],4:[function(require,module,exports){
+},{"./is":8,"events":191}],4:[function(require,module,exports){
 var setify = require('setify');
 
 module.exports = {
@@ -632,12 +648,8 @@ function createProperty(fastn, generic, key, settings){
     }
 
     if(!property){
-        property = fastn.property(value, function(value){
-            if(document.contains(generic.element)){
-                genericComponent.schedule(property, update);
-            }else{
-                update();
-            }
+        property = fastn.property(value, function(){
+            generic.updateProperty(generic, property, update);
         });
     }
 
@@ -695,10 +707,12 @@ function addAutoHandler(generic, key, settings){
 function genericComponent(type, fastn, settings, children){
     var generic = containerComponent(type, fastn);
 
+    generic.updateProperty = genericComponent.updateProperty;
+    generic.createElement = genericComponent.createElement;
     createProperties(fastn, generic, settings);
 
     generic.render = function(){
-        generic.element = crel(type);
+        generic.element = generic.createElement(settings.tagName || type);
 
         generic.emit('render');
 
@@ -726,7 +740,17 @@ function genericComponent(type, fastn, settings, children){
     return generic;
 };
 
-genericComponent.schedule = schedule;
+genericComponent.updateProperty = function(generic, property, update){
+    if(document.contains(generic.element)){
+        schedule(property, update);
+    }else{
+        update();
+    }
+};
+
+genericComponent.createElement = function(tagName){
+    return document.createElement(tagName);
+};
 
 module.exports = genericComponent;
 },{"./containerComponent":3,"./fancyProps":4,"./schedule":180,"crel":16}],7:[function(require,module,exports){
@@ -820,9 +844,7 @@ module.exports = {
     property: isProperty
 };
 },{}],9:[function(require,module,exports){
-var crel = require('crel'),
-    Map = require('es6-map'),
-    genericComponent = require('./genericComponent');
+var Map = require('es6-map');
 
 function each(value, fn){
     if(!value || typeof value !== 'object'){
@@ -867,7 +889,9 @@ function values(object){
 }
 
 module.exports = function(type, fastn, settings, children){
-    var list = genericComponent(type, fastn, settings, children),
+    settings.tagName = settings.tagName || 'div';
+    
+    var list = fastn('_generic', settings, children),
         itemsMap = new Map(),
         lastTemplate;
 
@@ -876,8 +900,6 @@ module.exports = function(type, fastn, settings, children){
             template = list.template(),
             emptyTemplate = list.emptyTemplate(),
             newTemplate = lastTemplate !== template;
-            // template = list._settings.template,
-            // emptyTemplate = list._settings.emptyTemplate;
 
         if(!template){
             return;
@@ -952,13 +974,6 @@ module.exports = function(type, fastn, settings, children){
         itemsMap.delete(item);
     };
 
-    list.render = function(){
-        list.element = crel(settings.tagName || 'div');
-        list.emit('render');
-
-        return list;
-    };
-
     fastn.property([], settings.itemChanges || 'type structure', updateItems)
         .addTo(list, 'items');
 
@@ -972,7 +987,7 @@ module.exports = function(type, fastn, settings, children){
 
     return list;
 };
-},{"./genericComponent":6,"crel":16,"es6-map":115}],10:[function(require,module,exports){
+},{"es6-map":115}],10:[function(require,module,exports){
 /**
 
     This function is used to add EventEmitter methods to functions,
@@ -13903,7 +13918,6 @@ module.exports = function(type, fastn, settings, children){
 
     function update(){
         var value = templater.data(),
-            // template = templater._settings.template;
             template = templater.template();
 
         if(!template){
@@ -13980,9 +13994,10 @@ var crel = require('crel'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is');
 
-module.exports = function(type, fastn, settings){
+function textComponent(type, fastn, settings){
     var text = new EventEmitter();
 
+    text.createTextNode = textComponent.createTextNode;
     text.text = fastn.property('');
     text._updateText = function(value){
         if(!text.element){
@@ -13992,7 +14007,7 @@ module.exports = function(type, fastn, settings){
         text.element.textContent = value;
     };
     text.render = function(){
-        text.element = document.createTextNode('');
+        text.element = text.createTextNode('');
         text.emit('render');
     };
     text.text.on('update', function(value){
@@ -14002,6 +14017,12 @@ module.exports = function(type, fastn, settings){
 
     return text;
 };
+
+textComponent.createTextNode = function(text){
+    return document.createTextNode(text);
+};
+
+module.exports = textComponent;
 },{"./is":8,"crel":16,"events":191}],183:[function(require,module,exports){
 var fastn = require('./fastn'),
     cpjax = require('cpjax'),
