@@ -1,5 +1,7 @@
 # fastn
 
+[![Join the chat at https://gitter.im/KoryNunn/fastn](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/KoryNunn/fastn?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Create ultra-lightweight UI components
 
 ![fastn](http://korynunn.github.io/fastn/fastn-sml.png)
