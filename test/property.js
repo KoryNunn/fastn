@@ -28,45 +28,53 @@ test('bound property', function(t){
 
     var binding = createBinding('foo');
 
-    t.equal(property(), undefined);
+    t.equal(property(), undefined, 'No initial value');
 
     property('bar');
 
-    t.equal(property(), 'bar');
+    t.equal(property(), 'bar', 'bar set');
 
     property.binding(binding);
 
-    t.equal(property(), 'bar');
+    t.equal(property(), undefined, 'bar overridden by binding');
 
     binding('baz');
 
-    t.equal(property(), 'baz');
+    t.equal(property(), 'baz', 'baz set via binding');
 
     property.on('change', function(value){
-        t.equal(value, 'foo');
+        t.equal(value, 'foo', 'property changed');
     });
 
     binding('foo');
 });
 
 test('bound property with model', function(t){
-    t.plan(1);
+    t.plan(3);
 
-    var data = {},
-        model = new Enti(data);
+    var data = {
+            foo: 'bar'
+        },
+        model = new Enti(data),
+        currentValue;
 
     var property = createProperty();
 
+    property.on('change', function(value){
+        t.equal(value, currentValue);
+    });
+
     var binding = createBinding('foo');
 
-    binding.attach(model);
+    binding('baz');
+    currentValue = 'baz';
 
     property.binding(binding);
 
-    property.on('change', function(value){
-        t.equal(value, 'foo');
-    });
+    currentValue = 'bar';
+    property.attach(model);
 
+    currentValue = 'foo';
     model.set('foo', 'foo');
 });
 

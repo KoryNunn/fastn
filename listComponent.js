@@ -49,6 +49,8 @@ module.exports = function(type, fastn, settings, children){
         itemsMap = new Map(),
         lastTemplate;
 
+    list._type = 'list';
+
     function updateItems(){
         var value = list.items(),
             template = list.template(),

@@ -6,6 +6,8 @@ module.exports = function(type, fastn, settings, children){
     var templater = new EventEmitter(),
         lastValue = {},
         itemModel = new fastn.Model({});
+        
+    templater._type = 'templater';
 
     function replaceElement(element){
         if(templater.element && templater.element.parentNode){
@@ -65,9 +67,8 @@ module.exports = function(type, fastn, settings, children){
         templater.emit('render');
     };
 
-    fastn.property(undefined, settings.dataChanges || 'value structure')
-        .addTo(templater, 'data')
-        .on('update', update);
+    fastn.property(undefined, settings.dataChanges || 'value structure', update)
+        .addTo(templater, 'data');
 
     fastn.property(undefined, 'value')
         .addTo(templater, 'template')

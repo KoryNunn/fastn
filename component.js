@@ -68,7 +68,6 @@ function inflateProperties(component, settings){
 
             property.addTo(component, key);
         }
-
     }
 }
 
@@ -109,7 +108,6 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.detach = function(firm){
         binding.detach(firm);
-        component.emit('detach', 1);
         return component;
     };
 
@@ -139,6 +137,10 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
     }
 
+    function emitDetach(){
+        component.emit('detach', 1);
+    }
+
     component.binding = function(newBinding){
         if(!arguments.length){
             return binding;
@@ -157,6 +159,8 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
         binding.on('change', emitAttach);
         emitAttach(binding());
+
+        binding.on('detach', emitDetach);
 
         return component;
     };
