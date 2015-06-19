@@ -1,6 +1,6 @@
 {
   "name": "fastn",
-  "version": "1.12.0",
+  "version": "1.12.2",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -15,7 +15,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "crel": "^2.1.5",
     "enti": "^2.4.3",
     "es6-map": "^0.1.1",
     "flat-merge": "^1.0.0",

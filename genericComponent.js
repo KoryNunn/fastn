@@ -1,5 +1,4 @@
-var crel = require('crel'),
-    containerComponent = require('./containerComponent'),
+var containerComponent = require('./containerComponent'),
     schedule = require('./schedule'),
     fancyProps = require('./fancyProps');
 
@@ -106,6 +105,8 @@ function addAutoHandler(generic, key, settings){
 function genericComponent(type, fastn, settings, children){
     var generic = containerComponent(type, fastn);
 
+    generic._initialClasses = '';
+
     generic.updateProperty = genericComponent.updateProperty;
     generic.createElement = genericComponent.createElement;
     createProperties(fastn, generic, settings);
@@ -140,7 +141,7 @@ function genericComponent(type, fastn, settings, children){
 };
 
 genericComponent.updateProperty = function(generic, property, update){
-    if(document.contains(generic.element)){
+    if(typeof document !== 'undefined' && document.contains(generic.element)){
         schedule(property, update);
     }else{
         update();

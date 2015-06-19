@@ -13,7 +13,7 @@ function createProperty(currentValue, changes, updater){
 
     var binding,
         model,
-        attaching,
+        attachChange,
         previous = new WhatChanged(currentValue, changes || 'value type reference keys');
 
     function property(value){
@@ -21,15 +21,12 @@ function createProperty(currentValue, changes, updater){
             return binding && binding() || property._value;
         }
 
-        if(attaching){
-            return property;
-        }
-
-        if(!Object.keys(previous.update(value)).length){
-            return property;
-        }
-
         if(!property._destroyed){
+
+            if(!Object.keys(previous.update(value)).length){
+                return property;
+            }
+
             property._value = value;
 
             if(binding){
@@ -72,7 +69,7 @@ function createProperty(currentValue, changes, updater){
             property.attach(model, property._firm);
         }
         binding.on('change', property);
-        property.update();
+        property(binding());
         return property;
     };
     property.attach = function(object, firm){
@@ -92,13 +89,13 @@ function createProperty(currentValue, changes, updater){
 
         if(binding){
             model = object;
-            attaching = true;
             binding.attach(object, 1);
-            attaching = false;
-            property(binding());
-        }else{
-            property.update();
         }
+
+        if(property._events && 'attach' in property._events){
+            property.emit('attach', object, 1);
+        }
+
         return property;
     };
     property.detach = function(firm){
@@ -111,7 +108,11 @@ function createProperty(currentValue, changes, updater){
             binding.detach(1);
             model = null;
         }
-        property.update();
+
+        if(property._events && 'detach' in property._events){
+            property.emit('detach', 1);
+        }
+
         return property;
     };
     property.update = function(){
