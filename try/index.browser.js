@@ -255,7 +255,6 @@ function inflateProperties(component, settings){
 
             property.addTo(component, key);
         }
-
     }
 }
 
@@ -296,7 +295,6 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
     component.detach = function(firm){
         binding.detach(firm);
-        component.emit('detach', 1);
         return component;
     };
 
@@ -326,6 +324,10 @@ module.exports = function createComponent(type, fastn, settings, children, compo
         }
     }
 
+    function emitDetach(){
+        component.emit('detach', 1);
+    }
+
     component.binding = function(newBinding){
         if(!arguments.length){
             return binding;
@@ -344,6 +346,8 @@ module.exports = function createComponent(type, fastn, settings, children, compo
 
         binding.on('change', emitAttach);
         emitAttach(binding());
+
+        binding.on('detach', emitDetach);
 
         return component;
     };
@@ -599,8 +603,7 @@ module.exports = function(entity, firm){
     }
 };
 },{}],6:[function(require,module,exports){
-var crel = require('crel'),
-    containerComponent = require('./containerComponent'),
+var containerComponent = require('./containerComponent'),
     schedule = require('./schedule'),
     fancyProps = require('./fancyProps');
 
@@ -707,6 +710,8 @@ function addAutoHandler(generic, key, settings){
 function genericComponent(type, fastn, settings, children){
     var generic = containerComponent(type, fastn);
 
+    generic._initialClasses = '';
+
     generic.updateProperty = genericComponent.updateProperty;
     generic.createElement = genericComponent.createElement;
     createProperties(fastn, generic, settings);
@@ -741,7 +746,7 @@ function genericComponent(type, fastn, settings, children){
 };
 
 genericComponent.updateProperty = function(generic, property, update){
-    if(document.contains(generic.element)){
+    if(typeof document !== 'undefined' && document.contains(generic.element)){
         schedule(property, update);
     }else{
         update();
@@ -753,7 +758,7 @@ genericComponent.createElement = function(tagName){
 };
 
 module.exports = genericComponent;
-},{"./containerComponent":3,"./fancyProps":4,"./schedule":180,"crel":16}],7:[function(require,module,exports){
+},{"./containerComponent":3,"./fancyProps":4,"./schedule":180}],7:[function(require,module,exports){
 var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
@@ -894,6 +899,8 @@ module.exports = function(type, fastn, settings, children){
     var list = fastn('_generic', settings, children),
         itemsMap = new Map(),
         lastTemplate;
+
+    list._type = 'list';
 
     function updateItems(){
         var value = list.items(),
@@ -11057,8 +11064,12 @@ function trackPath(enti, eventName){
 
     trackedPaths.entis.add(enti);
 
-    var handler = function(value, event, emitKey){
+    var handler = function(event, emitKey){
         trackedPaths.entis.forEach(function(enti){
+            if(enti._emittedEvents[eventName] === emitKey){
+                return;
+            }
+
             if(enti._model !== object){
                 trackedPaths.entis.delete(enti);
                 if(trackedPaths.entis.size === 0){
@@ -11069,15 +11080,11 @@ function trackPath(enti, eventName){
                 }
                 return;
             }
-            if(enti._emittedEvents[eventName] === emitKey){
-                return;
-            }
+            
             enti._emittedEvents[eventName] = emitKey;
 
-            if(isDeep(eventName) && (isFilterPath(eventName) || !isWildcardPath(eventName))){
-                enti.emit(eventName, enti.get(getTargetKey(eventName)), event);
-                return;
-            }
+            var targetKey = getTargetKey(eventName),
+                value = isWildcardPath(targetKey) ? undefined : enti.get(targetKey);
 
             enti.emit(eventName, value, event);
         });
@@ -11126,7 +11133,7 @@ function emitEvent(object, key, value, emitKey){
     if(trackedKeys[key]){
         trackedKeys[key].forEach(function(handler){
             if(trackedKeys[key].has(handler)){
-                handler(value, event, emitKey);
+                handler(event, emitKey);
             }
         });
     }
@@ -11134,7 +11141,7 @@ function emitEvent(object, key, value, emitKey){
     if(trackedKeys['*']){
         trackedKeys['*'].forEach(function(handler){
             if(trackedKeys['*'].has(handler)){
-                handler(value, event, emitKey);
+                handler(event, emitKey);
             }
         });
     }
@@ -13723,7 +13730,7 @@ function createProperty(currentValue, changes, updater){
 
     var binding,
         model,
-        attaching,
+        attachChange,
         previous = new WhatChanged(currentValue, changes || 'value type reference keys');
 
     function property(value){
@@ -13731,15 +13738,12 @@ function createProperty(currentValue, changes, updater){
             return binding && binding() || property._value;
         }
 
-        if(attaching){
-            return property;
-        }
-
-        if(!Object.keys(previous.update(value)).length){
-            return property;
-        }
-
         if(!property._destroyed){
+
+            if(!Object.keys(previous.update(value)).length){
+                return property;
+            }
+
             property._value = value;
 
             if(binding){
@@ -13782,7 +13786,7 @@ function createProperty(currentValue, changes, updater){
             property.attach(model, property._firm);
         }
         binding.on('change', property);
-        property.update();
+        property(binding());
         return property;
     };
     property.attach = function(object, firm){
@@ -13802,13 +13806,13 @@ function createProperty(currentValue, changes, updater){
 
         if(binding){
             model = object;
-            attaching = true;
             binding.attach(object, 1);
-            attaching = false;
-            property(binding());
-        }else{
-            property.update();
         }
+
+        if(property._events && 'attach' in property._events){
+            property.emit('attach', object, 1);
+        }
+
         return property;
     };
     property.detach = function(firm){
@@ -13821,7 +13825,11 @@ function createProperty(currentValue, changes, updater){
             binding.detach(1);
             model = null;
         }
-        property.update();
+
+        if(property._events && 'detach' in property._events){
+            property.emit('detach', 1);
+        }
+
         return property;
     };
     property.update = function(){
@@ -13908,6 +13916,8 @@ module.exports = function(type, fastn, settings, children){
     var templater = new EventEmitter(),
         lastValue = {},
         itemModel = new fastn.Model({});
+        
+    templater._type = 'templater';
 
     function replaceElement(element){
         if(templater.element && templater.element.parentNode){
@@ -13967,9 +13977,8 @@ module.exports = function(type, fastn, settings, children){
         templater.emit('render');
     };
 
-    fastn.property(undefined, settings.dataChanges || 'value structure')
-        .addTo(templater, 'data')
-        .on('update', update);
+    fastn.property(undefined, settings.dataChanges || 'value structure', update)
+        .addTo(templater, 'data');
 
     fastn.property(undefined, 'value')
         .addTo(templater, 'template')
