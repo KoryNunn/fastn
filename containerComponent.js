@@ -1,8 +1,7 @@
-var EventEmitter = require('events').EventEmitter,
-    is = require('./is');
+var EventEmitter = require('events').EventEmitter;
 
-module.exports = function(type, fastn){
-    var container = new EventEmitter();
+module.exports = function(type, fastn, settings, children){
+    var container = fastn.base(type, settings, children);
 
     container.insert = function(child, index){
         var component = child;
@@ -21,7 +20,7 @@ module.exports = function(type, fastn){
         var currentIndex = container._children.indexOf(component),
             newComponent = fastn.toComponent(component);
 
-        if(!is.component(component)){
+        if(!fastn.isComponent(component)){
             if(~currentIndex){
                 container._children.splice(currentIndex, 1, newComponent);
             }

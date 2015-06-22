@@ -32,6 +32,7 @@
     "laidout": "^1.0.0",
     "tape": "^3.2.0",
     "tape-run": "^1.0.0",
-    "uglifyify": "^3.0.1"
+    "uglifyify": "^3.0.1",
+    "flat-merge": "^1.0.0"
   }
 }

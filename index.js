@@ -2,6 +2,7 @@ var merge = require('flat-merge'),
     createComponent = require('./component'),
     createProperty = require('./property'),
     createBinding = require('./binding'),
+    BaseComponent = require('./baseComponent'),
     crel = require('crel'),
     Enti = require('enti'),
     is = require('./is');
@@ -17,12 +18,12 @@ module.exports = function(components, debug){
         var settings = args[1],
             childrenIndex = 2;
 
-        if(is.component(args[1]) || Array.isArray(args[1]) || typeof args[1] !== 'object' || !args[1]){
+        if(is.component(args[1]) || crel.isNode(args[1]) || Array.isArray(args[1]) || typeof args[1] !== 'object' || !args[1]){
             childrenIndex--;
             settings = null;
         }
 
-        return createComponent(type, fastn, settings, args.slice(childrenIndex), components);
+        return createComponent(type, fastn, settings, args.slice(childrenIndex));
     }
 
     fastn.debug = debug;
@@ -54,7 +55,12 @@ module.exports = function(components, debug){
     fastn.isDefaultBinding = is.defaultBinding;
     fastn.isBindingObject = is.bindingObject;
     fastn.isProperty = is.property;
+    fastn.components = components;
     fastn.Model = Enti;
+
+    fastn.base = function(type, settings, children){
+        return new BaseComponent(type, fastn, settings, children);
+    };
 
     return fastn;
 };
