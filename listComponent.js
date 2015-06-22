@@ -44,12 +44,17 @@ function values(object){
 
 module.exports = function(type, fastn, settings, children){
     settings.tagName = settings.tagName || 'div';
-    
-    var list = fastn('_generic', settings, children),
-        itemsMap = new Map(),
-        lastTemplate;
 
-    list._type = 'list';
+    var list;
+
+    if(!fastn.components._generic){
+        list = fastn.base(type, settings, children);
+    }else{
+        list = fastn.components._generic(type, fastn, settings, children);
+    }
+    
+    var itemsMap = new Map(),
+        lastTemplate;
 
     function updateItems(){
         var value = list.items(),

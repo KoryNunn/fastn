@@ -2,8 +2,8 @@ var crel = require('crel'),
     EventEmitter = require('events').EventEmitter,
     is = require('./is');
 
-function textComponent(type, fastn, settings){
-    var text = new EventEmitter();
+function textComponent(type, fastn, settings, children){
+    var text = fastn.base(type, settings, children);
 
     text.createTextNode = textComponent.createTextNode;
     text.text = fastn.property('');

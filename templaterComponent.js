@@ -3,12 +3,10 @@ var crel = require('crel'),
     genericComponent = require('./genericComponent');
 
 module.exports = function(type, fastn, settings, children){
-    var templater = new EventEmitter(),
+    var templater = fastn.base(type, settings, children);
         lastValue = {},
         itemModel = new fastn.Model({});
         
-    templater._type = 'templater';
-
     function replaceElement(element){
         if(templater.element && templater.element.parentNode){
             templater.element.parentNode.replaceChild(element, templater.element);
