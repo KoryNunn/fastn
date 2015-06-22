@@ -101,7 +101,7 @@ if the type passed to fastn does not exactly match any component it knows about,
 
 ## Default components
 
-fastn includes 4 extremely simple default components that render as DOM. It is not neccisary to use them, and you can replace them with your own to render to anything you want to.
+fastn includes 4 extremely simple default components that render as DOM nodes. It is not neccisary to use them, and you can replace them with your own to render to anything you want to.
 
 ### textComponent
 

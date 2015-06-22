@@ -103,7 +103,7 @@ function addAutoHandler(generic, key, settings){
 }
 
 function genericComponent(type, fastn, settings, children){
-    var generic = containerComponent(type, fastn);
+    var generic = containerComponent(type, fastn, settings, children);
 
     generic._initialClasses = '';
 
