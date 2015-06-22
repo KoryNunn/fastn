@@ -24,7 +24,7 @@ function forEachProperty(component, call, args){
     }
 }
 
-function BaseComponent(type, fastn, settings, children){
+function FastnComponent(type, fastn, settings, children){
     var component = this,
         scope = new fastn.Model(false),
         binding = fastn.binding('.');
@@ -135,7 +135,7 @@ function BaseComponent(type, fastn, settings, children){
         });
     }
 }
-BaseComponent.prototype = Object.create(EventEmitter.prototype);
-BaseComponent.prototype.constructor = BaseComponent;
+FastnComponent.prototype = Object.create(EventEmitter.prototype);
+FastnComponent.prototype.constructor = FastnComponent;
 
-module.exports = BaseComponent;
+module.exports = FastnComponent;
