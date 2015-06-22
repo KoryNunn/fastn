@@ -163,3 +163,26 @@ test('preexisting element', function(t){
     label.destroy();
 
 });
+
+test('DOM children', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn();
+
+    var label = fastn('div',
+            crel('h1', 'DOM Child')
+        );
+
+    label.render();
+
+    document.body.appendChild(label.element);
+
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'DIV');
+    t.equal(document.body.childNodes[0].textContent, 'DOM Child');
+
+    label.element.remove();
+    label.destroy();
+
+});
