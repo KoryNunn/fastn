@@ -7,7 +7,12 @@ module.exports = function createFastn(){
         update();
     };
 
-    genericComponent.createElement = document.createElement.bind(document);
+    genericComponent.createElement = function(tagName){
+        if(tagName instanceof Node){
+            return tagName;
+        }
+        return document.createElement(tagName);
+    };
 
     textComponent.createTextNode = document.createTextNode.bind(document);
 

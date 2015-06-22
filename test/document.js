@@ -4,6 +4,7 @@ module.exports = function(){
 
     document = domLite.document;
     document.body = document.createElement('body');
+    Node = domLite.Node;
 
     Object.defineProperty(domLite.HTMLElement.prototype, 'value', {
         get: function() {
