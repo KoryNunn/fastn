@@ -149,6 +149,9 @@ genericComponent.updateProperty = function(generic, property, update){
 };
 
 genericComponent.createElement = function(tagName){
+    if(tagName instanceof Node){
+        return tagName;
+    }
     return document.createElement(tagName);
 };
 

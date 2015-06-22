@@ -1,5 +1,5 @@
 var test = require('tape'),
-    Enti = require('enti'),
+    crel = require('crel'),
     createFastn = require('./createFastn');
 
 test('div', function(t){
@@ -118,6 +118,34 @@ test('special properties - textContent', function(t){
     var label = fastn('label', {
         textContent: 'foo'
     });
+
+    label.render();
+
+    document.body.appendChild(label.element);
+
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'LABEL');
+    t.equal(document.body.childNodes[0].textContent, 'foo');
+
+    label.textContent(null);
+
+    t.equal(document.body.childNodes[0].textContent, '');
+
+    label.element.remove();
+    label.destroy();
+
+});
+
+test('preexisting element', function(t){
+
+    t.plan(4);
+
+    var fastn = createFastn();
+
+    var element = crel('label'),
+        label = fastn(element, {
+            textContent: 'foo'
+        });
 
     label.render();
 
