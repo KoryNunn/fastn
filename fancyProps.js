@@ -5,10 +5,13 @@ module.exports = {
         if(arguments.length === 2){
             return element.className.slice(generic._initialClasses.length);
         }
-        if(Array.isArray(value)){
-            value = value.join(' ');
+        
+        var classes = generic._initialClasses ? generic._initialClasses.split(' ') : [];
+        if(value != null){
+            classes = classes.concat(Array.isArray(value) ? value : ('' + value).split(' '));
         }
-        element.className = generic._initialClasses + ' ' + value;
+
+        element.className = classes.join(' ');
     },
     display: function(generic, element, value){
         if(arguments.length === 2){

@@ -33,7 +33,6 @@ function FastnComponent(type, fastn, settings, children){
 
     component._type = type;
     component._settings = settings || {};
-    component._fastn_component = true;
     component._children = flatten(children || []);
 
     component.attach = function(object, firm){
@@ -85,7 +84,7 @@ function FastnComponent(type, fastn, settings, children){
             newBinding = fastn.binding(newBinding);
         }
 
-        if(binding){
+        if(binding && binding !== newBinding){
             newBinding.attach(binding._model, binding._firm);
             binding.removeListener('change', emitAttach);
         }
@@ -137,5 +136,6 @@ function FastnComponent(type, fastn, settings, children){
 }
 FastnComponent.prototype = Object.create(EventEmitter.prototype);
 FastnComponent.prototype.constructor = FastnComponent;
+FastnComponent.prototype._fastn_component = true;
 
 module.exports = FastnComponent;

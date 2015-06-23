@@ -93,7 +93,7 @@ function createBinding(path, more){
     };
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
-    binding._arguments = Array.prototype.slice.call(arguments);
+    binding._arguments = [path];
     binding._model = new Enti(false);
     binding._fastn_binding = path;
     binding._firm = 1;
