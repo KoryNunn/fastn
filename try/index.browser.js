@@ -34,7 +34,6 @@ function FastnComponent(type, fastn, settings, children){
 
     component._type = type;
     component._settings = settings || {};
-    component._fastn_component = true;
     component._children = flatten(children || []);
 
     component.attach = function(object, firm){
@@ -86,7 +85,7 @@ function FastnComponent(type, fastn, settings, children){
             newBinding = fastn.binding(newBinding);
         }
 
-        if(binding){
+        if(binding && binding !== newBinding){
             newBinding.attach(binding._model, binding._firm);
             binding.removeListener('change', emitAttach);
         }
@@ -138,6 +137,7 @@ function FastnComponent(type, fastn, settings, children){
 }
 FastnComponent.prototype = Object.create(EventEmitter.prototype);
 FastnComponent.prototype.constructor = FastnComponent;
+FastnComponent.prototype._fastn_component = true;
 
 module.exports = FastnComponent;
 },{"./is":9,"events":192}],2:[function(require,module,exports){
@@ -236,7 +236,7 @@ function createBinding(path, more){
     };
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
-    binding._arguments = Array.prototype.slice.call(arguments);
+    binding._arguments = [path];
     binding._model = new Enti(false);
     binding._fastn_binding = path;
     binding._firm = 1;
@@ -524,10 +524,13 @@ module.exports = {
         if(arguments.length === 2){
             return element.className.slice(generic._initialClasses.length);
         }
-        if(Array.isArray(value)){
-            value = value.join(' ');
+        
+        var classes = generic._initialClasses ? generic._initialClasses.split(' ') : [];
+        if(value != null){
+            classes = classes.concat(Array.isArray(value) ? value : ('' + value).split(' '));
         }
-        element.className = generic._initialClasses + ' ' + value;
+
+        element.className = classes.join(' ');
     },
     display: function(generic, element, value){
         if(arguments.length === 2){

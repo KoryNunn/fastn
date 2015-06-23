@@ -1,11 +1,12 @@
 var fastn = require('./fastn'),
+    debounce = require('debounce'),
     usersService = require('./users');
     searchModel = {
         userSearch: '',
         result: null
     },
     userSearch = fastn.binding('userSearch').attach(searchModel)
-        .on('change', function(search){
+        .on('change', debounce(function(search){
             var users = usersService.users();
 
             if(!search){
@@ -18,7 +19,7 @@ var fastn = require('./fastn'),
                 }
                 return ~user.name.first.toLowerCase().indexOf(search.toLowerCase()) || ~user.name.last.toLowerCase().indexOf(search.toLowerCase());
             }));
-        });
+        }));
 
 module.exports = {
     searchModel: searchModel,
