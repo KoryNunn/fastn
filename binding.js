@@ -20,7 +20,7 @@ function fuseBinding(){
         transform = bindings.pop();
     }
 
-    resultBinding._model._events = {};
+    resultBinding._model.removeAllListeners();
     resultBinding._set = function(value){
         if(updateTransform){
             selfChanging = true;
@@ -76,7 +76,7 @@ function createBinding(path, more){
     }
 
     if(path == null){
-        throw "bindings must be created with a key (and or filter)";
+        throw 'bindings must be created with a key (and or filter)';
     }
 
     var value,
@@ -97,7 +97,6 @@ function createBinding(path, more){
     binding._model = new Enti(false);
     binding._fastn_binding = path;
     binding._firm = 1;
-    binding._model._events = {};
 
     binding.attach = function(object, firm){
 
@@ -135,9 +134,7 @@ function createBinding(path, more){
         if(binding._model.isAttached()){
             binding._model.detach();
         }
-        if('detach' in binding._events){
-            binding.emit('detach', 1);
-        }
+        binding.emit('detach', 1);
         return binding;
     };
     binding._set = function(newValue){
@@ -166,7 +163,7 @@ function createBinding(path, more){
         if(binding._destroyed){
             return;
         }
-        if(soft && (!binding._events || binding._events.change)){
+        if(soft && !binding.listeners('change').length){
             return;
         }
         binding._destroyed = true;
@@ -176,7 +173,7 @@ function createBinding(path, more){
     };
 
     if(path !== '.'){
-        binding._model._events[path] = binding._change;
+        binding._model.on(path, binding._change);
     }
 
     return binding;

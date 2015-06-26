@@ -41,7 +41,6 @@ module.exports = function(){
     };
 
     domLite.Node.prototype.click = function(){
-        console.log('wat');
         this._emit('click');
     };
 
