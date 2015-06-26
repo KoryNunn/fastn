@@ -163,7 +163,7 @@ function fuseBinding(){
         transform = bindings.pop();
     }
 
-    resultBinding._model._events = {};
+    resultBinding._model.removeAllListeners();
     resultBinding._set = function(value){
         if(updateTransform){
             selfChanging = true;
@@ -219,7 +219,7 @@ function createBinding(path, more){
     }
 
     if(path == null){
-        throw "bindings must be created with a key (and or filter)";
+        throw 'bindings must be created with a key (and or filter)';
     }
 
     var value,
@@ -240,7 +240,6 @@ function createBinding(path, more){
     binding._model = new Enti(false);
     binding._fastn_binding = path;
     binding._firm = 1;
-    binding._model._events = {};
 
     binding.attach = function(object, firm){
 
@@ -278,9 +277,7 @@ function createBinding(path, more){
         if(binding._model.isAttached()){
             binding._model.detach();
         }
-        if('detach' in binding._events){
-            binding.emit('detach', 1);
-        }
+        binding.emit('detach', 1);
         return binding;
     };
     binding._set = function(newValue){
@@ -309,7 +306,7 @@ function createBinding(path, more){
         if(binding._destroyed){
             return;
         }
-        if(soft && (!binding._events || binding._events.change)){
+        if(soft && !binding.listeners('change').length){
             return;
         }
         binding._destroyed = true;
@@ -319,7 +316,7 @@ function createBinding(path, more){
     };
 
     if(path !== '.'){
-        binding._model._events[path] = binding._change;
+        binding._model.on(path, binding._change);
     }
 
     return binding;
@@ -10888,19 +10885,9 @@ function matchDeep(path){
     return (path + '').match(deepRegex);
 }
 
-function isDeep(path){
-    var stringPath = (path + '');
-    return ~stringPath.indexOf('.') || ~stringPath.indexOf('**') || ~stringPath.indexOf('|');
-}
-
 function isWildcardPath(path){
     var stringPath = (path + '');
     return ~stringPath.indexOf('*');
-}
-
-function isFilterPath(path){
-    var stringPath = (path + '');
-    return ~stringPath.indexOf('|');
 }
 
 function getTargetKey(path){
@@ -10908,7 +10895,7 @@ function getTargetKey(path){
     return stringPath.split('|').shift();
 }
 
-var attachedEnties = new Set(),
+var modifiedEnties = new Set(),
     trackedObjects = new WeakMap();
 
 function leftAndRest(path){
@@ -11054,6 +11041,34 @@ function trackObjects(eventName, weakMap, handler, object, key, path){
 }
 
 var trackedEvents = new WeakMap();
+function createHandler(enti, trackedObjectPaths, trackedPaths, eventName){
+    var oldModel = enti._model;
+    return function(event, emitKey){
+        trackedPaths.entis.forEach(function(enti){
+            if(enti._emittedEvents[eventName] === emitKey){
+                return;
+            }
+
+            if(enti._model !== oldModel){
+                trackedPaths.entis.delete(enti);
+                if(trackedPaths.entis.size === 0){
+                    delete trackedObjectPaths[eventName];
+                    if(!Object.keys(trackedObjectPaths).length){
+                        trackedEvents.delete(oldModel);
+                    }
+                }
+                return;
+            }
+            
+            enti._emittedEvents[eventName] = emitKey;
+
+            var targetKey = getTargetKey(eventName),
+                value = isWildcardPath(targetKey) ? undefined : enti.get(targetKey);
+
+            enti.emit(eventName, value, event);
+        });
+    };
+}
 
 function trackPath(enti, eventName){
     var object = enti._model,
@@ -11080,59 +11095,25 @@ function trackPath(enti, eventName){
 
     trackedPaths.entis.add(enti);
 
-    var handler = function(event, emitKey){
-        trackedPaths.entis.forEach(function(enti){
-            if(enti._emittedEvents[eventName] === emitKey){
-                return;
-            }
-
-            if(enti._model !== object){
-                trackedPaths.entis.delete(enti);
-                if(trackedPaths.entis.size === 0){
-                    delete trackedObjectPaths[eventName];
-                    if(!Object.keys(trackedObjectPaths).length){
-                        trackedEvents.delete(object);
-                    }
-                }
-                return;
-            }
-            
-            enti._emittedEvents[eventName] = emitKey;
-
-            var targetKey = getTargetKey(eventName),
-                value = isWildcardPath(targetKey) ? undefined : enti.get(targetKey);
-
-            enti.emit(eventName, value, event);
-        });
-    }
+    var handler = createHandler(enti, trackedObjectPaths, trackedPaths, eventName);
 
     trackObjects(eventName, trackedPaths.trackedObjects, handler, {model:object}, 'model', eventName);
 }
 
-function trackPaths(enti, target){
-    if(!enti._events){
+function trackPaths(enti){
+    if(!enti._events || !enti._model){
         return;
     }
 
-    var keys = Object.keys(enti._events),
-        key;
-
-    for(var i = 0; key = keys[i], i < keys.length; i++){
-        // Bailout if the event is a single key,
-        // and the target isnt the same as the entis _model
-        if(enti._model !== target && !isDeep(key)){
-            continue;
-        }
-
+    for(var key in enti._events){
         trackPath(enti, key);
     }
+    modifiedEnties.delete(enti);
 }
 
 function emitEvent(object, key, value, emitKey){
 
-    attachedEnties.forEach(function(enti){
-        trackPaths(enti, object);
-    });
+    modifiedEnties.forEach(trackPaths);
 
     var trackedKeys = trackedObjects.get(object);
 
@@ -11146,20 +11127,16 @@ function emitEvent(object, key, value, emitKey){
         object: object
     };
 
+    function emitForKey(handler){
+        handler(event, emitKey);
+    }
+
     if(trackedKeys[key]){
-        trackedKeys[key].forEach(function(handler){
-            if(trackedKeys[key].has(handler)){
-                handler(event, emitKey);
-            }
-        });
+        trackedKeys[key].forEach(emitForKey);
     }
 
     if(trackedKeys['*']){
-        trackedKeys['*'].forEach(function(handler){
-            if(trackedKeys['*'].has(handler)){
-                handler(event, emitKey);
-            }
-        });
+        trackedKeys['*'].forEach(emitForKey);
     }
 }
 
@@ -11183,6 +11160,10 @@ function Enti(model){
     }else{
         this.attach(model);
     }
+
+    this.on('newListener', function(){
+        modifiedEnties.add(this);
+    });
 }
 Enti.get = function(model, key){
     if(!model || typeof model !== 'object'){
@@ -11343,8 +11324,6 @@ Enti.move = function(model, key, index){
         return Enti.move(model[path[0]], path[1], index);
     }
 
-    var model = model;
-
     if(key === index){
         return;
     }
@@ -11422,15 +11401,15 @@ Enti.prototype.attach = function(model){
         this.detach();
     }
 
-    if(!attachedEnties.has(this)){
-        attachedEnties.add(this);
+    if(!modifiedEnties.has(this)){
+        modifiedEnties.add(this);
     }
     this._attached = true;
     this._model = model;
 };
 Enti.prototype.detach = function(){
-    if(attachedEnties.has(this)){
-        attachedEnties.delete(this);
+    if(modifiedEnties.has(this)){
+        modifiedEnties.delete(this);
     }
 
     this._emittedEvents = {};
@@ -11440,7 +11419,7 @@ Enti.prototype.detach = function(){
 Enti.prototype.destroy = function(){
     this.detach();
     this._events = null;
-}
+};
 Enti.prototype.get = function(key){
     return Enti.get(this._model, key);
 };
@@ -11472,7 +11451,7 @@ Enti.prototype.isAttached = function(){
     return this._attached;
 };
 Enti.prototype.attachedCount = function(){
-    return attachedEnties.size;
+    return modifiedEnties.size;
 };
 
 module.exports = Enti;
