@@ -742,7 +742,7 @@ function genericComponent(type, fastn, settings, children){
     });
 
     return generic;
-};
+}
 
 genericComponent.updateProperty = function(generic, property, update){
     if(typeof document !== 'undefined' && document.contains(generic.element)){
@@ -1025,7 +1025,7 @@ for(var key in EventEmitter.prototype){
 module.exports = function makeFunctionEmitter(object){
     if(Object.setPrototypeOf){
         Object.setPrototypeOf(object, functionEmitterPrototype);
-    }else if(__proto__ in object){
+    }else if('__proto__' in object){
         object.__proto__ = functionEmitterPrototype;
     }else{
         for(var key in functionEmitterPrototype){

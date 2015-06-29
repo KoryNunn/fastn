@@ -138,7 +138,7 @@ function genericComponent(type, fastn, settings, children){
     });
 
     return generic;
-};
+}
 
 genericComponent.updateProperty = function(generic, property, update){
     if(typeof document !== 'undefined' && document.contains(generic.element)){
