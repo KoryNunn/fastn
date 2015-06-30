@@ -1,5 +1,4 @@
-var merge = require('flat-merge'),
-    createComponent = require('./component'),
+var createComponent = require('./component'),
     createProperty = require('./property'),
     createBinding = require('./binding'),
     BaseComponent = require('./baseComponent'),
@@ -16,21 +15,17 @@ module.exports = function(components, debug){
         }
 
         var settings = args[1],
-            childrenIndex = 2;
+            childrenIndex = 2,
+            settingsChild = fastn.toComponent(args[1]);
 
-        if(is.component(args[1]) || crel.isNode(args[1]) || Array.isArray(args[1]) || typeof args[1] !== 'object' || !args[1]){
+        if(Array.isArray(args[1]) || settingsChild || !args[1]){
+            args[1] = settingsChild || args[1];
             childrenIndex--;
             settings = null;
         }
 
         return createComponent(type, fastn, settings, args.slice(childrenIndex));
     }
-
-    fastn.debug = debug;
-
-    fastn.property = createProperty;
-
-    fastn.binding = createBinding;
 
     fastn.toComponent = function(component){
         if(component == null){
@@ -39,7 +34,7 @@ module.exports = function(components, debug){
         if(is.component(component)){
             return component;
         }
-        if(typeof component !== 'object'){
+        if(typeof component !== 'object' || component instanceof Date){
             return fastn('text', {text: component});
         }
         if(crel.isElement(component)){
@@ -50,6 +45,9 @@ module.exports = function(components, debug){
         }
     };
 
+    fastn.debug = debug;
+    fastn.property = createProperty;
+    fastn.binding = createBinding;
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;
     fastn.isDefaultBinding = is.defaultBinding;

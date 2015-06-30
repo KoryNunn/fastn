@@ -100,7 +100,6 @@ test('auto binding text', function(t){
 });
 
 test('undefined text', function(t){
-
     t.plan(1);
 
     var fastn = createFastn();
@@ -115,5 +114,25 @@ test('undefined text', function(t){
 
     text.element.remove();
     text.destroy();
+});
+
+
+test('auto text Date', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var date = new Date(),
+        parent = fastn('span', date);
+
+    parent.render();
+
+    document.body.appendChild(parent.element);
+
+    t.equal(document.body.textContent, date.toString());
+
+    parent.element.remove();
+    parent.destroy();
 
 });
