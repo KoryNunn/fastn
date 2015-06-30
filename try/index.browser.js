@@ -516,6 +516,13 @@ module.exports = function(type, fastn, settings, children){
 },{"events":192}],5:[function(require,module,exports){
 var setify = require('setify');
 
+function updateTextProperty(generic, element, value){
+    if(arguments.length === 2){
+        return element.textContent;
+    }
+    element.textContent = (value == null ? '' : value);
+}
+
 module.exports = {
     class: function(generic, element, value){
         if(arguments.length === 2){
@@ -545,16 +552,13 @@ module.exports = {
             element.removeAttribute('disabled');
         }
     },
-    textContent: function(generic, element, value){
-        if(arguments.length === 2){
-            return element.textContent;
-        }
-        element.textContent = (value == null ? '' : value);
-    },
+    textContent: updateTextProperty,
+    innerText: updateTextProperty,
+    innerHTML: updateTextProperty,
     value: function(generic, element, value){
         var inputType = element.type;
 
-        if(element.nodeName === 'INPUT' && inputType == 'date'){
+        if(element.nodeName === 'INPUT' && inputType === 'date'){
             if(arguments.length === 2){
                 return element.value ? new Date(element.value.replace(/-/g,'/').replace('T',' ')) : null;
             }
@@ -586,8 +590,6 @@ module.exports = {
         if(arguments.length === 2){
             return element.style;
         }
-
-        var result = '';
 
         for(var key in value){
             element.style[key] = value[key];
@@ -742,7 +744,7 @@ function genericComponent(type, fastn, settings, children){
     });
 
     return generic;
-};
+}
 
 genericComponent.updateProperty = function(generic, property, update){
     if(typeof document !== 'undefined' && document.contains(generic.element)){
@@ -1025,7 +1027,7 @@ for(var key in EventEmitter.prototype){
 module.exports = function makeFunctionEmitter(object){
     if(Object.setPrototypeOf){
         Object.setPrototypeOf(object, functionEmitterPrototype);
-    }else if(__proto__ in object){
+    }else if('__proto__' in object){
         object.__proto__ = functionEmitterPrototype;
     }else{
         for(var key in functionEmitterPrototype){
@@ -2117,9 +2119,10 @@ module.exports = function makeFunctionEmitter(object){
     cm.display.shift = false;
     if (!sel) sel = doc.sel;
 
+    var paste = cm.state.pasteIncoming || origin == "paste";
     var textLines = splitLines(inserted), multiPaste = null;
     // When pasing N lines into N selections, insert one line per selection
-    if (cm.state.pasteIncoming && sel.ranges.length > 1) {
+    if (paste && sel.ranges.length > 1) {
       if (lastCopied && lastCopied.join("\n") == inserted)
         multiPaste = sel.ranges.length % lastCopied.length == 0 && map(lastCopied, splitLines);
       else if (textLines.length == sel.ranges.length)
@@ -2133,22 +2136,31 @@ module.exports = function makeFunctionEmitter(object){
       if (range.empty()) {
         if (deleted && deleted > 0) // Handle deletion
           from = Pos(from.line, from.ch - deleted);
-        else if (cm.state.overwrite && !cm.state.pasteIncoming) // Handle overwrite
+        else if (cm.state.overwrite && !paste) // Handle overwrite
           to = Pos(to.line, Math.min(getLine(doc, to.line).text.length, to.ch + lst(textLines).length));
       }
       var updateInput = cm.curOp.updateInput;
       var changeEvent = {from: from, to: to, text: multiPaste ? multiPaste[i % multiPaste.length] : textLines,
-                         origin: origin || (cm.state.pasteIncoming ? "paste" : cm.state.cutIncoming ? "cut" : "+input")};
+                         origin: origin || (paste ? "paste" : cm.state.cutIncoming ? "cut" : "+input")};
       makeChange(cm.doc, changeEvent);
       signalLater(cm, "inputRead", cm, changeEvent);
     }
-    if (inserted && !cm.state.pasteIncoming)
+    if (inserted && !paste)
       triggerElectric(cm, inserted);
 
     ensureCursorVisible(cm);
     cm.curOp.updateInput = updateInput;
     cm.curOp.typing = true;
     cm.state.pasteIncoming = cm.state.cutIncoming = false;
+  }
+
+  function handlePaste(e, cm) {
+    var pasted = e.clipboardData && e.clipboardData.getData("text/plain");
+    if (pasted) {
+      e.preventDefault();
+      runInOp(cm, function() { applyTextInput(cm, pasted, 0, null, "paste"); });
+      return true;
+    }
   }
 
   function triggerElectric(cm, inserted) {
@@ -2247,21 +2259,9 @@ module.exports = function makeFunctionEmitter(object){
         input.poll();
       });
 
-      on(te, "paste", function() {
-        // Workaround for webkit bug https://bugs.webkit.org/show_bug.cgi?id=90206
-        // Add a char to the end of textarea before paste occur so that
-        // selection doesn't span to the end of textarea.
-        if (webkit && !cm.state.fakedLastChar && !(new Date - cm.state.lastMiddleDown < 200)) {
-          var start = te.selectionStart, end = te.selectionEnd;
-          te.value += "$";
-          // The selection end needs to be set before the start, otherwise there
-          // can be an intermediate non-empty selection between the two, which
-          // can override the middle-click paste buffer on linux and cause the
-          // wrong thing to get pasted.
-          te.selectionEnd = end;
-          te.selectionStart = start;
-          cm.state.fakedLastChar = true;
-        }
+      on(te, "paste", function(e) {
+        if (handlePaste(e, cm)) return true;
+
         cm.state.pasteIncoming = true;
         input.fastPoll();
       });
@@ -2425,14 +2425,11 @@ module.exports = function makeFunctionEmitter(object){
       // possible when it is clear that nothing happened. hasSelection
       // will be the case when there is a lot of text in the textarea,
       // in which case reading its value would be expensive.
-      if (!cm.state.focused || (hasSelection(input) && !prevInput) ||
+      if (this.contextMenuPending || !cm.state.focused ||
+          (hasSelection(input) && !prevInput) ||
           isReadOnly(cm) || cm.options.disableInput || cm.state.keySeq)
         return false;
-      // See paste handler for more on the fakedLastChar kludge
-      if (cm.state.pasteIncoming && cm.state.fakedLastChar) {
-        input.value = input.value.substring(0, input.value.length - 1);
-        cm.state.fakedLastChar = false;
-      }
+
       var text = input.value;
       // If nothing changed, bail.
       if (text == prevInput && !cm.somethingSelected()) return false;
@@ -2578,13 +2575,7 @@ module.exports = function makeFunctionEmitter(object){
       div.contentEditable = "true";
       disableBrowserMagic(div);
 
-      on(div, "paste", function(e) {
-        var pasted = e.clipboardData && e.clipboardData.getData("text/plain");
-        if (pasted) {
-          e.preventDefault();
-          cm.replaceSelection(pasted, null, "paste");
-        }
-      });
+      on(div, "paste", function(e) { handlePaste(e, cm); })
 
       on(div, "compositionstart", function(e) {
         var data = e.data;
@@ -2797,7 +2788,7 @@ module.exports = function makeFunctionEmitter(object){
       var toIndex = findViewIndex(cm, to.line);
       if (toIndex == display.view.length - 1) {
         var toLine = display.viewTo - 1;
-        var toNode = display.view[toIndex].node;
+        var toNode = display.lineDiv.lastChild;
       } else {
         var toLine = lineNo(display.view[toIndex + 1].line) - 1;
         var toNode = display.view[toIndex + 1].node.previousSibling;
@@ -4603,7 +4594,8 @@ module.exports = function makeFunctionEmitter(object){
     var sel = cm.doc.sel, modifier = mac ? e.metaKey : e.ctrlKey, contained;
     if (cm.options.dragDrop && dragAndDrop && !isReadOnly(cm) &&
         type == "single" && (contained = sel.contains(start)) > -1 &&
-        !sel.ranges[contained].empty())
+        (cmp((contained = sel.ranges[contained]).from(), start) < 0 || start.xRel > 0) &&
+        (cmp(contained.to(), start) > 0 || start.xRel < 0))
       leftButtonStartDrag(cm, e, start, modifier);
     else
       leftButtonSelect(cm, e, start, type, modifier);
@@ -8623,7 +8615,7 @@ module.exports = function makeFunctionEmitter(object){
   Doc.prototype.eachLine = Doc.prototype.iter;
 
   // Set up methods on CodeMirror's prototype to redirect to the editor's document.
-  var dontDelegate = "iter insert remove copy getEditor".split(" ");
+  var dontDelegate = "iter insert remove copy getEditor constructor".split(" ");
   for (var prop in Doc.prototype) if (Doc.prototype.hasOwnProperty(prop) && indexOf(dontDelegate, prop) < 0)
     CodeMirror.prototype[prop] = (function(method) {
       return function() {return method.apply(this.doc, arguments);};
@@ -9775,7 +9767,7 @@ module.exports = function makeFunctionEmitter(object){
 
   // THE END
 
-  CodeMirror.version = "5.3.0";
+  CodeMirror.version = "5.4.0";
 
   return CodeMirror;
 });
@@ -10265,8 +10257,11 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
   function maybetype(type) {
     if (isTS && type == ":") return cont(typedef);
   }
+  function maybedefault(_, value) {
+    if (value == "=") return cont(expressionNoComma);
+  }
   function typedef(type) {
-    if (type == "variable"){cx.marked = "variable-3"; return cont();}
+    if (type == "variable") {cx.marked = "variable-3"; return cont();}
   }
   function vardef() {
     return pass(pattern, maybetype, maybeAssign, vardefCont);
@@ -10321,7 +10316,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
   }
   function funarg(type) {
     if (type == "spread") return cont(funarg);
-    return pass(pattern, maybetype);
+    return pass(pattern, maybetype, maybedefault);
   }
   function className(type, value) {
     if (type == "variable") {register(value); return cont(classNameAfter);}
@@ -10507,7 +10502,7 @@ module.exports = function(settings, callback){
         callback(null, data, event);
     });
     ajax.on('error', function(event) {
-        callback(event.target.responseText, null, event);
+        callback(new Error(event.target.responseText), null, event);
     });
 
     ajax.send();
@@ -11059,7 +11054,7 @@ function createHandler(enti, trackedObjectPaths, trackedPaths, eventName){
                 }
                 return;
             }
-            
+
             enti._emittedEvents[eventName] = emitKey;
 
             var targetKey = getTargetKey(eventName),
@@ -11087,9 +11082,7 @@ function trackPath(enti, eventName){
             trackedObjects: new WeakMap()
         };
         trackedObjectPaths[eventName] = trackedPaths;
-    }
-
-    if(trackedPaths.entis.has(enti)){
+    }else if(trackedPaths.entis.has(enti)){
         return;
     }
 
@@ -11188,7 +11181,7 @@ Enti.set = function(model, key, value){
     if(!model || typeof model !== 'object'){
         return;
     }
-    
+
     key = getTargetKey(key);
 
     var path = leftAndRest(key);
@@ -13992,10 +13985,6 @@ module.exports = function(type, fastn, settings, children){
     return templater;
 };
 },{"./genericComponent":7,"crel":17,"events":192}],183:[function(require,module,exports){
-var crel = require('crel'),
-    EventEmitter = require('events').EventEmitter,
-    is = require('./is');
-
 function textComponent(type, fastn, settings, children){
     var text = fastn.base(type, settings, children);
 
@@ -14006,7 +13995,7 @@ function textComponent(type, fastn, settings, children){
             return;
         }
 
-        text.element.textContent = value;
+        text.element.textContent = (value == null ? '' : value);
     };
     text.render = function(){
         text.element = text.createTextNode('');
@@ -14018,14 +14007,14 @@ function textComponent(type, fastn, settings, children){
     text.on('update', text.text.update);
 
     return text;
-};
+}
 
 textComponent.createTextNode = function(text){
     return document.createTextNode(text);
 };
 
 module.exports = textComponent;
-},{"./is":9,"crel":17,"events":192}],184:[function(require,module,exports){
+},{}],184:[function(require,module,exports){
 var fastn = require('./fastn'),
     cpjax = require('cpjax'),
     defaultCode,

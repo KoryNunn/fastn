@@ -99,6 +99,24 @@ test('auto binding text', function(t){
 
 });
 
+test('undefined text', function(t){
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var text = fastn('text', {text: undefined});
+
+    text.render();
+
+    document.body.appendChild(text.element);
+
+    t.equal(document.body.textContent, '');
+
+    text.element.remove();
+    text.destroy();
+});
+
+
 test('auto text Date', function(t){
 
     t.plan(1);
