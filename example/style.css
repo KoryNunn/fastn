@@ -34,6 +34,15 @@ body:before{
     box-shadow: 0 0 1px 1px rgba(0,0,0,0.4);
 }
 
+h1, h2, h3{
+    margin: 8px 4px;
+}
+
+h3{
+    color: #999;
+    font-weight: 400;
+}
+
 a{
     color: #36f;
     text-decoration: none;
@@ -55,6 +64,7 @@ input{
     padding: 4px;
     width: auto;
     max-width: 250px;
+    height: 30px;
 }
 
 input:focus{
@@ -66,12 +76,13 @@ input:focus{
 field{
     display: block;
     padding: 4px;
-    min-height: 30px;
+    min-height: 40px;
     display: flex;
+    align-items: center;
 }
 
 field label{
-    min-width: 120px;
+    min-width: 100px;
     display: inline-block;
     font-size: 0.9em;
     color: #666;

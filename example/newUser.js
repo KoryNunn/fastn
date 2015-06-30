@@ -6,6 +6,8 @@ module.exports = function(){
     var newUserDialog = fastn('div', {class:'newUser dialog'},
         fastn('form', {class: 'modal'},
 
+            fastn('h3', 'Add a user'),
+
             fastn('field',
                 fastn('label', 'First Name'),
                 fastn('input', {
