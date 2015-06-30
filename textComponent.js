@@ -1,7 +1,3 @@
-var crel = require('crel'),
-    EventEmitter = require('events').EventEmitter,
-    is = require('./is');
-
 function textComponent(type, fastn, settings, children){
     var text = fastn.base(type, settings, children);
 
@@ -12,7 +8,7 @@ function textComponent(type, fastn, settings, children){
             return;
         }
 
-        text.element.textContent = value;
+        text.element.textContent = (value == null ? '' : value);
     };
     text.render = function(){
         text.element = text.createTextNode('');
@@ -24,7 +20,7 @@ function textComponent(type, fastn, settings, children){
     text.on('update', text.text.update);
 
     return text;
-};
+}
 
 textComponent.createTextNode = function(text){
     return document.createTextNode(text);
