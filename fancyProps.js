@@ -1,5 +1,12 @@
 var setify = require('setify');
 
+function updateTextProperty(generic, element, value){
+    if(arguments.length === 2){
+        return element.textContent;
+    }
+    element.textContent = (value == null ? '' : value);
+}
+
 module.exports = {
     class: function(generic, element, value){
         if(arguments.length === 2){
@@ -29,16 +36,13 @@ module.exports = {
             element.removeAttribute('disabled');
         }
     },
-    textContent: function(generic, element, value){
-        if(arguments.length === 2){
-            return element.textContent;
-        }
-        element.textContent = (value == null ? '' : value);
-    },
+    textContent: updateTextProperty,
+    innerText: updateTextProperty,
+    innerHTML: updateTextProperty,
     value: function(generic, element, value){
         var inputType = element.type;
 
-        if(element.nodeName === 'INPUT' && inputType == 'date'){
+        if(element.nodeName === 'INPUT' && inputType === 'date'){
             if(arguments.length === 2){
                 return element.value ? new Date(element.value.replace(/-/g,'/').replace('T',' ')) : null;
             }
@@ -70,8 +74,6 @@ module.exports = {
         if(arguments.length === 2){
             return element.style;
         }
-
-        var result = '';
 
         for(var key in value){
             element.style[key] = value[key];
