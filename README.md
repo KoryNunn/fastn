@@ -4,7 +4,7 @@
 
 Create ultra-lightweight UI components
 
-![fastn](http://korynunn.github.io/fastn/fastn-sml.png)
+![fastn](http://korynunn.github.io/fastn/images/fastn-sml.png)
 
 ## [Try it](http://korynunn.github.io/fastn/try/)
 
@@ -17,7 +17,7 @@ The absolute minimum required to make a fastn component:
 initialise fastn:
 ```javascript
 // Require and initialise fastn
-var fastn = require('fastn/')({
+var fastn = require('fastn')({
     // component constructors.. Add what you need to use
 
     text: require('fastn/textComponent'), // Renders text
@@ -96,7 +96,7 @@ if a string or `binding` is added as a child into a containerComponent, fastn wi
 
 ### `_generic`
 
-if the type passed to fastn does not exactly match any component it knows about, fastn will check for a `_generic` component, and pass all the settings and children through to it. 
+if the type passed to fastn does not exactly match any component it knows about, fastn will check for a `_generic` component, and pass all the settings and children through to it.
 [^ try it](http://korynunn.github.io/fastn/try/#InJldHVybiBmYXN0bignZGl2JyxcbiAgICAgICAgICAgICBcblx0ZmFzdG4oJ3NwYW4nLCAnV29vIGEgc3BhbiEnKSxcbiAgICAgICAgICAgICBcblx0ZmFzdG4oJ2JyJyksIC8vIEJyIGJlY2F1c2Ugd2UgY2FuIVxuICAgICAgICAgICAgIFxuICAgIGZhc3RuKCdhJywge2hyZWY6ICdodHRwczovL2dpdGh1Yi5jb20va29yeW51bm4vZmFzdG4nfSwgJ0FuIGFuY2hvcicpLFxuICAgICAgICAgICAgIFxuXHRmYXN0bignYnInKSwgLy8gQW5vdGhlciBiciBmb3IgcmVhc29uc1xuICAgICAgICAgICAgIFxuICAgIGZhc3RuKCdpbWcnLCB7dGl0bGU6ICdBd2Vzb21lIGxvZ28nLCBzcmM6ICdodHRwOi8va29yeW51bm4uZ2l0aHViLmlvL2Zhc3RuL3RyeS9mYXN0bi1zbWwucG5nJ30pXG4pOyI=)
 
 ## Default components
@@ -137,7 +137,7 @@ the templated componets will be attached to a model that contains `key` and `ite
 
 ### templaterComponent
 
-takes a tempalte and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted. 
+takes a tempalte and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted.
 
 The template funciton will be passed the last component that was rendered by it as the third parameter.
 
@@ -172,6 +172,8 @@ var divComponent = fastn('div', {'class':'myDiv'});
 
 The above will create a `component`, that renderes as a `div` with a class of `'myDiv'`
 
+__the default genericComponent will automatically convert all keys in the settings object to properties.__
+
 ## `fastn.binding(key)`
 
 Creates a binding with the given key.
@@ -191,109 +193,94 @@ If you are just want to render some DOM, you will probably be able to just use t
 
 A fastn `component` is an object that represents a chunk of UI.
 
-A `component` is created by a function that returns an instance of `EventEmitter`.
-
-### Implementation
-
-Here is an example of an extremely simple component constructor
-
 ```javascript
-function(){
-    var thingy = new (require('events').EventEmitter)();
 
-    thingy.render = function(){
-        thingy.element = document.createElement('span');
-        thingy.element.innerText = 'FOO!';
-        thingy.emit('render');
-    };
+var someComponent = fastn('componentType', settings (optional), children (optional)...)
 
-    return thingy;
-}
 ```
-
-### Required properties
-
-- All from `EventEmitter`.
-
-- `render` must:
-
-    - assign an element of some kind to component.element.
-    - `emit('render')`
 
 ## `property`
 
-A fastn property is a getterSetter function and EventEmitter.
+A fastn `property` is a getterSetter function and EventEmitter.
 
 ```javascript
-function property([value])
+
+var someProperty = fastn.property(defaultValue, changes (optional), updater (optional));
+
+// get it's value
+someProperty(); // returns it's value;
+
+// set it's value
+someProperty(anything); // sets anthing and returns the property.
+
+// add a change handler
+someProperty.on('change', function(value){
+    // value is the properties new value.
+});
+
 ```
 
-### Implementation
+properties can be added to components in a number of ways:
 
-a property must be a function that:
+via the settings object:
 
-- given 0 arguments, returns its current value.
-- given > 0 arguments,
-    - set its value
-    - `emit('change')`
-    - call its `.update()` method with the new value.
+```javascript
 
-A property should NOT emit change if the value being set has not changed
-**The developer may decide what constitutes a change.**
+var component = fastn('div', {
+        property: someProperty
+    });
 
+```
+at a later point via property.addTo(component, key);
 
-### Required properties
+```javascript
 
-- All from EventEmitter.
+someProperty.addTo(component, 'someProperty');
 
-- `_fastn_property` lets fastn know to treat it as a `property`.
-
-- `render()` must:
-
-    - assign an element of some kind to component.element.
-    - `emit('render')`
-
-- `update()` must:
-    - `emit('update')`
-
-- `attach()` may:
-    - attach to some object
-
-- `detach()` may:
-    - detach from its currently attached object
-
-- `binding()` may:
-    - update the properties binding
+```
 
 ## `binding`
 
 A fastn `binding` is a getterSetter function and `EventEmitter`.
 
-It is used as a mapping between an object and a value on that object.
-
-### Implementation
+It is used as a mapping between an object and a key or path on that object.
 
 ```javascript
-function binding([value])
+
+var someBinding = fastn.binding('foo');
+
+// get it's value
+someBinding(); // returns it's value;
+
+// set it's value
+someBinding(anything); // sets anthing and returns the binding.
+
+// add a change handler
+someBinding.on('change', function(value){
+    // value is the properties new value.
+});
+
 ```
 
-a `binding` must be a function that:
+You can pass multiple paths or other bindings to a binding, along with a fuse function, to combine them into a single result:
 
-- given 0 arguments, returns its current value.
-- given > 0 arguments,
-    - set its value
-    - `emit('change')`
-    - call its `.update()` method with the new value.
+```javascript
 
+var anotherBinding = fastn.binding('bar', 'baz', someBinding, function(bar, baz, foo){
+    return bar + foo;
+});
 
-### Required properties
+```
 
-- All from EventEmitter.
+### A note on the difference between `properties` and `bindings`
 
-- `_fastn_binding` set to the key the binding is set to. Lets fastn know to treat it as a `binding`.
+On the surface, properties and bindings look very similar.
+They can both be used like getter/setter functions, and they both emit change events.
 
-- `attach()` may:
-    - attach to some object
+They differ both in usage and implementation in that properties don't have any awareness of a model or paths,
+and bindings dont have any awareness of components.
 
-- `detach()` may:
-    - detach from its currently attached object
+This distinction shines when you design your application with 'services' or 'controllers' that encapsulate models and how to interact with them.
+Check out the example applications [search service](https://github.com/KoryNunn/fastn/blob/gh-pages/example/search.js) and
+[search bar component](https://github.com/KoryNunn/fastn/blob/gh-pages/example/searchBar.js).
+The service only deals with data, and the component only deals with UI.
