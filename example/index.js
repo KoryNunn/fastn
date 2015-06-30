@@ -4,7 +4,6 @@ var fastn = require('./fastn'),
 var app = fastn('div',
     require('./header')(),
     require('./userList')(),
-    require('./stats')(),
     require('./forkBanner')()
 );
 

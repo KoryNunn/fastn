@@ -59,8 +59,8 @@
 }
 
 .github-fork-ribbon-wrapper {
-  width: 150px;
-  height: 150px;
+  width: 100px;
+  height: 100px;
   position: absolute;
   overflow: hidden;
   top: 0;
@@ -68,14 +68,16 @@
   pointer-events: none;
 }
 
-.github-fork-ribbon-wrapper.right {
+.github-fork-ribbon-wrapper.bottom {
   position: fixed;
-  right: 0;
+  bottom: 0;
+  top: auto;
 }
 
-.github-fork-ribbon-wrapper.right .github-fork-ribbon {
-  top: 12px;
-  right: -26px;
+.github-fork-ribbon-wrapper.bottom .github-fork-ribbon {
+  bottom: 15px;
+  left:-23px;
+  height: 20px;
 
   -webkit-transform: rotate(45deg);
   -moz-transform: rotate(45deg);
