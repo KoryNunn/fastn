@@ -4,10 +4,10 @@
 
 Create ultra-lightweight UI components
 
-![fastn](http://korynunn.github.io/fastn/fastn-sml.png)
+![fastn](http://korynunn.github.io/fastn/images/fastn-sml.png)
 
 ## [Try it](http://korynunn.github.io/fastn/try/)
 
 ## [Example app](http://korynunn.github.io/fastn/example/)
 
-This is the gh-pages branch, switch to master for the source.
+This is the gh-pages branch, switch to [master](https://github.com/korynunn/fastn/) for the source.
