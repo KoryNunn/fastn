@@ -1,6 +1,5 @@
 var test = require('tape'),
     Enti = require('enti'),
-    doc = require('doc-js'),
     createFastn = require('./createFastn');
 
 test('manual attach', function(t){
