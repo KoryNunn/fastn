@@ -73,7 +73,7 @@ header button.reset{
 }
 
 .preamble.expanded{
-    height: auto;
+    height: 400px;
 }
 
 .preamble > span{
@@ -94,6 +94,10 @@ header button.reset{
     display: none;
 }
 
+.preamble .CodeMirror{
+    height: 100%;
+}
+
 .output{
     left:50%;
     padding:10px;
@@ -101,7 +105,13 @@ header button.reset{
 
 .CodeMirror{
     height: 100%;
+    height: calc(100% - 50px);
 }
+
+.preamble.expanded + .CodeMirror{
+    height: calc(100% - 400px);
+}
+
 
 .code.hasError{
     box-shadow: 0 0 15px 5px rgba(255,0,0,0.5);

@@ -5,14 +5,13 @@
   "main": "index.js",
   "scripts": {
     "watch": "watchify index.js -o index.browser.js -d",
-    "build": "browserify -g [ uglifyify --ignore **/node_modules/codemirror/**/*.js ] index.js --noparse clone > index.browser.js"
+    "build": "browserify -g uglifyify index.js --noparse clone > index.browser.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "crel": "^2.1.8",
     "fastn": "^1.14.2",
-    "codemirror": "^5.3.0",
     "cpjax": "^1.0.0",
     "debounce": "^1.0.0",
     "doc-js": "^1.2.0",
