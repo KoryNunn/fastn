@@ -1,0 +1,25 @@
+{
+  "name": "fastn-example",
+  "version": "1.0.0",
+  "description": "Home app for fastn",
+  "main": "index.js",
+  "scripts": {
+    "watch": "watchify index.js -o index.browser.js -d & stylus -w style.styl -o style.css",
+    "build": "browserify -g uglifyify index.js --noparse clone > index.browser.js"
+  },
+  "author": "Kory Nunn",
+  "license": "ISC",
+  "dependencies": {
+    "cpjax": "^1.0.0",
+    "crel": "^2.1.5",
+    "debounce": "^1.0.0",
+    "doc-js": "^1.2.0",
+    "fastn": "^1.14.2",
+    "flat-merge": "^1.0.0",
+    "highlight": "^0.2.3",
+    "laidout": "^1.0.0"
+  },
+  "devDependencies": {
+    "uglifyify": "^3.0.1"
+  }
+}

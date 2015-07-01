@@ -27,7 +27,7 @@ body:before{
     height: 220px;
     position: fixed;
     background: #0AF;
-    background-image: url(background.svg);
+    background-image: url(../images/background.svg);
     background-size: 120%;
     background-position: center top;
     background-attachment: fixed;
@@ -110,7 +110,7 @@ form button{
     min-height: 145px;
     padding-bottom: 20px;
     background: #0AF;
-    background-image: url(background.svg);
+    background-image: url(../images/background.svg);
     background-size: 120%;
     background-position: center top;
     opacity: 0.98;

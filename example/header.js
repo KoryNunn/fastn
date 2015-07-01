@@ -3,7 +3,7 @@ var fastn = require('./fastn'),
 
 module.exports = function(searchModel){
     return fastn('header', {'class':'mainHeader'},
-        fastn('img', {src: './fastn-sml.png'}),
+        fastn('img', {src: '../images/fastn-sml.png'}),
         fastn('h1', 'fastn', fastn('span', {class: 'faint'}, '.js')),
         fastn('span',
             fastn.binding('users|*.deleted', require('./search').result,  function(users, results){
