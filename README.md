@@ -6,6 +6,8 @@ Create ultra-lightweight UI components
 
 ![fastn](http://korynunn.github.io/fastn/images/fastn-sml.png)
 
+## [Homepage](http://korynunn.github.io/fastn/)
+
 ## [Try it](http://korynunn.github.io/fastn/try/)
 
 ## [Example app](http://korynunn.github.io/fastn/example/)
