@@ -323,3 +323,24 @@ test('clone fuse', function(t){
 
     t.equal(newBinding(), 3, 'New binding has same data');
 });
+
+test('binding as a bindings target', function(t){
+    t.plan(1);
+
+    var binding1 = createBinding('foo'),
+        binding2 = createBinding('bar');
+
+    binding1(binding2);
+
+    t.equal(binding1(), binding2, 'binding1 value correctly set to binding2');
+});
+
+test('binding as own target', function(t){
+    t.plan(1);
+
+    var binding = createBinding('foo');
+
+    binding(binding);
+
+    t.equal(binding(), binding, 'binding value correctly set to self');
+});

@@ -98,3 +98,43 @@ test('bound property with model and drill', function(t){
 
     model.set('foo', {bar: 123});
 });
+
+test('cyclic value', function(t){
+    t.plan(1);
+
+    var model = new Enti();
+
+    var property = createProperty();
+
+    var binding = createBinding('.|*');
+
+    binding.attach(model);
+
+    property.binding(binding);
+
+    property.on('change', function(value){
+        t.equal(value, model.get('.'));
+    });
+
+    model.set('self', model.get('.'));
+});
+
+test('cyclic value with structure changes', function(t){
+    t.plan(1);
+
+    var model = new Enti();
+
+    var property = createProperty(null, 'structure');
+
+    var binding = createBinding('.|*');
+
+    binding.attach(model);
+
+    property.binding(binding);
+
+    property.on('change', function(value){
+        t.equal(value, model.get('.'));
+    });
+
+    model.set('self', model.get('.'));
+});
