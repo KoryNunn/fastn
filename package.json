@@ -20,6 +20,7 @@
     "laidout": "^1.0.0"
   },
   "devDependencies": {
+    "stylus": "^0.51.1",
     "uglifyify": "^3.0.1"
   }
 }

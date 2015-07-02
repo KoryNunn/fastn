@@ -1,4 +1,4 @@
-@import url("http://fonts.googleapis.com/css?family=Roboto:400,300,100");
+@import url("//fonts.googleapis.com/css?family=Roboto:400,300,100");
 * {
   box-sizing: border-box;
 }
@@ -229,6 +229,14 @@ li {
   max-width: 400px;
   margin: auto;
   margin-top: 16px;
+}
+.todo form {
+  text-align: center;
+}
+.todo input {
+  font-size: 1.2em;
+  width: 100%;
+  max-width: 80%;
 }
 .stats p {
   padding: 0 8px;
