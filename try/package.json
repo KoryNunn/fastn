@@ -1,6 +1,6 @@
 {
   "name": "fastn-tryer",
-  "version": "1.14.2",
+  "version": "1.0.0",
   "description": "A little fastn app for trying out fastn in your browser",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "crel": "^2.1.8",
-    "fastn": "^1.14.2",
+    "fastn": "^1.15.0",
     "cpjax": "^1.0.0",
     "debounce": "^1.0.0",
     "doc-js": "^1.2.0",

@@ -191,6 +191,7 @@ li {
   margin: auto;
 }
 .content > section {
+  transform: translateZ(0);
   background: #fff;
   padding: 8px;
   margin: 24px 8px;
@@ -217,7 +218,7 @@ li {
   flex-flow: row wrap;
 }
 .example pre {
-  flex: 1;
+  flex: 2;
   min-width: 300px;
 }
 .example .exampleOutput {
