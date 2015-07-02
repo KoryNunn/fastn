@@ -105,8 +105,6 @@ function addAutoHandler(generic, key, settings){
 function genericComponent(type, fastn, settings, children){
     var generic = containerComponent(type, fastn, settings, children);
 
-    generic._initialClasses = '';
-
     generic.updateProperty = genericComponent.updateProperty;
     generic.createElement = genericComponent.createElement;
     createProperties(fastn, generic, settings);
@@ -121,8 +119,6 @@ function genericComponent(type, fastn, settings, children){
 
     generic.on('render', function(){
         var element = generic.getContainerElement();
-
-        generic._initialClasses = element.className;
 
         for(var key in settings){
             if(key.slice(0,2) === 'on' && key in element){

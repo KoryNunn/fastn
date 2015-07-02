@@ -9,16 +9,35 @@ function updateTextProperty(generic, element, value){
 
 module.exports = {
     class: function(generic, element, value){
+        var lastClasses = generic._lastClasses || [];
+
         if(arguments.length === 2){
-            return element.className.slice(generic._initialClasses.length);
-        }
-        
-        var classes = generic._initialClasses ? generic._initialClasses.split(' ') : [];
-        if(value != null){
-            classes = classes.concat(Array.isArray(value) ? value : ('' + value).split(' '));
+            return lastClasses.join(' ');
         }
 
-        element.className = classes.join(' ');
+        if(value == null){
+            value = [];
+        }
+        
+        var newClasses = (Array.isArray(value) ? value : ('' + value).split(' '));
+
+        lastClasses.map(function(className){
+            if(!className){
+                return;
+            }
+            if(!~newClasses.indexOf(className)){
+                element.classList.remove(className);
+            }
+        });
+        newClasses.map(function(className){
+            if(!className){
+                return;
+            }
+            if(!~lastClasses.indexOf(className)){
+                element.classList.add(className);
+            }
+        });
+        generic._lastClasses = newClasses;
     },
     display: function(generic, element, value){
         if(arguments.length === 2){
