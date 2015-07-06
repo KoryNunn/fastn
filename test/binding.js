@@ -344,3 +344,27 @@ test('binding as own target', function(t){
 
     t.equal(binding(), binding, 'binding value correctly set to self');
 });
+
+test('value-only binding', function(t){
+    t.plan(1);
+
+    var binding = createBinding();
+
+    binding('foo');
+
+    t.equal(binding(), 'foo', 'binding value correctly set to foo');
+});
+
+test('value-only binding cannot be attached', function(t){
+    t.plan(1);
+
+    var binding = createBinding();
+
+    binding('foo');
+
+    binding.attach({
+        value: 'bar'
+    });
+
+    t.equal(binding(), 'foo', 'binding value correctly set to foo');
+});

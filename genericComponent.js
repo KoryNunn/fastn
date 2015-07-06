@@ -64,26 +64,47 @@ function createProperties(fastn, generic, settings){
     }
 }
 
-function addUpdateHandler(generic, eventName, settings){
-    var element = generic.getContainerElement(),
-        handler = function(event){
-            generic.emit(eventName, event, generic.scope());
+function addDomHandler(generic, element, handlerName, eventName, capture){
+    var eventParts = handlerName.split('.');
+
+    if(eventParts[0] === 'on'){
+        eventParts.shift();
+    }
+
+    var handler = function(event){
+            generic.emit(handlerName, event, generic.scope());
         };
 
-    element.addEventListener(eventName, handler);
+    element.addEventListener(eventName, handler, capture);
 
     generic.on('destroy', function(){
-        element.removeEventListener(eventName, handler);
+        element.removeEventListener(eventName, handler, capture);
     });
 }
 
-function addAutoHandler(generic, key, settings){
+function addDomHandlers(generic, element, eventNames){
+    var events = eventNames.split(' ');
+
+    for(var i = 0; i < events.length; i++){
+        var eventName = events[i],
+            match = eventName.match(/^((?:el\.)?)([^. ]+)(?:\.(capture))?$/);
+
+        if(!match){
+            continue;
+        }
+
+        if(match[1] || 'on' + match[2] in element){
+            addDomHandler(generic, element, eventNames, match[2], match[3]);
+        }
+    }
+}
+
+function addAutoHandler(generic, element, key, settings){
     if(!settings[key]){
         return;
     }
 
-    var element = generic.getContainerElement(),
-        autoEvent = settings[key].split(':'),
+    var autoEvent = settings[key].split(':'),
         eventName = key.slice(2);
 
     delete settings[key];
@@ -122,14 +143,12 @@ function genericComponent(type, fastn, settings, children){
 
         for(var key in settings){
             if(key.slice(0,2) === 'on' && key in element){
-                addAutoHandler(generic, key, settings);
+                addAutoHandler(generic, element, key, settings);
             }
         }
 
         for(var eventKey in generic._events){
-            if('on' + eventKey.toLowerCase() in element){
-                addUpdateHandler(generic, eventKey);
-            }
+            addDomHandlers(generic, element, eventKey);
         }
     });
 
