@@ -1,5 +1,4 @@
 var test = require('tape'),
-    Enti = require('enti'),
     createFastn = require('./createFastn');
 
 test('children are added', function(t){
@@ -65,6 +64,33 @@ test('flatten children', function(t){
     document.body.appendChild(parent.element);
 
     t.equal(parent.element.childNodes.length, 3);
+
+    parent.element.remove();
+    parent.destroy();
+
+});
+
+test('insert many after current', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var parent = fastn('div',
+            fastn('span', '1'),
+            fastn('span', '2')
+        );
+
+    parent.insert(
+        fastn('span', '3'),
+        fastn('span', '4')
+    );
+
+    parent.render();
+
+    document.body.appendChild(parent.element);
+
+    t.equal(document.body.textContent, '1234');
 
     parent.element.remove();
     parent.destroy();

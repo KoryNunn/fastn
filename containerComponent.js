@@ -1,5 +1,3 @@
-var EventEmitter = require('events').EventEmitter;
-
 module.exports = function(type, fastn, settings, children){
     var container = fastn.base(type, settings, children);
 
@@ -10,9 +8,13 @@ module.exports = function(type, fastn, settings, children){
             component = Array.prototype.slice.call(arguments);
         }
 
+        if(isNaN(index)){
+            index = container._children.length;
+        }
+
         if(Array.isArray(component)){
             component.forEach(function(component, i){
-                container.insert(component, i + (index || 0));
+                container.insert(component, i + index);
             });
             return container;
         }
@@ -24,10 +26,6 @@ module.exports = function(type, fastn, settings, children){
             if(~currentIndex){
                 container._children.splice(currentIndex, 1, newComponent);
             }
-        }
-
-        if(isNaN(index)){
-            index = container._children.length;
         }
 
         if(currentIndex !== index){
