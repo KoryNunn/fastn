@@ -227,7 +227,9 @@ i {
 nav {
   text-align: center;
   margin: 24px 8px;
+  margin-top: 8px;
   display: flex;
+  flex-flow: row wrap;
   justify-content: center;
 }
 nav a {
