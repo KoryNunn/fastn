@@ -5,6 +5,31 @@ var Enti = require('enti'),
     makeFunctionEmitter = require('./makeFunctionEmitter'),
     is = require('./is');
 
+function propertyTemplate(value){
+    if(!arguments.length){
+        return this.binding && this.binding() || this.property._value;
+    }
+
+    if(!this.property._destroyed){
+
+        if(!Object.keys(this.previous.update(value)).length){
+            return this.property;
+        }
+
+        this.property._value = value;
+
+        if(this.binding){
+            this.binding(value);
+            this.property._value = this.binding();
+        }
+        
+        this.property.emit('change', this.property._value);
+        this.property.update();
+    }
+
+    return this.property;
+}
+
 function createProperty(currentValue, changes, updater){
     if(typeof changes === 'function'){
         updater = changes;
@@ -12,34 +37,19 @@ function createProperty(currentValue, changes, updater){
     }
 
     var binding,
-        model,
-        attachChange,
-        previous = new WhatChanged(currentValue, changes || 'value type reference keys');
+        model;
 
-    function property(value){
-        if(!arguments.length){
-            return binding && binding() || property._value;
-        }
+    var propertyScope = {
+        property: property,
+        binding: binding,
+        previous: new WhatChanged(currentValue, changes || 'value type reference keys')
+    };
 
-        if(!property._destroyed){
-
-            if(!Object.keys(previous.update(value)).length){
-                return property;
-            }
-
-            property._value = value;
-
-            if(binding){
-                binding(value);
-                property._value = binding();
-            }
-            
-            property.emit('change', property._value);
-            property.update();
-        }
-
-        return property;
-    }
+    /*
+        This very odd pattern has a huge impact on performance
+        by removing the hot function out of scope.
+    */
+    var property = propertyScope.property = propertyTemplate.bind(propertyScope);
 
     property._value = currentValue;
     property._update = updater;
@@ -50,26 +60,26 @@ function createProperty(currentValue, changes, updater){
 
     property.binding = function(newBinding){
         if(!arguments.length){
-            return binding;
+            return propertyScope.binding;
         }
 
         if(!is.binding(newBinding)){
             newBinding = createBinding(newBinding);
         }
 
-        if(newBinding === binding){
+        if(newBinding === propertyScope.binding){
             return property;
         }
 
-        if(binding){
-            binding.removeListener('change', property);
+        if(propertyScope.binding){
+            propertyScope.binding.removeListener('change', property);
         }
-        binding = newBinding;
+        propertyScope.binding = newBinding;
         if(model){
             property.attach(model, property._firm);
         }
-        binding.on('change', property);
-        property(binding());
+        propertyScope.binding.on('change', property);
+        property(propertyScope.binding());
         return property;
     };
     property.attach = function(object, firm){
@@ -87,9 +97,9 @@ function createProperty(currentValue, changes, updater){
             object = {};
         }
 
-        if(binding){
+        if(propertyScope.binding){
             model = object;
-            binding.attach(object, 1);
+            propertyScope.binding.attach(object, 1);
         }
 
         if(property._events && 'attach' in property._events){
@@ -103,9 +113,9 @@ function createProperty(currentValue, changes, updater){
             return property;
         }
 
-        if(binding){
-            binding.removeListener('change', property);
-            binding.detach(1);
+        if(propertyScope.binding){
+            propertyScope.binding.removeListener('change', property);
+            propertyScope.binding.detach(1);
             model = null;
         }
 
@@ -138,8 +148,8 @@ function createProperty(currentValue, changes, updater){
             property._destroyed = true;
             property.emit('destroy');
             property.detach();
-            if(binding){
-                binding.destroy(true);
+            if(propertyScope.binding){
+                propertyScope.binding.destroy(true);
             }
         }
         return property;

@@ -1,5 +1,9 @@
 var EventEmitter = require('events').EventEmitter;
 
+function getContainerElement(){
+    return this.containerElement || this.element;
+};
+
 module.exports = function(type, fastn, settings, children){
     var container = fastn.base(type, settings, children);
 
@@ -92,9 +96,8 @@ module.exports = function(type, fastn, settings, children){
         }
     };
 
-    container.getContainerElement = function(){
-        return container.containerElement || container.element;
-    };
+    //Supprisingly, this is the fastest way to do this :/
+    container.getContainerElement = getContainerElement.bind(container);
 
     container.on('render', function(){
         container.insert(container._children, 0);
