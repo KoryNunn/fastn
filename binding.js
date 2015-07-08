@@ -45,7 +45,7 @@ function fuseBinding(){
     }
 
     bindings.forEach(function(binding, index){
-        if(typeof binding === 'string'){
+        if(!is.binding(binding)){
             binding = createBinding(binding);
             bindings.splice(index,1,binding);
         }
@@ -69,6 +69,13 @@ function fuseBinding(){
     return resultBinding;
 }
 
+function createValueBinding(){
+    var valueBinding = createBinding('value');
+    valueBinding.attach = function(){};
+    valueBinding.detach = function(){};
+    return valueBinding;
+}
+
 function createBinding(path, more){
 
     if(more){ // used instead of arguments.length for performance
@@ -76,7 +83,7 @@ function createBinding(path, more){
     }
 
     if(path == null){
-        throw 'bindings must be created with a key (and or filter)';
+        return createValueBinding();
     }
 
     var value,

@@ -5,6 +5,7 @@ var Enti = require('enti'),
     makeFunctionEmitter = require('./makeFunctionEmitter'),
     is = require('./is');
 
+
 function propertyTemplate(value){
     if(!arguments.length){
         return this.binding && this.binding() || this.property._value;
