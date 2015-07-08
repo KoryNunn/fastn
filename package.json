@@ -14,6 +14,8 @@
     "enti": "^3.0.0",
     "es6-map": "^0.1.1",
     "flat-merge": "^1.0.0",
+    "multimap": "^0.1.1",
+    "object-assign": "^3.0.0",
     "same-value": "^1.0.0",
     "setify": "^1.0.2",
     "what-changed": "^2.1.0"

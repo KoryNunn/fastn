@@ -1,3 +1,31 @@
+function insertChild(fastn, container, child, index){
+    var currentIndex = container._children.indexOf(child),
+        newComponent = fastn.toComponent(child);
+
+    if(!fastn.isComponent(child)){
+        if(~currentIndex){
+            container._children.splice(currentIndex, 1, newComponent);
+        }
+    }
+
+    if(currentIndex !== index){
+        if(~currentIndex){
+            container._children.splice(currentIndex, 1);
+        }
+        container._children.splice(index, 0, newComponent);
+    }
+
+    if(container.getContainerElement() && !newComponent.element){
+        newComponent.render();
+    }
+
+    newComponent.attach(container.scope(), 1);
+
+    container._insert(newComponent.element, index);
+
+    return container;
+}
+
 module.exports = function(type, fastn, settings, children){
     var container = fastn.base(type, settings, children);
 
@@ -19,31 +47,7 @@ module.exports = function(type, fastn, settings, children){
             return container;
         }
 
-        var currentIndex = container._children.indexOf(component),
-            newComponent = fastn.toComponent(component);
-
-        if(!fastn.isComponent(component)){
-            if(~currentIndex){
-                container._children.splice(currentIndex, 1, newComponent);
-            }
-        }
-
-        if(currentIndex !== index){
-            if(~currentIndex){
-                container._children.splice(currentIndex, 1);
-            }
-            container._children.splice(index, 0, newComponent);
-        }
-
-        if(container.getContainerElement() && !newComponent.element){
-            newComponent.render();
-        }
-
-        newComponent.attach(container.scope(), 1);
-
-        container._insert(newComponent.element, index);
-
-        return container;
+        insertChild(fastn, container, component, index);
     };
 
     var x = 0;

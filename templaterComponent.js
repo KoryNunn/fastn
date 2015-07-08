@@ -1,9 +1,5 @@
-var crel = require('crel'),
-    EventEmitter = require('events').EventEmitter,
-    genericComponent = require('./genericComponent');
-
 module.exports = function(type, fastn, settings, children){
-    var templater = fastn.base(type, settings, children);
+    var templater = fastn.base(type, settings, children),
         lastValue = {},
         itemModel = new fastn.Model({});
         
@@ -15,18 +11,20 @@ module.exports = function(type, fastn, settings, children){
     }
 
     function update(){
-        var value = templater.data(),
-            template = templater.template();
 
-        if(!template){
+        // Don't template anything if the templater isn't rendered.
+        if(templater.element == null){
             return;
         }
+
+        var value = templater.data(),
+            template = templater.template();
 
         lastValue = value;
 
         itemModel.set('item', value);
 
-        var newComponent = fastn.toComponent(template(itemModel, templater.scope(), templater._currentComponent));
+        var newComponent = template && fastn.toComponent(template(itemModel, templater.scope(), templater._currentComponent));
 
         if(templater._currentComponent && templater._currentComponent !== newComponent){
             if(fastn.isComponent(templater._currentComponent)){
@@ -49,7 +47,9 @@ module.exports = function(type, fastn, settings, children){
             }
 
             if(templater.element && templater.element !== newComponent.element){
-                newComponent.element == null && newComponent.render();
+                if(newComponent.element == null){
+                    newComponent.render();
+                }
                 replaceElement(templater._currentComponent.element);
             }
         }

@@ -1,4 +1,8 @@
-var Map = require('es6-map');
+var Map = require('es6-map'),
+    MultiMap = require('multimap'),
+    merge = require('flat-merge');
+
+MultiMap.Map = Map;
 
 function each(value, fn){
     if(!value || typeof value !== 'object'){
@@ -17,6 +21,11 @@ function each(value, fn){
 function keyFor(object, value){
     if(!object || typeof object !== 'object'){
         return false;
+    }
+
+    if(Array.isArray(object)){
+        var index = object.indexOf(value);
+        return index >=0 ? index : false;
     }
 
     for(var key in object){
@@ -53,8 +62,9 @@ module.exports = function(type, fastn, settings, children){
         list = fastn.components._generic(type, fastn, settings, children);
     }
     
-    var itemsMap = new Map(),
-        lastTemplate;
+    var itemsMap = new MultiMap(),
+        lastTemplate,
+        existingItem = {};
 
     function updateItems(){
         var value = list.items(),
@@ -62,38 +72,42 @@ module.exports = function(type, fastn, settings, children){
             emptyTemplate = list.emptyTemplate(),
             newTemplate = lastTemplate !== template;
 
-        if(!template){
-            return;
-        }
-
-        var items = values(value);
-            currentItems = items.slice();
+        var currentItems = merge(template ? value : []);
 
         itemsMap.forEach(function(component, item){
-            var currentIndex = currentItems.indexOf(item);
+            var currentKey = keyFor(currentItems, item);
 
-            if(!newTemplate && ~currentIndex){
-                currentItems.splice(currentIndex,1);
+            if(!newTemplate && currentKey !== false){
+                currentItems[currentKey] = [existingItem, item, component];
             }else{
-                list.removeItem(item, itemsMap);
+                removeComponent(component);
+                itemsMap.delete(item);
             }
         });
 
         var index = 0;
 
-        each(value, function(item, key){
-            while(index < list._children.length && list._children[index]._templated && !~items.indexOf(list._children[index]._listItem)){
+        each(currentItems, function(item, key){
+            var child,
+                existing;
+
+            while(index < list._children.length && !list._children[index]._templated){
                 index++;
             }
 
-            var child,
-                model = new fastn.Model({
+            if(Array.isArray(item) && item[0] === existingItem){
+                existing = true;
+                child = item[2];
+                item = item[1];
+            }
+                
+            var data = {
                     item: item,
                     key: key
-                });
+                };
 
-            if(!itemsMap.has(item)){
-                child = fastn.toComponent(template(model, list.scope()));
+            if(!existing){
+                child = fastn.toComponent(template(new fastn.Model(data), list.scope()));
                 if(!child){
                     child = fastn('template');
                 }
@@ -101,12 +115,10 @@ module.exports = function(type, fastn, settings, children){
                 child._templated = true;
 
                 itemsMap.set(item, child);
-            }else{
-                child = itemsMap.get(item);
             }
 
             if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
-                child.attach(model, 2);
+                child.attach(data, 2);
             }
 
             list.insert(child, index);
@@ -128,12 +140,10 @@ module.exports = function(type, fastn, settings, children){
         }
     }
 
-    list.removeItem = function(item, itemsMap){
-        var component = itemsMap.get(item);
+    function removeComponent(component){
         list.remove(component);
         component.destroy();
-        itemsMap.delete(item);
-    };
+    }
 
     fastn.property([], settings.itemChanges || 'type structure', updateItems)
         .addTo(list, 'items');

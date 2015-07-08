@@ -26,6 +26,29 @@ test('value items', function(t){
 
 });
 
+test('value items duplicate values', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: [1,1,2,2],
+            template: function(model){
+                return fastn.binding('item');
+            }
+        });
+
+    list.render();
+
+    document.body.appendChild(list.element);
+
+    t.equal(document.body.textContent, '1122');
+
+    list.element.remove();
+    list.destroy();
+
+});
 
 test('bound items', function(t){
 
@@ -266,6 +289,90 @@ test('reattach list with templates', function(t){
     t.equal(document.body.textContent, '3');
 
     list.element.remove();
+    list.destroy();
+
+});
+
+test('dynamic template removed', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var templateBinding = fastn.binding();
+    templateBinding(function(model){
+        return fastn.binding('item');
+    });
+
+    var list = fastn('list', {
+            items: [1,2,3,4],
+            template: templateBinding
+        });
+
+    list.render();
+
+    document.body.appendChild(list.element);
+
+    t.equal(document.body.textContent, '1234');
+
+    templateBinding(null);
+
+    t.equal(document.body.textContent, '');
+
+    list.element.remove();
+    list.destroy();
+
+});
+
+test('dynamic template', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var templateBinding = fastn.binding();
+    templateBinding(function(model){
+        return fastn.binding('item');
+    });
+
+    var list = fastn('list', {
+            items: [1,2,3,4],
+            template: templateBinding
+        });
+
+    list.render();
+
+    document.body.appendChild(list.element);
+
+    t.equal(document.body.textContent, '1234');
+
+    templateBinding(function(model){
+        return '*';
+    });
+
+    t.equal(document.body.textContent, '****');
+
+    list.element.remove();
+    list.destroy();
+
+});
+
+test('object item keys', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: {foo:'bar'},
+            template: function(model){
+                t.equal(model.get('item'), 'bar');
+                t.equal(model.get('key'), 'foo');
+            }
+        });
+
+    list.attach();
+
     list.destroy();
 
 });

@@ -13,7 +13,6 @@ function createProperty(currentValue, changes, updater){
 
     var binding,
         model,
-        attachChange,
         previous = new WhatChanged(currentValue, changes || 'value type reference keys');
 
     function property(value){
@@ -22,8 +21,9 @@ function createProperty(currentValue, changes, updater){
         }
 
         if(!property._destroyed){
+            var changes = previous.update(value);
 
-            if(!Object.keys(previous.update(value)).length){
+            if(!Object.keys(changes).length){
                 return property;
             }
 

@@ -1,23 +1,5 @@
-var is = require('./is');
-
-function dereferenceSettings(settings){
-    var result = {},
-        keys = Object.keys(settings);
-
-    for(var i = 0; i < keys.length; i++){
-        var key = keys[i];
-        result[key] = settings[key];
-        if(is.bindingObject(result[key])){
-            result[key] = fastn.binding(
-                result[key]._fastn_binding,
-                result[key]._defaultValue,
-                result[key].transform
-            );
-        }
-    }
-
-    return result;
-}
+var is = require('./is'),
+    objectAssign = require('object-assign');
 
 function inflateProperties(component, settings){
     for(var key in settings){
@@ -48,7 +30,7 @@ function inflateProperties(component, settings){
 }
 
 module.exports = function createComponent(type, fastn, settings, children){
-    settings = dereferenceSettings(settings || {});
+    settings = objectAssign({}, settings || {});
 
     var component;
 
