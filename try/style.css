@@ -101,6 +101,7 @@ header button.reset{
 .output{
     left:50%;
     padding:10px;
+    overflow: auto;
 }
 
 .CodeMirror{

@@ -1,7 +1,6 @@
 var fastn = require('./fastn'),
     cpjax = require('cpjax'),
     defaultCode,
-    hash = window.location.hash,
     codeModel = {
         code: ''
     },
@@ -9,9 +8,14 @@ var fastn = require('./fastn'),
     errors = fastn.binding('errors').attach(codeModel),
     code = fastn.binding('code').attach(codeModel)
     .on('change', function(code){
+        var outputElement = document.createElement('div'),
+            outputComponent;
+
         try{
-            var resultComponent = new Function('fastn', code)(fastn);
-            result(resultComponent);
+            outputComponent = new Function('fastn', 'document', code)(fastn, {
+                body: outputElement
+            });
+            result(outputComponent || outputElement);
             errors(null);
         }catch(error){
             errors(error);

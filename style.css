@@ -43,6 +43,7 @@ h1,
 h2,
 h3 {
   margin: 8px 4px;
+  color: #0077b3;
 }
 h2 {
   color: #999;
@@ -54,13 +55,14 @@ h3 {
   font-weight: 200;
 }
 a {
-  color: #36f;
+  color: #0077b3;
   text-decoration: none;
 }
 button {
   border: none;
   border-radius: 3px;
   margin: 10px;
+  padding: 8px;
   font-size: 1.1em;
   font-weight: bold;
   color: #3080dd;
@@ -105,10 +107,12 @@ form button {
   text-transform: uppercase;
 }
 pre {
-  font-weight: 600;
+  font-weight: 400;
   overflow: auto;
   background: rgba(0,0,0,0.05);
   padding: 16px !important;
+  font-size: 1.2em;
+  line-height: 1.3em;
 }
 label {
   padding: 8px;
@@ -123,6 +127,13 @@ li {
   list-style: none;
   padding: 16px;
   margin: 8px;
+}
+i {
+  height: 24px;
+  width: 24px;
+  margin: 8px;
+  display: inline-block;
+  vertical-align: middle;
 }
 .mainHeader {
   position: fixed;
@@ -209,9 +220,32 @@ li {
 .hook {
   font-size: 1.5em;
   text-align: center;
-  margin-top: -8px;
   font-weight: 400;
   padding: 0 16px;
+  margin: 0;
+}
+nav {
+  text-align: center;
+  margin: 24px 8px;
+  display: flex;
+  justify-content: center;
+}
+nav a {
+  border: none;
+  border-radius: 3px;
+  margin: 10px;
+  padding: 8px;
+  font-size: 1.1em;
+  font-weight: bold;
+  color: #3080dd;
+  padding: 8px;
+  background: #fff;
+  box-shadow: 0 3px 4px -1px rgba(0,0,0,0.4);
+  padding-right: 16px;
+  display: flex;
+  flex-flow: row;
+  align-items: center;
+  text-transform: uppercase;
 }
 .example {
   display: flex;

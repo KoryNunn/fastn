@@ -3,7 +3,10 @@ var fastn = require('./fastn');
 var app = fastn('div',
     require('./header')(),
     fastn('div', {class: 'content'},
-        fastn('p', {class: 'hook'}, 'A javascript tool for building user interfaces'),
+        fastn('p', {class: 'hook'}, 
+            'A javascript tool for building user interfaces'
+        ),
+        require('./nav')(),
         require('./setup')(),
         require('./counter')(),
         require('./todo')(),
@@ -11,8 +14,7 @@ var app = fastn('div',
         require('./thisFile')(),
         require('./noHtml')(),
         require('./stats')(),
-        require('./getIt')(),
-        require('./tryIt')()
+        require('./getIt')()
     ),
     require('./forkBanner')()
 );

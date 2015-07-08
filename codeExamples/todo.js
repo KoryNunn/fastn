@@ -1,7 +1,9 @@
 var todos = new fastn.Model({todos:[]});
 
 function addTodo(todo){
-    todos.push('todos', todo);
+    if(todo){
+        todos.push('todos', todo);
+    }
 }
 
 var newTodoBinding = fastn.binding('newTodo');

@@ -1,9 +1,9 @@
 var fastn = require('./fastn'),
-    examples = require('./examples');
+    exampleSource = require('./exampleSource');
 
 module.exports = function(){
     return fastn('section', {class:'setup'},
         fastn('h1', 'Pick your tools'),
-        fastn('pre', examples('codeExamples/setupFastn.js'))
+        exampleSource('codeExamples/setupFastn.js')
     );
 };

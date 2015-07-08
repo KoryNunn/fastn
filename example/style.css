@@ -327,6 +327,7 @@ form button{
 
 button.add{
     position:fixed;
+    z-index: 1;
     bottom: 4px;
     right: 4px;
     height: 52px;

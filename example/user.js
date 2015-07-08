@@ -22,7 +22,9 @@ module.exports = function(selectedUser, deleteUser){
         },
 
         fastn('img', {
-            src: fastn.binding('picture.medium')
+            src: fastn.binding('picture', '.', usersService.selectedUser, function(picture, user, selectedUser){
+                return user === selectedUser ? picture.large : picture.medium;
+            })
         }),
 
         fastn('div', {class: 'details'},
