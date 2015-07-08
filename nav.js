@@ -6,11 +6,11 @@ module.exports = function(){
             fastn('i', {class: 'material-icons'}, 'code'),
             'Source'
         ),
-        fastn('a', {href: '/try'}, 
+        fastn('a', {href: './try'}, 
             fastn('i', {class: 'material-icons'}, 'build'),
             'Try It'
         ),
-        fastn('a', {href: '/example'}, 
+        fastn('a', {href: './example'}, 
             fastn('i', {class: 'material-icons'}, 'dashboard'),
             'Example App'
         )

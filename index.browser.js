@@ -29,7 +29,7 @@ var fastn=require("./fastn");module.exports=function(a){return fastn("header",{"
 module.exports=window.hljs.highlightBlock;
 
 },{}],11:[function(require,module,exports){
-var fastn=require("./fastn");module.exports=function(){return fastn("nav",fastn("a",{href:"https://github.com/KoryNunn/fastn"},fastn("i",{"class":"material-icons"},"code"),"Source"),fastn("a",{href:"/try"},fastn("i",{"class":"material-icons"},"build"),"Try It"),fastn("a",{href:"/example"},fastn("i",{"class":"material-icons"},"dashboard"),"Example App"))};
+var fastn=require("./fastn");module.exports=function(){return fastn("nav",fastn("a",{href:"https://github.com/KoryNunn/fastn"},fastn("i",{"class":"material-icons"},"code"),"Source"),fastn("a",{href:"./try"},fastn("i",{"class":"material-icons"},"build"),"Try It"),fastn("a",{href:"./example"},fastn("i",{"class":"material-icons"},"dashboard"),"Example App"))};
 
 },{"./fastn":6}],12:[function(require,module,exports){
 var fastn=require("./fastn"),exampleSource=require("./exampleSource");module.exports=function(){return fastn("section",{"class":"noHtml"},fastn("h1","Practically no HTML"),fastn("p","fastn doesn't use templates or HTML, but deals directly with the DOM."),fastn("p","Here's the index.html file for this page, note the empty <body>"),exampleSource("index.html"))};
