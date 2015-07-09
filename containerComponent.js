@@ -50,7 +50,7 @@ function insert(child, index){
         return container;
     }
 
-    insertChild(fastn, container, component, index);
+    return insertChild(fastn, container, component, index);
 }
 
 module.exports = function(type, fastn, settings, children){

@@ -96,3 +96,17 @@ test('insert many after current', function(t){
     parent.destroy();
 
 });
+
+test('insert returns container', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+
+    t.equal(container.insert(fastn('span')), container);
+
+    container.destroy();
+
+});
