@@ -76,6 +76,18 @@ function createValueBinding(){
     return valueBinding;
 }
 
+function bindingTemplate(newValue){
+    if(!arguments.length){
+        return this.value;
+    }
+
+    if(this.binding._fastn_binding === '.'){
+        return;
+    }
+
+    this.binding._set(newValue);
+}
+
 function createBinding(path, more){
 
     if(more){ // used instead of arguments.length for performance
@@ -86,18 +98,9 @@ function createBinding(path, more){
         return createValueBinding();
     }
 
-    var value,
-        binding = function binding(newValue){
-        if(!arguments.length){
-            return value;
-        }
+    var bindingScope = {},
+        binding = bindingScope.binding = bindingTemplate.bind(bindingScope);
 
-        if(path === '.'){
-            return;
-        }
-
-        binding._set(newValue);
-    };
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
     binding._arguments = [path];
@@ -137,7 +140,7 @@ function createBinding(path, more){
             return binding;
         }
 
-        value = undefined;
+        bindingScope.value = undefined;
         if(binding._model.isAttached()){
             binding._model.detach();
         }
@@ -154,7 +157,7 @@ function createBinding(path, more){
         binding._model.set(path, newValue);
     };
     binding._change = function(newValue){
-        value = newValue;
+        bindingScope.value = newValue;
         binding.emit('change', binding());
     };
     binding.clone = function(keepAttachment){

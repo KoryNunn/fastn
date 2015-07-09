@@ -28,33 +28,38 @@ function insertChild(fastn, container, child, index){
 
 function getContainerElement(){
     return this.containerElement || this.element;
-};
+}
+
+function insert(child, index){
+    var component = child,
+        container = this.container,
+        fastn = this.fastn;
+
+    if(index && typeof index === 'object'){
+        component = Array.prototype.slice.call(arguments);
+    }
+
+    if(isNaN(index)){
+        index = container._children.length;
+    }
+
+    if(Array.isArray(component)){
+        component.forEach(function(component, i){
+            container.insert(component, i + index);
+        });
+        return container;
+    }
+
+    insertChild(fastn, container, component, index);
+}
 
 module.exports = function(type, fastn, settings, children){
     var container = fastn.base(type, settings, children);
 
-    container.insert = function(child, index){
-        var component = child;
-
-        if(index && typeof index === 'object'){
-            component = Array.prototype.slice.call(arguments);
-        }
-
-        if(isNaN(index)){
-            index = container._children.length;
-        }
-
-        if(Array.isArray(component)){
-            component.forEach(function(component, i){
-                container.insert(component, i + index);
-            });
-            return container;
-        }
-
-        insertChild(fastn, container, component, index);
-    };
-
-    var x = 0;
+    container.insert = insert.bind({
+        container: container,
+        fastn: fastn
+    });
 
     container._insert = function(element, index){
         var containerElement = container.getContainerElement();
@@ -98,7 +103,6 @@ module.exports = function(type, fastn, settings, children){
         }
     };
 
-    //Supprisingly, this is the fastest way to do this :/
     container.getContainerElement = getContainerElement.bind(container);
 
     container.on('render', function(){
