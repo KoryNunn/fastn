@@ -2,6 +2,18 @@ function textComponent(type, fastn, settings, children){
     var text = fastn.base(type, settings, children);
 
     text.createTextNode = textComponent.createTextNode;
+    text.render = function(){
+        text.element = text.createTextNode('');
+        text.emit('render');
+    };
+
+    if(settings.auto && !fastn.isBinding(settings.text) && !fastn.isProperty(settings.text)){
+        text.render = function(){
+            text.element = text.createTextNode(settings.text);
+        };
+        return text;
+    }
+
     text.text = fastn.property('');
     text._updateText = function(value){
         if(!text.element){
@@ -10,10 +22,7 @@ function textComponent(type, fastn, settings, children){
 
         text.element.textContent = (value == null ? '' : value);
     };
-    text.render = function(){
-        text.element = text.createTextNode('');
-        text.emit('render');
-    };
+
     text.text.on('update', function(value){
         text._updateText(value);
     });

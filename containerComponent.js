@@ -2,12 +2,6 @@ function insertChild(fastn, container, child, index){
     var currentIndex = container._children.indexOf(child),
         newComponent = fastn.toComponent(child);
 
-    if(!fastn.isComponent(child)){
-        if(~currentIndex){
-            container._children.splice(currentIndex, 1, newComponent);
-        }
-    }
-
     if(currentIndex !== index){
         if(~currentIndex){
             container._children.splice(currentIndex, 1);
@@ -15,7 +9,7 @@ function insertChild(fastn, container, child, index){
         container._children.splice(index, 0, newComponent);
     }
 
-    if(container.getContainerElement() && !newComponent.element){
+    if(container.element && !newComponent.element){
         newComponent.render();
     }
 
@@ -44,9 +38,9 @@ function insert(child, index){
     }
 
     if(Array.isArray(component)){
-        component.forEach(function(component, i){
-            container.insert(component, i + index);
-        });
+        for (var i = 0; i < component.length; i++) {
+            container.insert(component[i], i + index);
+        }
         return container;
     }
 
@@ -99,7 +93,7 @@ module.exports = function(type, fastn, settings, children){
 
     container.empty = function(){
         while(container._children.length){
-            container._remove(container._children.pop().detach(1).element);
+            container.remove(container._children.pop());
         }
     };
 

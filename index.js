@@ -35,7 +35,7 @@ module.exports = function(components, debug){
             return component;
         }
         if(typeof component !== 'object' || component instanceof Date){
-            return fastn('text', {text: component});
+            return fastn('text', {auto: true, text: component});
         }
         if(crel.isElement(component)){
             return fastn(component);

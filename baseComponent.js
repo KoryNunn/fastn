@@ -92,19 +92,20 @@ function FastnComponent(type, fastn, settings, children){
         binding = newBinding;
 
         binding.on('change', emitAttach);
-        emitAttach(binding());
-
         binding.on('detach', emitDetach);
+
+        emitAttach();
 
         return component;
     };
 
     component.clone = function(){
-        return createComponent(component._type, fastn, component._settings, component._children.filter(function(child){
-            return !child._templated;
-        }).map(function(child){
-            return child.clone();
-        }), components);
+        return fastn(component._type, component._settings, component._children.filter(function(child){
+                return !child._templated;
+            }).map(function(child){
+                return child.clone();
+            })
+        );
     };
 
     component.children = function(){
