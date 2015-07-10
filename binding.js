@@ -173,7 +173,7 @@ function createBinding(path, more){
         if(binding._destroyed){
             return;
         }
-        if(soft && !binding.listeners('change').length){
+        if(soft && binding.listeners('change').length){
             return;
         }
         binding._destroyed = true;

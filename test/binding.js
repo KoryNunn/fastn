@@ -368,3 +368,48 @@ test('value-only binding cannot be attached', function(t){
 
     t.equal(binding(), 'foo', 'binding value correctly set to foo');
 });
+
+test('destroy', function(t){
+    t.plan(1);
+
+    var binding = createBinding().on('change', function(){
+        t.pass('binding changed');
+    });
+
+    binding('foo');
+
+    binding.destroy();
+
+    binding('bar');
+});
+
+test('soft destroy', function(t){
+    t.plan(2);
+
+    var binding = createBinding().on('change', function(){
+        t.pass('binding changed');
+    });
+
+    binding('foo');
+
+    binding.destroy(true);
+
+    binding('bar');
+});
+
+test('soft destroy 2', function(t){
+    t.plan(1);
+
+    function changeHandler(){
+        t.pass('binding changed');
+    }
+
+    var binding = createBinding().on('change', changeHandler);
+
+    binding('foo');
+
+    binding.removeListener('change', changeHandler);
+    binding.destroy(true);
+
+    binding('bar');
+});
