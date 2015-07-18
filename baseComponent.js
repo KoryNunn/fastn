@@ -10,17 +10,35 @@ function flatten(item){
     },[]) : item;
 }
 
-function forEachProperty(component, call, args){
-    var keys = Object.keys(component);
-
-    for(var i = 0; i < keys.length; i++){
-        var property = component[keys[i]];
-
-        if(!is.property(property)){
-            continue;
+function attachProperties(object, firm){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].attach(object, firm);
         }
+    }
+}
 
-        property[call].apply(null, args);
+function updateProperties(){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].update();
+        }
+    }
+}
+
+function detachProperties(firm){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].detach(firm);
+        }
+    }
+}
+
+function destroyProperties(){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].destroy();
+        }
     }
 }
 
@@ -112,18 +130,10 @@ function FastnComponent(type, fastn, settings, children){
         return component._children.slice();
     };
 
-    component.on('attach', function(){
-        forEachProperty(component, 'attach', arguments);
-    });
-    component.on('render', function(){
-        forEachProperty(component, 'update', arguments);
-    });
-    component.on('detach', function(){
-        forEachProperty(component, 'detach', arguments);
-    });
-    component.once('destroy', function(){
-        forEachProperty(component, 'destroy', arguments);
-    });
+    component.on('attach', attachProperties.bind(this));
+    component.on('render', updateProperties.bind(this));
+    component.on('detach', detachProperties.bind(this));
+    component.once('destroy', destroyProperties.bind(this));
 
     component.binding(binding);
 

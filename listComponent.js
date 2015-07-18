@@ -1,4 +1,5 @@
 var Map = require('es6-map'),
+    WeakMap = require('es6-weak-map'),
     MultiMap = require('multimap'),
     merge = require('flat-merge');
 
@@ -63,6 +64,7 @@ module.exports = function(type, fastn, settings, children){
     }
     
     var itemsMap = new MultiMap(),
+        dataMap = new WeakMap(),
         lastTemplate,
         existingItem = {};
 
@@ -100,13 +102,15 @@ module.exports = function(type, fastn, settings, children){
                 child = item[2];
                 item = item[1];
             }
-                
-            var data = {
+
+            var data;
+
+            if(!existing){
+                data = {
                     item: item,
                     key: key
                 };
 
-            if(!existing){
                 child = fastn.toComponent(template(new fastn.Model(data), list.scope()));
                 if(!child){
                     child = fastn('template');
@@ -114,7 +118,11 @@ module.exports = function(type, fastn, settings, children){
                 child._listItem = item;
                 child._templated = true;
 
+                dataMap.set(child, data);
                 itemsMap.set(item, child);
+            }else{
+                data = dataMap.get(child);
+                fastn.Model.set(data, 'key', key);
             }
 
             if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
