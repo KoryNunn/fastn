@@ -247,6 +247,8 @@ A fastn `binding` is a getterSetter function and `EventEmitter`.
 
 It is used as a mapping between an object and a key or path on that object.
 
+The path syntax is identical to that used in [enti](https://github.com/KoryNunn/enti#paths)
+
 ```javascript
 
 var someBinding = fastn.binding('foo');
