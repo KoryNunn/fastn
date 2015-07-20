@@ -1,4 +1,8 @@
+
+// Create a component to represent our app.
 var app = fastn('div',
+
+    // Create a heading.
     fastn('h1', 'My Cool App'),
 
     // Create a clear button
@@ -11,7 +15,7 @@ var app = fastn('div',
     // create an input
     fastn('input', {
 
-        //Bind its value to 'stuff'
+        // Bind its value to 'stuff'
         value: fastn.binding('stuff'),
 
         // automatically set the components `value` to its element's `value` on keyup
@@ -20,9 +24,15 @@ var app = fastn('div',
 
     // Output a binding as text
     fastn.binding('stuff')
-)
-.attach({
+);
+
+// Attach the app component to some data.
+app.attach({
     stuff: 'things'
 });
 
-return app;
+// Render the app component.
+app.render();
+
+// Append the app components element to <body>
+document.body.appendChild(app.element);
