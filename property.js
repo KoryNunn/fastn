@@ -11,7 +11,7 @@ function propertyTemplate(value){
         return this.binding && this.binding() || this.property._value;
     }
 
-    if(!this.property._destroyed){
+    if(!this.destroyed){
 
         if(!Object.keys(this.previous.update(value)).length){
             return this.property;
@@ -38,7 +38,8 @@ function createProperty(currentValue, changes, updater){
     }
 
     var binding,
-        model;
+        model,
+        destroyed;
 
     var propertyScope = {
         property: property,
@@ -83,6 +84,7 @@ function createProperty(currentValue, changes, updater){
         property(propertyScope.binding());
         return property;
     };
+
     property.attach = function(object, firm){
         if(firmer(property, firm)){
             return property;
@@ -109,6 +111,7 @@ function createProperty(currentValue, changes, updater){
 
         return property;
     };
+
     property.detach = function(firm){
         if(firmer(property, firm)){
             return property;
@@ -126,8 +129,9 @@ function createProperty(currentValue, changes, updater){
 
         return property;
     };
+
     property.update = function(){
-        if(!property._destroyed){
+        if(!destroyed){
 
             if(property._update){
                 property._update(property._value, property);
@@ -137,6 +141,7 @@ function createProperty(currentValue, changes, updater){
         }
         return property;
     };
+
     property.updater = function(fn){
         if(!arguments.length){
             return property._update;
@@ -144,9 +149,16 @@ function createProperty(currentValue, changes, updater){
         property._update = fn;
         return property;
     };
+
     property.destroy = function(){
-        if(!property._destroyed){
-            property._destroyed = true;
+        if(!destroyed){
+            destroyed = true;
+
+            property
+                .removeAllListeners('change')
+                .removeAllListeners('update')
+                .removeAllListeners('attach');
+
             property.emit('destroy');
             property.detach();
             if(propertyScope.binding){
@@ -155,6 +167,11 @@ function createProperty(currentValue, changes, updater){
         }
         return property;
     };
+
+    property.destroyed = function(){
+        return destroyed;
+    };
+
     property.addTo = function(component, key){
         component[key] = property;
         return property;

@@ -16,7 +16,7 @@ function createProperty(fastn, generic, key, settings){
         var element = generic.getContainerElement(),
             value = property();
 
-        if(!element || generic._destroyed){
+        if(!element || generic.destroyed()){
             return;
         }
 

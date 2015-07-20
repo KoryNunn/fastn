@@ -99,7 +99,8 @@ function createBinding(path, more){
     }
 
     var bindingScope = {},
-        binding = bindingScope.binding = bindingTemplate.bind(bindingScope);
+        binding = bindingScope.binding = bindingTemplate.bind(bindingScope),
+        destroyed;
 
     makeFunctionEmitter(binding);
     binding.setMaxListeners(10000);
@@ -170,16 +171,20 @@ function createBinding(path, more){
         return newBinding;
     };
     binding.destroy = function(soft){
-        if(binding._destroyed){
+        if(destroyed){
             return;
         }
         if(soft && binding.listeners('change').length){
             return;
         }
-        binding._destroyed = true;
+        destroyed = true;
         binding.emit('destroy');
         binding.detach();
         binding._model.destroy();
+    };
+
+    binding.destroyed = function(){
+        return destroyed;
     };
 
     if(path !== '.'){

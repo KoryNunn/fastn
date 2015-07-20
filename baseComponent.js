@@ -45,7 +45,8 @@ function destroyProperties(){
 function FastnComponent(type, fastn, settings, children){
     var component = this,
         scope = new fastn.Model(false),
-        binding = fastn.binding('.');
+        binding = fastn.binding('.'),
+        destroyed;
 
     binding._default_binding = true;
 
@@ -68,15 +69,25 @@ function FastnComponent(type, fastn, settings, children){
     };
 
     component.destroy = function(){
-        if(component._destroyed){
+        if(destroyed){
             return;
         }
-        component._destroyed = true;
+        destroyed = true;
+
+        component
+            .removeAllListeners('render')
+            .removeAllListeners('attach');
+
         component.emit('destroy');
         component.element = null;
         scope.destroy();
         binding.destroy();
+
         return component;
+    };
+
+    component.destroyed = function(){
+        return destroyed;
     };
 
     var lastBound;
