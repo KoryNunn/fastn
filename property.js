@@ -23,7 +23,7 @@ function propertyTemplate(value){
             this.binding(value);
             this.property._value = this.binding();
         }
-        
+
         this.property.emit('change', this.property._value);
         this.property.update();
     }

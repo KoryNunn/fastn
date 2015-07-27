@@ -62,7 +62,7 @@ module.exports = function(type, fastn, settings, children){
     }else{
         list = fastn.components._generic(type, fastn, settings, children);
     }
-    
+
     var itemsMap = new MultiMap(),
         dataMap = new WeakMap(),
         lastTemplate,

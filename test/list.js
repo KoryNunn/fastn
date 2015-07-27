@@ -252,6 +252,38 @@ test('array to undefined', function(t){
 
 });
 
+test.only('array to null', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: fastn.binding('items|*'),
+            template: function(model){
+                return fastn.binding('item');
+            }
+        }),
+        model = new Enti({
+            items: [1,2,3,4]
+        });
+
+    list.attach(model);
+    list.render();
+
+    document.body.appendChild(list.element);
+
+    t.equal(document.body.textContent, '1234');
+
+    model.set('items', null);
+
+    t.equal(document.body.textContent, '');
+
+    list.element.remove();
+    list.destroy();
+
+});
+
 test('reattach list with templates', function(t){
 
     t.plan(3);
