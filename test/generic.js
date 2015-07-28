@@ -186,3 +186,33 @@ test('DOM children', function(t){
     label.destroy();
 
 });
+
+test('same scope', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn();
+
+    var thing = fastn('label', {}, fastn.binding('x'));
+
+    thing.attach({
+        x: 10
+    });
+
+    thing.render();
+
+
+    thing.attach({
+        x: 20
+    });
+
+    document.body.appendChild(thing.element);
+
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'LABEL');
+    t.equal(document.body.childNodes[0].textContent, '20');
+
+    thing.element.remove();
+    thing.destroy();
+
+});

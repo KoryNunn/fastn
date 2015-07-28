@@ -2,6 +2,10 @@ function insertChild(fastn, container, child, index){
     var currentIndex = container._children.indexOf(child),
         newComponent = fastn.toComponent(child);
 
+    if(newComponent !== child){
+        container._children.splice(currentIndex, 1, newComponent);
+    }
+
     if(currentIndex !== index){
         if(~currentIndex){
             container._children.splice(currentIndex, 1);
