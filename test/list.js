@@ -252,7 +252,7 @@ test('array to undefined', function(t){
 
 });
 
-test.only('array to null', function(t){
+test('array to null', function(t){
 
     t.plan(2);
 

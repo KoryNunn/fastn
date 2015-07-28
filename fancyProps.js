@@ -1,4 +1,5 @@
-var setify = require('setify');
+var setify = require('setify'),
+    classist = require('classist');
 
 function updateTextProperty(generic, element, value){
     if(arguments.length === 2){
@@ -9,35 +10,15 @@ function updateTextProperty(generic, element, value){
 
 module.exports = {
     class: function(generic, element, value){
-        var lastClasses = generic._lastClasses || [];
-
-        if(arguments.length === 2){
-            return lastClasses.join(' ');
+        if(!generic._classist){
+            generic._classist = classist(element);
         }
 
-        if(value == null){
-            value = [];
+        if(arguments.length < 3){
+            return generic._classist();
         }
-        
-        var newClasses = (Array.isArray(value) ? value : ('' + value).split(' '));
 
-        lastClasses.map(function(className){
-            if(!className){
-                return;
-            }
-            if(!~newClasses.indexOf(className)){
-                element.classList.remove(className);
-            }
-        });
-        newClasses.map(function(className){
-            if(!className){
-                return;
-            }
-            if(!~lastClasses.indexOf(className)){
-                element.classList.add(className);
-            }
-        });
-        generic._lastClasses = newClasses;
+        generic._classist(value);
     },
     display: function(generic, element, value){
         if(arguments.length === 2){
@@ -72,7 +53,7 @@ module.exports = {
                 element.value = null;
             }else{
                 element.value = [
-                    value.getFullYear(), 
+                    value.getFullYear(),
                     ('0' + (value.getMonth() + 1)).slice(-2),
                     ('0' + value.getDate()).slice(-2)
                 ].join('-');

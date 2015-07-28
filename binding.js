@@ -86,6 +86,7 @@ function bindingTemplate(newValue){
     }
 
     this.binding._set(newValue);
+    return this.binding;
 }
 
 function createBinding(path, more){
@@ -193,5 +194,15 @@ function createBinding(path, more){
 
     return binding;
 }
+
+function from(valueOrBinding){
+    if(is.binding(valueOrBinding)){
+        return valueOrBinding;
+    }
+
+    return createBinding()(valueOrBinding);
+}
+
+createBinding.from = from;
 
 module.exports = createBinding;

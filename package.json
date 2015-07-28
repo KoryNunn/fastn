@@ -10,11 +10,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "classist": "^1.0.0",
     "crel": "^2.1.8",
     "enti": "^3.0.0",
     "es6-map": "^0.1.1",
     "es6-weak-map": "^1.0.2",
     "flat-merge": "^1.0.0",
+    "flatten": "0.0.1",
     "multimap": "^0.1.1",
     "object-assign": "^3.0.0",
     "same-value": "^1.0.0",
