@@ -276,6 +276,21 @@ var anotherBinding = fastn.binding('bar', 'baz', someBinding, function(bar, baz,
 
 ```
 
+### `binding.from(value)`
+
+ - if value is a binding: return `value`
+ - else: return a binding who's value is `value`.
+
+usefull when you don't know what something is, but you need it in a binding:
+
+```javascript
+
+var someBinding = fastn.binding('someKey', fastn.binding.from(couldBeAnything), function(someValue, valueOfAnything){
+
+    });
+
+```
+
 ### A note on the difference between `properties` and `bindings`
 
 On the surface, properties and bindings look very similar.
