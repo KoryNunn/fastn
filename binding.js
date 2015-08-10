@@ -128,7 +128,7 @@ function createBinding(path, more){
             object = {};
         }
 
-        if(binding._model.get('.') === object){
+        if(binding._model._model === object){
             return binding;
         }
 

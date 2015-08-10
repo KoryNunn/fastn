@@ -11,7 +11,9 @@ function each(value, fn){
     }
 
     if(Array.isArray(value)){
-        value.forEach(fn);
+        for(var i = 0; i < value.length; i++){
+            fn(value[i], i)
+        }
     }else{
         for(var key in value){
             fn(value[key], key);
@@ -89,7 +91,7 @@ module.exports = function(type, fastn, settings, children){
 
         var index = 0;
 
-        each(currentItems, function(item, key){
+        function updateItem(item, key){
             var child,
                 existing;
 
@@ -131,7 +133,9 @@ module.exports = function(type, fastn, settings, children){
 
             list.insert(child, index);
             index++;
-        });
+        }
+
+        each(currentItems, updateItem);
 
         lastTemplate = template;
 
@@ -153,8 +157,9 @@ module.exports = function(type, fastn, settings, children){
         component.destroy();
     }
 
-    fastn.property([], settings.itemChanges || 'type structure', updateItems)
-        .addTo(list, 'items');
+    fastn.property([], settings.itemChanges || 'type structure')
+        .addTo(list, 'items')
+        .on('change', updateItems);
 
     fastn.property(undefined, 'value')
         .addTo(list, 'template')

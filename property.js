@@ -174,6 +174,19 @@ function createProperty(currentValue, changes, updater){
 
     property.addTo = function(component, key){
         component[key] = property;
+
+        component.on('attach', property.attach);
+        component.on('render', property.update);
+        component.on('detach', property.detach);
+        component.once('destroy', property.destroy);
+
+        property.once('destroy', function(){
+            component.removeListener('attach', property.attach);
+            component.removeListener('render', property.update);
+            component.removeListener('detach', property.detach);
+            component.removeListener('destroy', property.destroy);
+        });
+
         return property;
     };
     property._fastn_property = true;
