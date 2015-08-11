@@ -1,8 +1,7 @@
 module.exports = function(type, fastn, settings, children){
     var templater = fastn.base(type, settings, children),
-        lastValue = {},
         itemModel = new fastn.Model({});
-        
+
     function replaceElement(element){
         if(templater.element && templater.element.parentNode){
             templater.element.parentNode.replaceChild(element, templater.element);
@@ -12,15 +11,8 @@ module.exports = function(type, fastn, settings, children){
 
     function update(){
 
-        // Don't template anything if the templater isn't rendered.
-        if(templater.element == null){
-            return;
-        }
-
         var value = templater.data(),
             template = templater.template();
-
-        lastValue = value;
 
         itemModel.set('item', value);
 
@@ -35,7 +27,7 @@ module.exports = function(type, fastn, settings, children){
         templater._currentComponent = newComponent;
 
         if(!newComponent){
-            replaceElement(document.createTextNode(''));
+            replaceElement(templater.emptyElement);
             return;
         }
 
@@ -57,16 +49,18 @@ module.exports = function(type, fastn, settings, children){
 
     templater.render = function(){
         var element;
+        templater.emptyElement = document.createTextNode('');
         if(templater._currentComponent){
             templater._currentComponent.render();
             element = templater._currentComponent.element;
         }
-        templater.element = element || document.createTextNode('');
+        templater.element = element || templater.emptyElement;
         templater.emit('render');
     };
 
-    fastn.property(undefined, settings.dataChanges || 'value structure', update)
-        .addTo(templater, 'data');
+    fastn.property(undefined, settings.dataChanges || 'value structure')
+        .addTo(templater, 'data')
+        .on('change', update);
 
     fastn.property(undefined, 'value')
         .addTo(templater, 'template')
@@ -80,6 +74,7 @@ module.exports = function(type, fastn, settings, children){
 
     templater.on('attach', function(data){
         if(fastn.isComponent(templater._currentComponent)){
+            console.log('sending through', data);
             templater._currentComponent.attach(data, 1);
         }
     });

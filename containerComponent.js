@@ -15,8 +15,10 @@ function insertChild(fastn, container, child, index){
         container._children.splice(index, 0, newComponent);
     }
 
-    if(container.element && !newComponent.element){
-        newComponent.render();
+    if(container.element){
+        if(!newComponent.element){
+            newComponent.render();
+        }
         container._insert(newComponent.element, index);
     }
 }

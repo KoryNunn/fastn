@@ -10,6 +10,38 @@ function flatten(item){
     },[]) : item;
 }
 
+function attachProperties(object, firm){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].attach(object, firm);
+        }
+    }
+}
+
+function updateProperties(){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].update();
+        }
+    }
+}
+
+function detachProperties(firm){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].detach(firm);
+        }
+    }
+}
+
+function destroyProperties(){
+    for(var key in this){
+        if(is.property(this[key])){
+            this[key].destroy();
+        }
+    }
+}
+
 function FastnComponent(type, fastn, settings, children){
     var component = this,
         scope = new fastn.Model(false),
@@ -109,6 +141,11 @@ function FastnComponent(type, fastn, settings, children){
         return component._children.slice();
     };
 
+    component.on('attach', attachProperties.bind(this));
+    component.on('render', updateProperties.bind(this));
+    component.on('detach', detachProperties.bind(this));
+    component.once('destroy', destroyProperties.bind(this));
+
     component.binding(binding);
 
     if(fastn.debug){
@@ -121,7 +158,6 @@ function FastnComponent(type, fastn, settings, children){
 }
 FastnComponent.prototype = Object.create(EventEmitter.prototype);
 FastnComponent.prototype.constructor = FastnComponent;
-FastnComponent.prototype._maxListeners = 100;
 FastnComponent.prototype._fastn_component = true;
 
 module.exports = FastnComponent;

@@ -6,12 +6,14 @@ function updateText(value){
     this.element.textContent = (value == null ? '' : value);
 }
 
-function autoText(fastn, content) {
-    var text = fastn.base('text', null, null);
+function autoRender(content){
+    this.element = document.createTextNode(content);
+}
 
-    text.render = function(){
-        text.element = document.createTextNode(content);
-    };
+function autoText(fastn, content) {
+    var text = fastn.base('text');
+
+    text.render = autoRender.bind(text, content);
 
     return text;
 }
