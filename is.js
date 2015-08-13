@@ -1,22 +1,28 @@
+var FUNCTION = 'function',
+    OBJECT = 'object',
+    FASTNBINDING = '_fastn_binding',
+    FASTNPROPERTY = '_fastn_property',
+    FASTNCOMPONENT = '_fastn_component',
+    DEFAULTBINDING = '_default_binding';
 
 function isComponent(thing){
-    return thing && typeof thing === 'object' && '_fastn_component' in thing;
+    return thing && typeof thing === OBJECT && FASTNCOMPONENT in thing;
 }
 
 function isBindingObject(thing){
-    return thing && typeof thing === 'object' && '_fastn_binding' in thing;
+    return thing && typeof thing === OBJECT && FASTNBINDING in thing;
 }
 
 function isBinding(thing){
-    return thing && typeof thing === 'function' && '_fastn_binding' in thing;
+    return typeof thing === FUNCTION && FASTNBINDING in thing;
 }
 
 function isProperty(thing){
-    return thing && typeof thing === 'function' && '_fastn_property' in thing;
+    return typeof thing === FUNCTION && FASTNPROPERTY in thing;
 }
 
 function isDefaultBinding(thing){
-    return thing && typeof thing === 'function' && '_fastn_binding' in thing && '_default_binding' in thing;
+    return typeof thing === FUNCTION && FASTNBINDING in thing && DEFAULTBINDING in thing;
 }
 
 module.exports = {

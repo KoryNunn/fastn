@@ -108,7 +108,7 @@ function createBinding(path, more){
     binding._arguments = [path];
     binding._model = new Enti(false);
     binding._fastn_binding = path;
-    binding._firm = 1;
+    binding._firm = -Infinity;
 
     binding.attach = function(object, firm){
 
@@ -128,7 +128,7 @@ function createBinding(path, more){
             object = {};
         }
 
-        if(binding._model.get('.') === object){
+        if(binding._model._model === object){
             return binding;
         }
 

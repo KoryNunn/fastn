@@ -7,8 +7,8 @@ var createComponent = require('./component'),
     is = require('./is');
 
 module.exports = function(components, debug){
-
     function fastn(type){
+
         var args = [];
         for(var i = 0; i < arguments.length; i++){
             args[i] = arguments[i];
@@ -35,13 +35,13 @@ module.exports = function(components, debug){
             return component;
         }
         if(typeof component !== 'object' || component instanceof Date){
-            return fastn('text', {auto: true, text: component});
+            return fastn('text', {auto: true}, component);
         }
         if(crel.isElement(component)){
             return fastn(component);
         }
         if(crel.isNode(component)){
-            return fastn('text', {text: component.textContent});
+            return fastn('text', {auto: true}, component.textContent);
         }
     };
 

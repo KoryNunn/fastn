@@ -6,6 +6,10 @@ function insertChild(fastn, container, child, index){
         container._children.splice(currentIndex, 1, newComponent);
     }
 
+    if(!~currentIndex || newComponent !== child){
+        newComponent.attach(container.scope(), 1);
+    }
+
     if(currentIndex !== index){
         if(~currentIndex){
             container._children.splice(currentIndex, 1);
@@ -13,15 +17,12 @@ function insertChild(fastn, container, child, index){
         container._children.splice(index, 0, newComponent);
     }
 
-    if(container.element && !newComponent.element){
-        newComponent.render();
+    if(container.element){
+        if(!newComponent.element){
+            newComponent.render();
+        }
+        container._insert(newComponent.element, index);
     }
-
-    newComponent.attach(container.scope(), 1);
-
-    container._insert(newComponent.element, index);
-
-    return container;
 }
 
 function getContainerElement(){
@@ -45,10 +46,11 @@ function insert(child, index){
         for (var i = 0; i < component.length; i++) {
             container.insert(component[i], i + index);
         }
-        return container;
+    }else{
+        insertChild(fastn, container, component, index);
     }
 
-    return insertChild(fastn, container, component, index);
+    return container;
 }
 
 module.exports = function(type, fastn, settings, children){

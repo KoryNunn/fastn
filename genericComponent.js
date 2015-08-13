@@ -1,6 +1,7 @@
 var containerComponent = require('./containerComponent'),
     schedule = require('./schedule'),
-    fancyProps = require('./fancyProps');
+    fancyProps = require('./fancyProps'),
+    matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/;
 
 function createProperty(fastn, generic, key, settings){
     var setting = settings[key],
@@ -87,7 +88,7 @@ function addDomHandlers(generic, element, eventNames){
 
     for(var i = 0; i < events.length; i++){
         var eventName = events[i],
-            match = eventName.match(/^((?:el\.)?)([^. ]+)(?:\.(capture))?$/);
+            match = eventName.match(matchDomHandlerName);
 
         if(!match){
             continue;

@@ -37,13 +37,11 @@ function createProperty(currentValue, changes, updater){
         changes = null;
     }
 
-    var binding,
-        model,
+    var model,
         destroyed;
 
     var propertyScope = {
         property: property,
-        binding: binding,
         previous: new WhatChanged(currentValue, changes || 'value type reference keys')
     };
 
@@ -174,6 +172,7 @@ function createProperty(currentValue, changes, updater){
 
     property.addTo = function(component, key){
         component[key] = property;
+
         return property;
     };
     property._fastn_property = true;
