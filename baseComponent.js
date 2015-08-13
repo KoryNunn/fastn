@@ -18,7 +18,11 @@ function attachProperties(object, firm){
     }
 }
 
-function updateProperties(){
+function onRender(){
+
+    // Ensure all bindings are somewhat attached just before rendering
+    this.attach(undefined, 0);
+
     for(var key in this){
         if(is.property(this[key])){
             this[key].update();
@@ -142,7 +146,7 @@ function FastnComponent(type, fastn, settings, children){
     };
 
     component.on('attach', attachProperties.bind(this));
-    component.on('render', updateProperties.bind(this));
+    component.on('render', onRender.bind(this));
     component.on('detach', detachProperties.bind(this));
     component.once('destroy', destroyProperties.bind(this));
 

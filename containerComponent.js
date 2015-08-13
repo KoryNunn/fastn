@@ -5,6 +5,9 @@ function insertChild(fastn, container, child, index){
 
     if(newComponent !== child){
         container._children.splice(currentIndex, 1, newComponent);
+    }
+
+    if(!~currentIndex || newComponent !== child){
         newComponent.attach(container.scope(), 1);
     }
 

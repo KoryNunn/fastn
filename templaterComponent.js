@@ -74,7 +74,6 @@ module.exports = function(type, fastn, settings, children){
 
     templater.on('attach', function(data){
         if(fastn.isComponent(templater._currentComponent)){
-            console.log('sending through', data);
             templater._currentComponent.attach(data, 1);
         }
     });

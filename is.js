@@ -14,15 +14,15 @@ function isBindingObject(thing){
 }
 
 function isBinding(thing){
-    return thing && typeof thing === FUNCTION && FASTNBINDING in thing;
+    return typeof thing === FUNCTION && FASTNBINDING in thing;
 }
 
 function isProperty(thing){
-    return thing && typeof thing === FUNCTION && FASTNPROPERTY in thing;
+    return typeof thing === FUNCTION && FASTNPROPERTY in thing;
 }
 
 function isDefaultBinding(thing){
-    return thing && typeof thing === FUNCTION && FASTNBINDING in thing && DEFAULTBINDING in thing;
+    return typeof thing === FUNCTION && FASTNBINDING in thing && DEFAULTBINDING in thing;
 }
 
 module.exports = {
