@@ -7,9 +7,11 @@ var app = fastn('div',
     require('./forkBanner')()
 );
 
+// app.attach();
+app.render();
+
 window.onload = function(){
 
-    app.render();
 
     document.body.appendChild(app.element);
 };
