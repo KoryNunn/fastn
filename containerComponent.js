@@ -105,9 +105,7 @@ module.exports = function(type, fastn, settings, children){
 
     container.getContainerElement = getContainerElement.bind(container);
 
-    container.on('render', function(){
-        container.insert(container._children, 0);
-    });
+    container.on('render', container.insert.bind(null, container._children, 0));
 
     container.on('attach', function(data, firm){
         for(var i = 0; i < container._children.length; i++){

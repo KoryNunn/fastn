@@ -1,7 +1,9 @@
-function updateText(value){
+function updateText(){
     if(!this.element){
         return;
     }
+
+    var value = this.text();
 
     this.element.textContent = (value == null ? '' : value);
 }
@@ -18,30 +20,26 @@ function autoText(fastn, content) {
     return text;
 }
 
+function render(){
+    this.element = this.createTextNode(this.text());
+    this.emit('render');
+};
+
 function textComponent(type, fastn, settings, children){
     if(settings.auto){
         delete settings.auto;
         if(!fastn.isBinding(children[0])){
             return autoText(fastn, children[0]);
         }
-        settings.text = children[0];
+        settings.text = children.pop();
     }
 
     var text = fastn.base(type, settings, children);
 
     text.createTextNode = textComponent.createTextNode;
-    text.render = function(){
-        text.element = text.createTextNode(text.text());
-        text.emit('render');
-    };
+    text.render = render.bind(text);
 
-    text.text = fastn.property('');
-    text._updateText = updateText.bind(text);
-
-    text.text.on('update', function(value){
-        text._updateText(value);
-    });
-    text.on('update', text.text.update);
+    text.text = fastn.property('', updateText.bind(text));
 
     return text;
 }

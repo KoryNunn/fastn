@@ -42,6 +42,7 @@ function createComponent(type, fastn, settings, children){
         component = fastn.components[type](type, fastn, newSettings, children);
     }
 
+    component._properties = {};
     inflateProperties(component, newSettings);
 
     return component;

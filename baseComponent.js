@@ -11,10 +11,8 @@ function flatten(item){
 }
 
 function attachProperties(object, firm){
-    for(var key in this){
-        if(is.property(this[key])){
-            this[key].attach(object, firm);
-        }
+    for(var key in this._properties){
+        this._properties[key].attach(object, firm);
     }
 }
 
@@ -23,134 +21,150 @@ function onRender(){
     // Ensure all bindings are somewhat attached just before rendering
     this.attach(undefined, 0);
 
-    for(var key in this){
-        if(is.property(this[key])){
-            this[key].update();
-        }
+    for(var key in this._properties){
+        this._properties[key].update();
     }
 }
 
 function detachProperties(firm){
-    for(var key in this){
-        if(is.property(this[key])){
-            this[key].detach(firm);
-        }
+    for(var key in this._properties){
+        this._properties[key].detach(firm);
     }
 }
 
 function destroyProperties(){
-    for(var key in this){
-        if(is.property(this[key])){
-            this[key].destroy();
-        }
+    for(var key in this._properties){
+        this._properties[key].destroy();
     }
+}
+
+function clone(){
+    return this.fastn(this.component._type, this.component._settings, this.component._children.filter(function(child){
+            return !child._templated;
+        }).map(function(child){
+            return child.clone();
+        })
+    );
+}
+
+function getSetBinding(newBinding){
+    if(!arguments.length){
+        return this.binding;
+    }
+
+    if(!is.binding(newBinding)){
+        newBinding = this.fastn.binding(newBinding);
+    }
+
+    if(this.binding && this.binding !== newBinding){
+        newBinding.attach(this.binding._model, this.binding._firm);
+        this.binding.removeListener('change', this.emitAttach);
+    }
+
+    this.binding = newBinding;
+
+    this.binding.on('change', this.emitAttach);
+    this.binding.on('detach', this.emitDetach);
+
+    this.emitAttach();
+
+    return this.component;
+};
+
+function emitAttach(){
+    var newBound = this.binding();
+    if(newBound !== this.lastBound){
+        this.lastBound = newBound;
+        this.scope.attach(this.lastBound);
+        this.component.emit('attach', this.lastBound, 1);
+    }
+}
+
+function emitDetach(){
+    this.component.emit('detach', 1);
+}
+
+function getScope(){
+    return this.scope;
+}
+
+function destroy(){
+    if(this.destroyed){
+        return;
+    }
+    this.destroyed = true;
+
+    this.component
+        .removeAllListeners('render')
+        .removeAllListeners('attach');
+
+    this.component.emit('destroy');
+    this.component.element = null;
+    this.scope.destroy();
+    this.binding.destroy();
+
+    return this.component;
 }
 
 function FastnComponent(type, fastn, settings, children){
     var component = this,
-        scope = new fastn.Model(false),
-        binding = fastn.binding('.'),
         destroyed;
 
-    binding._default_binding = true;
+    var componentScope = {
+        fastn: fastn,
+        component: component,
+        binding: fastn.binding('.'),
+        destroyed: false,
+        scope: new fastn.Model(false),
+        lastBound: null
+    };
+    componentScope.emitAttach = emitAttach.bind(componentScope);
+    componentScope.emitDetach = emitAttach.bind(componentScope);
+
+    componentScope.binding._default_binding = true;
 
     component._type = type;
+    component._properties = {};
     component._settings = settings || {};
     component._children = flatten(children || []);
 
     component.attach = function(object, firm){
-        binding.attach(object, firm);
+        componentScope.binding.attach(object, firm);
         return component;
     };
 
     component.detach = function(firm){
-        binding.detach(firm);
+        componentScope.binding.detach(firm);
         return component;
     };
 
-    component.scope = function(){
-        return scope;
-    };
+    component.scope = getScope.bind(componentScope);
 
-    component.destroy = function(){
-        if(destroyed){
-            return;
-        }
-        destroyed = true;
-
-        component
-            .removeAllListeners('render')
-            .removeAllListeners('attach');
-
-        component.emit('destroy');
-        component.element = null;
-        scope.destroy();
-        binding.destroy();
-
-        return component;
-    };
+    component.destroy = destroy.bind(componentScope);
 
     component.destroyed = function(){
         return destroyed;
     };
 
-    var lastBound;
-    function emitAttach(){
-        var newBound = binding();
-        if(newBound !== lastBound){
-            lastBound = newBound;
-            scope.attach(lastBound);
-            component.emit('attach', lastBound, 1);
-        }
-    }
+    component.binding = getSetBinding.bind(componentScope);
 
-    function emitDetach(){
-        component.emit('detach', 1);
-    }
-
-    component.binding = function(newBinding){
-        if(!arguments.length){
-            return binding;
-        }
-
-        if(!is.binding(newBinding)){
-            newBinding = fastn.binding(newBinding);
-        }
-
-        if(binding && binding !== newBinding){
-            newBinding.attach(binding._model, binding._firm);
-            binding.removeListener('change', emitAttach);
-        }
-
-        binding = newBinding;
-
-        binding.on('change', emitAttach);
-        binding.on('detach', emitDetach);
-
-        emitAttach();
+    component.setProperty = function(key, property){
+        component[key] = property;
+        component._properties[key] = property;
 
         return component;
     };
 
-    component.clone = function(){
-        return fastn(component._type, component._settings, component._children.filter(function(child){
-                return !child._templated;
-            }).map(function(child){
-                return child.clone();
-            })
-        );
-    };
+    component.clone = clone.bind(componentScope);
 
-    component.children = function(){
-        return component._children.slice();
-    };
+    component.children = Array.prototype.slice.bind(component._children);
 
     component.on('attach', attachProperties.bind(this));
     component.on('render', onRender.bind(this));
     component.on('detach', detachProperties.bind(this));
     component.once('destroy', destroyProperties.bind(this));
 
-    component.binding(binding);
+    component.binding(componentScope.binding);
 
     if(fastn.debug){
         component.on('render', function(){

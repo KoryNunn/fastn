@@ -171,7 +171,7 @@ function createProperty(currentValue, changes, updater){
     };
 
     property.addTo = function(component, key){
-        component[key] = property;
+        component.setProperty(key, property);
 
         return property;
     };
