@@ -71,8 +71,8 @@ function fuseBinding(){
 
 function createValueBinding(){
     var valueBinding = createBinding('value');
-    valueBinding.attach = function(){};
-    valueBinding.detach = function(){};
+    valueBinding.attach = function(){return valueBinding;};
+    valueBinding.detach = function(){return valueBinding;};
     return valueBinding;
 }
 
