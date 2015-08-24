@@ -104,7 +104,7 @@ test('cyclic value', function(t){
 
     var model = new Enti();
 
-    var property = createProperty();
+    var property = createProperty(null, 'keys');
 
     var binding = createBinding('.|*');
 

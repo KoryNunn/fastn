@@ -106,6 +106,27 @@ function destroy(){
     return this.component;
 }
 
+function attachComponent(object, firm){
+    this.binding.attach(object, firm);
+    return this.component;
+}
+
+function detachComponent(firm){
+    this.binding.detach(firm);
+    return this.component;
+}
+
+function isDestroyed(){
+    return this.destroyed;
+}
+
+function setProperty(key, property){
+    this.component[key] = property;
+    this.component._properties[key] = property;
+
+    return this.component;
+}
+
 function FastnComponent(type, fastn, settings, children){
     var component = this,
         destroyed;
@@ -120,41 +141,21 @@ function FastnComponent(type, fastn, settings, children){
     };
     componentScope.emitAttach = emitAttach.bind(componentScope);
     componentScope.emitDetach = emitAttach.bind(componentScope);
-
     componentScope.binding._default_binding = true;
+
 
     component._type = type;
     component._properties = {};
     component._settings = settings || {};
     component._children = flatten(children || []);
 
-    component.attach = function(object, firm){
-        componentScope.binding.attach(object, firm);
-        return component;
-    };
-
-    component.detach = function(firm){
-        componentScope.binding.detach(firm);
-        return component;
-    };
-
+    component.attach = attachComponent.bind(componentScope);
+    component.detach = detachComponent.bind(componentScope);
     component.scope = getScope.bind(componentScope);
-
     component.destroy = destroy.bind(componentScope);
-
-    component.destroyed = function(){
-        return destroyed;
-    };
-
+    component.destroyed = isDestroyed.bind(componentScope);
     component.binding = getSetBinding.bind(componentScope);
-
-    component.setProperty = function(key, property){
-        component[key] = property;
-        component._properties[key] = property;
-
-        return component;
-    };
-
+    component.setProperty = setProperty.bind(componentScope);
     component.clone = clone.bind(componentScope);
 
     component.children = Array.prototype.slice.bind(component._children);

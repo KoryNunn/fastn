@@ -1,5 +1,6 @@
 var Enti = require('enti'),
     WhatChanged = require('what-changed'),
+    same = require('same-value'),
     firmer = require('./firmer'),
     createBinding = require('./binding'),
     makeFunctionEmitter = require('./makeFunctionEmitter'),
@@ -13,7 +14,7 @@ function propertyTemplate(value){
 
     if(!this.destroyed){
 
-        if(!Object.keys(this.previous.update(value)).length){
+        if(!this.hasChanged(value)){
             return this.property;
         }
 
@@ -31,6 +32,24 @@ function propertyTemplate(value){
     return this.property;
 }
 
+function changeChecker(current, changes){
+    if(changes){
+        var changes = new WhatChanged(current, changes);
+
+        return function(value){
+            return Object.keys(changes.update(value)).length > 0;
+        };
+    }else{
+        var lastValue = current;
+        return function(newValue){
+            if(!same(lastValue, newValue)){
+                lastValue = newValue;
+                return true;
+            }
+        };
+    }
+}
+
 function createProperty(currentValue, changes, updater){
     if(typeof changes === 'function'){
         updater = changes;
@@ -42,7 +61,7 @@ function createProperty(currentValue, changes, updater){
 
     var propertyScope = {
         property: property,
-        previous: new WhatChanged(currentValue, changes || 'value type reference keys')
+        hasChanged: changeChecker(currentValue, changes)
     };
 
     /*
