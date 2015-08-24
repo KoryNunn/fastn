@@ -1,0 +1,1 @@
+module.exports = fastn = require('fastn')(require('./components'), true);

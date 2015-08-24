@@ -1,0 +1,23 @@
+{
+  "name": "fastn-activities",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "(watchify scripts -o scripts/index.browser.js -d & stylus -w styles/index.styl -o styles/index.css)"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@bitbucket.org:meldr/fastn-activities.git"
+  },
+  "author": "",
+  "devDependencies": {
+    "stylus": "^0.51.1"
+  },
+  "dependencies": {
+    "activity-router": "^1.1.1",
+    "crel": "^2.1.8",
+    "fastn": "^1.9.1"
+  }
+}
