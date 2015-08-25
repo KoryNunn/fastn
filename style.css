@@ -134,6 +134,12 @@ i {
   margin: 8px;
   display: inline-block;
   vertical-align: middle;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+i.twitter {
+  background-image: url("https://upload.wikimedia.org/wikipedia/en/9/9f/Twitter_bird_logo_2012.svg");
 }
 .mainHeader {
   position: fixed;
@@ -248,6 +254,18 @@ nav a {
   flex-flow: row;
   align-items: center;
   text-transform: uppercase;
+}
+@media screen and (max-width: 700px) {
+  nav {
+    justify-content: stretch;
+  }
+  nav a {
+    min-width: 200px;
+    flex: 1 1 50%;
+    margin: 0px;
+    padding: 4px;
+    border-radius: 0;
+  }
 }
 .example {
   display: flex;

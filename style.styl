@@ -20,7 +20,7 @@ body {
     background: #f6f6fa;
     padding-bottom: 60px;
     padding-top: 135px;
-    
+
     &:before {
       content: "";
       z-index: -1;
@@ -166,6 +166,13 @@ i{
     margin: 8px;
     display: inline-block;
     vertical-align: middle;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    &.twitter{
+        background-image: url(https://upload.wikimedia.org/wikipedia/en/9/9f/Twitter_bird_logo_2012.svg);
+    }
 }
 
 .mainHeader{
@@ -186,19 +193,19 @@ i{
     flex-flow: row wrap;
     align-items: center;
     -webkit-mask-image: -webkit-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
     );
     -moz-mask-image: -moz-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
     );
     -ms-mask-image: -ms-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
@@ -300,6 +307,19 @@ nav{
         flex-flow: row;
         align-items: center;
         text-transform: uppercase;
+    }
+}
+
+@media screen and (max-width: 700px){
+    nav{
+        justify-content: stretch;
+        a{
+            min-width: 200px;
+            flex: 1 1 50%;
+            margin: 0px;
+            padding: 4px;
+            border-radius: 0;
+        }
     }
 }
 
