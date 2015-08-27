@@ -157,7 +157,7 @@ module.exports = function(type, fastn, settings, children){
         component.destroy();
     }
 
-    fastn.property([], settings.itemChanges || 'type structure')
+    fastn.property([], settings.itemChanges || 'type shallowStructure')
         .addTo(list, 'items')
         .on('change', updateItems);
 

@@ -14,15 +14,15 @@ function propertyTemplate(value){
 
     if(!this.destroyed){
 
-        if(!this.hasChanged(value)){
-            return this.property;
-        }
-
         this.property._value = value;
 
         if(this.binding){
             this.binding(value);
-            this.property._value = this.binding();
+            return this.property;
+        }
+
+        if(!this.hasChanged(value)){
+            return this.property;
         }
 
         this.property.emit('change', this.property._value);
@@ -61,7 +61,15 @@ function createProperty(currentValue, changes, updater){
 
     var propertyScope = {
         property: property,
-        hasChanged: changeChecker(currentValue, changes)
+        hasChanged: changeChecker(currentValue, changes),
+        bindingUpdate: function(value){
+            if(!propertyScope.hasChanged(value)){
+                return;
+            }
+            property._value = value;
+            property.emit('change', property._value);
+            property.update();
+        }
     };
 
     /*
@@ -91,13 +99,13 @@ function createProperty(currentValue, changes, updater){
         }
 
         if(propertyScope.binding){
-            propertyScope.binding.removeListener('change', property);
+            propertyScope.binding.removeListener('change', propertyScope.bindingUpdate);
         }
         propertyScope.binding = newBinding;
         if(model){
             property.attach(model, property._firm);
         }
-        propertyScope.binding.on('change', property);
+        propertyScope.binding.on('change', propertyScope.bindingUpdate);
         property(propertyScope.binding());
         return property;
     };
@@ -135,7 +143,7 @@ function createProperty(currentValue, changes, updater){
         }
 
         if(propertyScope.binding){
-            propertyScope.binding.removeListener('change', property);
+            propertyScope.binding.removeListener('change', propertyScope.bindingUpdate);
             propertyScope.binding.detach(1);
             model = null;
         }
