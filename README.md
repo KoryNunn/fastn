@@ -103,21 +103,21 @@ if the type passed to fastn does not exactly match any component it knows about,
 
 ## Default components
 
-fastn includes 4 extremely simple default components that render as DOM nodes. It is not neccisary to use them, and you can replace them with your own to render to anything you want to.
+fastn includes 4 extremely simple default components that render as DOM nodes. It is not necessary to use them, and you can replace them with your own to render to anything you want to.
 
 ### textComponent
 
-A default handler for the `text` component type that renders a textNode. eg:
+A default handler for the `text` component type that renders a textNode. e.g.:
 
 ```
 fastn('something', // render a thing
-    'Some string passed as a child' // falls into the `text` component, renderes as a textNode
+    'Some string passed as a child' // falls into the `text` component, renders as a textNode
 )
 ```
 
 ### genericComponent
 
-A default handler for the `_generic` component type that renders DOM nodes based on the type passed, eg:
+A default handler for the `_generic` component type that renders DOM nodes based on the type passed, e.g.:
 
 ```
 fastn('div') // no component is assigned to 'div', fastn will search for _generic, and if this component is assigned to it, it will create a div element.
@@ -125,7 +125,7 @@ fastn('div') // no component is assigned to 'div', fastn will search for _generi
 
 ### listComponent
 
-takes a template and inserts children based on the result of its `items` property, eg:
+takes a template and inserts children based on the result of its `items` property, e.g.:
 
 ```
 fastn('list', {
@@ -135,13 +135,13 @@ fastn('list', {
     }
 })
 ```
-the templated componets will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
+the templated components will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
 
 ### templaterComponent
 
-takes a tempalte and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted.
+takes a template and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted.
 
-The template funciton will be passed the last component that was rendered by it as the third parameter.
+The template function will be passed the last component that was rendered by it as the third parameter.
 
 ```
 fastn('templater', {
@@ -164,7 +164,7 @@ A component can be created by calling `fastn` with a `type`, like so:
 var myComponent = fastn('myComponent');
 ```
 
-This will create a component regestered in `components` with the key `'myComponent'`
+This will create a component registered in `components` with the key `'myComponent'`
 
 if `'myComponent'` is not found, fastn will check for a `'_generic'` constructor, and use that if defined. The generic component will create a DOM element of the given type passed in, and is likely the most common component you will create.
 
@@ -172,7 +172,7 @@ if `'myComponent'` is not found, fastn will check for a `'_generic'` constructor
 var divComponent = fastn('div', {'class':'myDiv'});
 ```
 
-The above will create a `component`, that renderes as a `div` with a class of `'myDiv'`
+The above will create a `component`, that renders as a `div` with a class of `'myDiv'`
 
 __the default genericComponent will automatically convert all keys in the settings object to properties.__
 
@@ -213,7 +213,7 @@ var someProperty = fastn.property(defaultValue, changes (optional), updater (opt
 someProperty(); // returns it's value;
 
 // set it's value
-someProperty(anything); // sets anthing and returns the property.
+someProperty(anything); // sets anything and returns the property.
 
 // add a change handler
 someProperty.on('change', function(value){
@@ -257,7 +257,7 @@ var someBinding = fastn.binding('foo');
 someBinding(); // returns it's value;
 
 // set it's value
-someBinding(anything); // sets anthing and returns the binding.
+someBinding(anything); // sets anything and returns the binding.
 
 // add a change handler
 someBinding.on('change', function(value){
@@ -281,7 +281,7 @@ var anotherBinding = fastn.binding('bar', 'baz', someBinding, function(bar, baz,
  - if value is a binding: return `value`
  - else: return a binding who's value is `value`.
 
-usefull when you don't know what something is, but you need it in a binding:
+useful when you don't know what something is, but you need it in a binding:
 
 ```javascript
 
@@ -297,7 +297,7 @@ On the surface, properties and bindings look very similar.
 They can both be used like getter/setter functions, and they both emit change events.
 
 They differ both in usage and implementation in that properties don't have any awareness of a model or paths,
-and bindings dont have any awareness of components.
+and bindings don't have any awareness of components.
 
 This distinction shines when you design your application with 'services' or 'controllers' that encapsulate models and how to interact with them.
 Check out the example applications [search service](https://github.com/KoryNunn/fastn/blob/gh-pages/example/search.js) and
