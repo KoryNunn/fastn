@@ -135,7 +135,7 @@ fastn('list', {
     }
 })
 ```
-the template components will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
+the templated components will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
 
 ### templaterComponent
 
