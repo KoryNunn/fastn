@@ -6,11 +6,7 @@ Create ultra-lightweight UI components
 
 ![fastn](http://korynunn.github.io/fastn/images/fastn-sml.png)
 
-## [Homepage](http://korynunn.github.io/fastn/)
-
-## [Try it](http://korynunn.github.io/fastn/try/)
-
-## [Example app](http://korynunn.github.io/fastn/example/)
+## [Homepage](http://korynunn.github.io/fastn/), [Try it](http://korynunn.github.io/fastn/try/), [Example app](http://korynunn.github.io/fastn/example/)
 
 # Usage
 
@@ -303,3 +299,9 @@ This distinction shines when you design your application with 'services' or 'con
 Check out the example applications [search service](https://github.com/KoryNunn/fastn/blob/gh-pages/example/search.js) and
 [search bar component](https://github.com/KoryNunn/fastn/blob/gh-pages/example/searchBar.js).
 The service only deals with data, and the component only deals with UI.
+
+# Browser Support
+
+Fastn works in all the latest evergreen browsers.
+
+Fastn *May* work in other browsers, but will almost certainly need a few polyfills like WeakMap, Map, WeakSet, Set, etc...
