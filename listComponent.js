@@ -1,6 +1,4 @@
-var Map = require('es6-map'),
-    WeakMap = require('es6-weak-map'),
-    MultiMap = require('multimap'),
+var MultiMap = require('multimap'),
     merge = require('flat-merge');
 
 MultiMap.Map = Map;
