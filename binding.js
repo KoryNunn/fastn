@@ -1,7 +1,8 @@
 var Enti = require('enti'),
     is = require('./is'),
     firmer = require('./firmer'),
-    makeFunctionEmitter = require('./makeFunctionEmitter'),
+    functionEmitter = require('./functionEmitter'),
+    setPrototypeOf = require('setprototypeof'),
     same = require('same-value');
 
 function fuseBinding(){
@@ -103,7 +104,7 @@ function createBinding(path, more){
         binding = bindingScope.binding = bindingTemplate.bind(bindingScope),
         destroyed;
 
-    makeFunctionEmitter(binding);
+    setPrototypeOf(binding, functionEmitter);
     binding.setMaxListeners(10000);
     binding._arguments = [path];
     binding._model = new Enti(false);

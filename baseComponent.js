@@ -1,5 +1,6 @@
 var is = require('./is'),
-    EventEmitter = require('events').EventEmitter;
+    EventEmitter = require('events').EventEmitter,
+    slice = Array.prototype.slice;
 
 function flatten(item){
     return Array.isArray(item) ? item.reduce(function(result, element){
@@ -57,8 +58,8 @@ function getSetBinding(newBinding){
     }
 
     if(this.binding && this.binding !== newBinding){
-        newBinding.attach(this.binding._model, this.binding._firm);
         this.binding.removeListener('change', this.emitAttach);
+        newBinding.attach(this.binding._model, this.binding._firm);
     }
 
     this.binding = newBinding;
@@ -128,8 +129,7 @@ function setProperty(key, property){
 }
 
 function FastnComponent(type, fastn, settings, children){
-    var component = this,
-        destroyed;
+    var component = this;
 
     var componentScope = {
         fastn: fastn,
@@ -139,15 +139,15 @@ function FastnComponent(type, fastn, settings, children){
         scope: new fastn.Model(false),
         lastBound: null
     };
-    componentScope.emitAttach = emitAttach.bind(componentScope);
-    componentScope.emitDetach = emitAttach.bind(componentScope);
-    componentScope.binding._default_binding = true;
 
+    componentScope.emitAttach = emitAttach.bind(componentScope);
+    componentScope.emitDetach = emitDetach.bind(componentScope);
+    componentScope.binding._default_binding = true;
 
     component._type = type;
     component._properties = {};
     component._settings = settings || {};
-    component._children = flatten(children || []);
+    component._children = children ? flatten(children) : [];
 
     component.attach = attachComponent.bind(componentScope);
     component.detach = detachComponent.bind(componentScope);
@@ -157,15 +157,14 @@ function FastnComponent(type, fastn, settings, children){
     component.binding = getSetBinding.bind(componentScope);
     component.setProperty = setProperty.bind(componentScope);
     component.clone = clone.bind(componentScope);
+    component.children = slice.bind(component._children);
 
-    component.children = Array.prototype.slice.bind(component._children);
+    component.binding(componentScope.binding);
 
     component.on('attach', attachProperties.bind(this));
     component.on('render', onRender.bind(this));
     component.on('detach', detachProperties.bind(this));
-    component.once('destroy', destroyProperties.bind(this));
-
-    component.binding(componentScope.binding);
+    component.on('destroy', destroyProperties.bind(this));
 
     if(fastn.debug){
         component.on('render', function(){

@@ -21,6 +21,7 @@
     "object-assign": "^3.0.0",
     "same-value": "^1.0.0",
     "setify": "^1.0.2",
+    "setprototypeof": "^1.0.0",
     "what-changed": "^2.1.0"
   },
   "devDependencies": {

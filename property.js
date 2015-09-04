@@ -3,9 +3,14 @@ var Enti = require('enti'),
     same = require('same-value'),
     firmer = require('./firmer'),
     createBinding = require('./binding'),
-    makeFunctionEmitter = require('./makeFunctionEmitter'),
+    functionEmitter = require('./functionEmitter'),
+    setPrototypeOf = require('setprototypeof'),
     is = require('./is');
 
+var propertyProto = Object.create(functionEmitter);
+
+propertyProto._fastn_property = true;
+propertyProto._firm = 1;
 
 function propertyTemplate(value){
     if(!arguments.length){
@@ -13,20 +18,12 @@ function propertyTemplate(value){
     }
 
     if(!this.destroyed){
-
-        this.property._value = value;
-
         if(this.binding){
             this.binding(value);
             return this.property;
         }
 
-        if(!this.hasChanged(value)){
-            return this.property;
-        }
-
-        this.property.emit('change', this.property._value);
-        this.property.update();
+        this.valueUpdate(value);
     }
 
     return this.property;
@@ -50,159 +47,164 @@ function changeChecker(current, changes){
     }
 }
 
+
+function propertyBinding(newBinding){
+    if(!arguments.length){
+        return this.binding;
+    }
+
+    if(!is.binding(newBinding)){
+        newBinding = createBinding(newBinding);
+    }
+
+    if(newBinding === this.binding){
+        return this.property;
+    }
+
+    if(this.binding){
+        this.binding.removeListener('change', this.valueUpdate);
+    }
+
+    this.binding = newBinding;
+
+    if(this.model){
+        this.property.attach(this.model, this.property._firm);
+    }
+
+    this.binding.on('change', this.valueUpdate);
+    this.valueUpdate(this.binding());
+
+    return this.property;
+};
+
+function attachProperty(object, firm){
+    if(firmer(this.property, firm)){
+        return this.property;
+    }
+
+    this.property._firm = firm;
+
+    if(object instanceof Enti){
+        object = object._model;
+    }
+
+    if(!(object instanceof Object)){
+        object = {};
+    }
+
+    if(this.binding){
+        this.model = object;
+        this.binding.attach(object, 1);
+    }
+
+    if(this.property._events && 'attach' in this.property._events){
+        this.property.emit('attach', object, 1);
+    }
+
+    return this.property;
+};
+
+function detachProperty(firm){
+    if(firmer(this.property, firm)){
+        return this.property;
+    }
+
+    if(this.binding){
+        this.binding.removeListener('change', this.valueUpdate);
+        this.binding.detach(1);
+        this.model = null;
+    }
+
+    if(this.property._events && 'detach' in this.property._events){
+        this.property.emit('detach', 1);
+    }
+
+    return this.property;
+};
+
+function updateProperty(){
+    if(!this.destroyed){
+
+        if(this.property._update){
+            this.property._update(this.property._value, this.property);
+        }
+
+        this.property.emit('update', this.property._value);
+    }
+    return this.property;
+};
+
+function propertyUpdater(fn){
+    if(!arguments.length){
+        return this.property._update;
+    }
+    this.property._update = fn;
+    return this.property;
+};
+
+function destroyProperty(){
+    if(!this.destroyed){
+        this.destroyed = true;
+
+        this.property
+            .removeAllListeners('change')
+            .removeAllListeners('update')
+            .removeAllListeners('attach');
+
+        this.property.emit('destroy');
+        this.property.detach();
+        if(this.binding){
+            this.binding.destroy(true);
+        }
+    }
+    return this.property;
+};
+
+function propertyDestroyed(){
+    return this.destroyed;
+};
+
+function addPropertyTo(component, key){
+    component.setProperty(key, this.property);
+
+    return this.property;
+};
+
 function createProperty(currentValue, changes, updater){
     if(typeof changes === 'function'){
         updater = changes;
         changes = null;
     }
 
-    var model,
-        destroyed;
-
-    var propertyScope = {
-        property: property,
+    var propertyScope =
+        property = propertyTemplate.bind(propertyScope)
+        propertyScope = {
         hasChanged: changeChecker(currentValue, changes),
-        bindingUpdate: function(value){
+        valueUpdate: function(value){
+            property._value = value;
             if(!propertyScope.hasChanged(value)){
                 return;
             }
-            property._value = value;
             property.emit('change', property._value);
             property.update();
         }
     };
 
-    /*
-        This very odd pattern has a huge impact on performance
-        by removing the hot function out of scope.
-    */
     var property = propertyScope.property = propertyTemplate.bind(propertyScope);
 
     property._value = currentValue;
     property._update = updater;
 
-    property._firm = 1;
+    setPrototypeOf(property, propertyProto);
 
-    makeFunctionEmitter(property);
-
-    property.binding = function(newBinding){
-        if(!arguments.length){
-            return propertyScope.binding;
-        }
-
-        if(!is.binding(newBinding)){
-            newBinding = createBinding(newBinding);
-        }
-
-        if(newBinding === propertyScope.binding){
-            return property;
-        }
-
-        if(propertyScope.binding){
-            propertyScope.binding.removeListener('change', propertyScope.bindingUpdate);
-        }
-        propertyScope.binding = newBinding;
-        if(model){
-            property.attach(model, property._firm);
-        }
-        propertyScope.binding.on('change', propertyScope.bindingUpdate);
-        property(propertyScope.binding());
-        return property;
-    };
-
-    property.attach = function(object, firm){
-        if(firmer(property, firm)){
-            return property;
-        }
-
-        property._firm = firm;
-
-        if(object instanceof Enti){
-            object = object._model;
-        }
-
-        if(!(object instanceof Object)){
-            object = {};
-        }
-
-        if(propertyScope.binding){
-            model = object;
-            propertyScope.binding.attach(object, 1);
-        }
-
-        if(property._events && 'attach' in property._events){
-            property.emit('attach', object, 1);
-        }
-
-        return property;
-    };
-
-    property.detach = function(firm){
-        if(firmer(property, firm)){
-            return property;
-        }
-
-        if(propertyScope.binding){
-            propertyScope.binding.removeListener('change', propertyScope.bindingUpdate);
-            propertyScope.binding.detach(1);
-            model = null;
-        }
-
-        if(property._events && 'detach' in property._events){
-            property.emit('detach', 1);
-        }
-
-        return property;
-    };
-
-    property.update = function(){
-        if(!destroyed){
-
-            if(property._update){
-                property._update(property._value, property);
-            }
-
-            property.emit('update', property._value);
-        }
-        return property;
-    };
-
-    property.updater = function(fn){
-        if(!arguments.length){
-            return property._update;
-        }
-        property._update = fn;
-        return property;
-    };
-
-    property.destroy = function(){
-        if(!destroyed){
-            destroyed = true;
-
-            property
-                .removeAllListeners('change')
-                .removeAllListeners('update')
-                .removeAllListeners('attach');
-
-            property.emit('destroy');
-            property.detach();
-            if(propertyScope.binding){
-                propertyScope.binding.destroy(true);
-            }
-        }
-        return property;
-    };
-
-    property.destroyed = function(){
-        return destroyed;
-    };
-
-    property.addTo = function(component, key){
-        component.setProperty(key, property);
-
-        return property;
-    };
-    property._fastn_property = true;
+    property.binding = propertyBinding.bind(propertyScope);
+    property.attach = attachProperty.bind(propertyScope);
+    property.detach = detachProperty.bind(propertyScope);
+    property.update = updateProperty.bind(propertyScope);
+    property.updater = propertyUpdater.bind(propertyScope);
+    property.destroy = destroyProperty.bind(propertyScope);
+    property.destroyed = propertyDestroyed.bind(propertyScope);
+    property.addTo = addPropertyTo.bind(propertyScope);
 
     return property;
 };
