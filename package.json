@@ -15,7 +15,7 @@
     "crel": "^2.1.5",
     "debounce": "^1.0.0",
     "doc-js": "^1.2.0",
-    "fastn": "^1.15.0",
+    "fastn": "^1.22.1",
     "flat-merge": "^1.0.0",
     "highlight": "^0.2.3",
     "laidout": "^1.0.0"
