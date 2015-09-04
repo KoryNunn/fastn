@@ -1,6 +1,6 @@
 {
   "name": "fastn",
-  "version": "1.22.2",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
