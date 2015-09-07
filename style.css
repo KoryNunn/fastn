@@ -1,5 +1,7 @@
 @import url("//fonts.googleapis.com/css?family=Roboto:400,300,100");
 * {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
   box-sizing: border-box;
 }
 html,
@@ -26,9 +28,12 @@ body:before {
   background: #0af;
   background-image: url("images/background.svg");
   background-repeat: no-repeat;
+  -webkit-background-size: 140%;
+  -moz-background-size: 140%;
   background-size: 140%;
   background-position: center top;
   background-attachment: fixed;
+  -webkit-box-shadow: 0 0 1px 1px rgba(0,0,0,0.4);
   box-shadow: 0 0 1px 1px rgba(0,0,0,0.4);
 }
 @media screen and (max-width: 450px) {
@@ -60,6 +65,7 @@ a {
 }
 button {
   border: none;
+  -webkit-border-radius: 3px;
   border-radius: 3px;
   margin: 10px;
   padding: 8px;
@@ -85,7 +91,17 @@ field {
   display: block;
   padding: 4px;
   min-height: 40px;
+  display: -webkit-box;
+  display: -moz-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: box;
   display: flex;
+  -webkit-box-align: center;
+  -moz-box-align: center;
+  -o-box-align: center;
+  -ms-flex-align: center;
+  -webkit-align-items: center;
   align-items: center;
 }
 field label {
@@ -123,6 +139,7 @@ ul {
   margin: 0;
 }
 li {
+  -webkit-box-shadow: 0 3px 4px -1px rgba(0,0,0,0.4);
   box-shadow: 0 3px 4px -1px rgba(0,0,0,0.4);
   list-style: none;
   padding: 16px;
@@ -134,6 +151,8 @@ i {
   margin: 8px;
   display: inline-block;
   vertical-align: middle;
+  -webkit-background-size: contain;
+  -moz-background-size: contain;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -151,12 +170,34 @@ i.twitter {
   background: #0af;
   background-image: url("images/background.svg");
   background-repeat: no-repeat;
+  -webkit-background-size: 140%;
+  -moz-background-size: 140%;
   background-size: 140%;
   background-position: center top;
   opacity: 0.98;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=98)";
+  filter: alpha(opacity=98);
   z-index: 1;
+  display: -webkit-box;
+  display: -moz-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: box;
   display: flex;
+  -webkit-box-orient: horizontal;
+  -moz-box-orient: horizontal;
+  -o-box-orient: horizontal;
+  -webkit-box-lines: multiple;
+  -moz-box-lines: multiple;
+  -o-box-lines: multiple;
+  -webkit-flex-flow: row wrap;
+  -ms-flex-flow: row wrap;
   flex-flow: row wrap;
+  -webkit-box-align: center;
+  -moz-box-align: center;
+  -o-box-align: center;
+  -ms-flex-align: center;
+  -webkit-align-items: center;
   align-items: center;
   -webkit-mask-image: -webkit-gradient(linear, right top, right bottom, color-stop(0, #000), color-stop(0.85, #000), color-stop(1, rgba(0,0,0,0)));
   -moz-mask-image: -moz-gradient(linear, right top, right bottom, color-stop(0, #000), color-stop(0.85, #000), color-stop(1, rgba(0,0,0,0)));
@@ -188,7 +229,18 @@ i.twitter {
 }
 .mainHeader .headline {
   text-align: center;
+  -webkit-box-align: center;
+  -moz-box-align: center;
+  -o-box-align: center;
+  -ms-flex-align: center;
+  -webkit-align-items: center;
   align-items: center;
+  -webkit-box-flex: 1;
+  -moz-box-flex: 1;
+  -o-box-flex: 1;
+  box-flex: 1;
+  -webkit-flex: 1;
+  -ms-flex: 1;
   flex: 1;
   min-width: 350px;
   max-width: 600px;
@@ -208,11 +260,17 @@ i.twitter {
   margin: auto;
 }
 .content > section {
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -o-transform: translateZ(0);
+  -ms-transform: translateZ(0);
   transform: translateZ(0);
   background: #fff;
   padding: 8px;
   margin: 24px 8px;
+  -webkit-box-shadow: 0 5px 10px 1px rgba(0,0,0,0.4);
   box-shadow: 0 5px 10px 1px rgba(0,0,0,0.4);
+  -webkit-border-radius: 3px;
   border-radius: 3px;
 }
 @media screen and (max-width: 450px) {
@@ -234,12 +292,31 @@ nav {
   text-align: center;
   margin: 24px 8px;
   margin-top: 8px;
+  display: -webkit-box;
+  display: -moz-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: box;
   display: flex;
+  -webkit-box-orient: horizontal;
+  -moz-box-orient: horizontal;
+  -o-box-orient: horizontal;
+  -webkit-box-lines: multiple;
+  -moz-box-lines: multiple;
+  -o-box-lines: multiple;
+  -webkit-flex-flow: row wrap;
+  -ms-flex-flow: row wrap;
   flex-flow: row wrap;
+  -webkit-box-pack: center;
+  -moz-box-pack: center;
+  -o-box-pack: center;
+  -ms-flex-pack: center;
+  -webkit-justify-content: center;
   justify-content: center;
 }
 nav a {
   border: none;
+  -webkit-border-radius: 3px;
   border-radius: 3px;
   margin: 10px;
   padding: 8px;
@@ -248,36 +325,89 @@ nav a {
   color: #3080dd;
   padding: 8px;
   background: #fff;
+  -webkit-box-shadow: 0 3px 4px -1px rgba(0,0,0,0.4);
   box-shadow: 0 3px 4px -1px rgba(0,0,0,0.4);
   padding-right: 16px;
+  display: -webkit-box;
+  display: -moz-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: box;
   display: flex;
+  -webkit-box-orient: horizontal;
+  -moz-box-orient: horizontal;
+  -o-box-orient: horizontal;
+  -webkit-flex-flow: row;
+  -ms-flex-flow: row;
   flex-flow: row;
+  -webkit-box-align: center;
+  -moz-box-align: center;
+  -o-box-align: center;
+  -ms-flex-align: center;
+  -webkit-align-items: center;
   align-items: center;
   text-transform: uppercase;
 }
 @media screen and (max-width: 700px) {
   nav {
+    -webkit-box-pack: stretch;
+    -moz-box-pack: stretch;
+    -o-box-pack: stretch;
+    -ms-flex-pack: stretch;
+    -webkit-justify-content: stretch;
     justify-content: stretch;
   }
   nav a {
     min-width: 200px;
+    -webkit-box-flex: 1;
+    -moz-box-flex: 1;
+    -o-box-flex: 1;
+    box-flex: 1;
+    -webkit-flex: 1 1 50%;
+    -ms-flex: 1 1 50%;
     flex: 1 1 50%;
     margin: 0px;
     padding: 4px;
+    -webkit-border-radius: 0;
     border-radius: 0;
   }
 }
 .example {
+  display: -webkit-box;
+  display: -moz-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: box;
   display: flex;
+  -webkit-box-orient: horizontal;
+  -moz-box-orient: horizontal;
+  -o-box-orient: horizontal;
+  -webkit-box-lines: multiple;
+  -moz-box-lines: multiple;
+  -o-box-lines: multiple;
+  -webkit-flex-flow: row wrap;
+  -ms-flex-flow: row wrap;
   flex-flow: row wrap;
 }
 .example pre {
+  -webkit-box-flex: 2;
+  -moz-box-flex: 2;
+  -o-box-flex: 2;
+  box-flex: 2;
+  -webkit-flex: 2;
+  -ms-flex: 2;
   flex: 2;
   min-width: 300px;
 }
 .example .exampleOutput {
   padding: 8px;
   min-width: 300px;
+  -webkit-box-flex: 1;
+  -moz-box-flex: 1;
+  -o-box-flex: 1;
+  box-flex: 1;
+  -webkit-flex: 1;
+  -ms-flex: 1;
   flex: 1;
 }
 .setup pre {

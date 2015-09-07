@@ -4,8 +4,8 @@
   "description": "Home app for fastn",
   "main": "index.js",
   "scripts": {
-    "watch": "watchify index.js -o index.browser.js -d & stylus -w style.styl -o style.css",
-    "build": "browserify -g uglifyify index.js --noparse clone > index.browser.js & stylus style.styl -o style.css",
+    "watch": "watchify index.js -o index.browser.js -d & stylus -u nib -w style.styl -o style.css",
+    "build": "browserify -g uglifyify index.js --noparse clone > index.browser.js & stylus -u nib style.styl -o style.css",
     "buildAll": "npm run build; cd example; npm run build; cd ../try; npm run build"
   },
   "author": "Kory Nunn",
@@ -21,6 +21,7 @@
     "laidout": "^1.0.0"
   },
   "devDependencies": {
+    "nib": "^1.1.0",
     "stylus": "^0.51.1",
     "uglifyify": "^3.0.1"
   }
