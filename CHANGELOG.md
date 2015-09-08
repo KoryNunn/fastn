@@ -104,3 +104,45 @@ var myMapList = fastn('list:map', { ... });
 Fastn will, under the covers, extend all the types together in the order they are listed, so the above example is equivilent to:
 
 fastn('list', settings, children...).extend('map', settings, children...);
+
+## Details
+
+### API
+
+#### Removed
+
+    - fastn.createComponent
+
+#### Changed
+
+    - componant constructor parameters (fastn, type, settings, children) -> (fastn, component, type, settings, children)
+    - component.setProperty can now be passed only a key, which will use the existing property, or create a new default one for that key.
+
+#### Added
+
+    - Mixin syntax, fastn('componantType1:componantType2')
+    - componant.extend(componantType, settings, children)
+    - componant.is(componantType) -> bool
+    - fastn.componants._container is now defaulted to containerComponant.
+
+### Best Practice
+
+#### Composition
+
+In v1, you could add functionality to a componant arbitrarily, with no real structure
+
+In v2, obviously, using the fastn('foo:bar') style is recommended.
+
+#### Adding properties
+
+In v1, properties were generally added via
+
+```
+property.addTo(componant, key);
+```
+
+In v2 this is deprecated, and it is encouraged that you instead use:
+
+```
+componant.setProperty('key', property);
+```

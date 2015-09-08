@@ -153,17 +153,18 @@ module.exports = function(fastn, component, type, settings, children){
         childComponent.destroy();
     }
 
-    fastn.property([], settings.itemChanges || 'type keys shallowStructure')
-        .addTo(component, 'items')
-        .on('change', updateItems);
+    component.setProperty('items',
+        fastn.property([], settings.itemChanges || 'type keys shallowStructure')
+            .on('change', updateItems)
+    );
 
-    fastn.property(undefined, 'value')
-        .addTo(component, 'template')
-        .on('change', updateItems);
+    component.setProperty('template',
+        fastn.property().on('change', updateItems)
+    );
 
-    fastn.property(undefined, 'value')
-        .addTo(component, 'emptyTemplate')
-        .on('change', updateItems);
+    component.setProperty('emptyTemplate',
+        fastn.property().on('change', updateItems)
+    );
 
     return component;
 };

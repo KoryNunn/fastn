@@ -124,11 +124,11 @@ function addAutoHandler(component, element, key, settings){
     });
 }
 
-function componentComponent(fastn, component, type, settings, children){
+function genericComponent(fastn, component, type, settings, children){
     component.extend('_container', settings, children);
 
-    component.updateProperty = componentComponent.updateProperty;
-    component.createElement = componentComponent.createElement;
+    component.updateProperty = genericComponent.updateProperty;
+    component.createElement = genericComponent.createElement;
     createProperties(fastn, component, settings);
 
     component.render = function(){
@@ -156,7 +156,7 @@ function componentComponent(fastn, component, type, settings, children){
     return component;
 }
 
-componentComponent.updateProperty = function(component, property, update){
+genericComponent.updateProperty = function(component, property, update){
     if(typeof document !== 'undefined' && document.contains(component.element)){
         schedule(property, update);
     }else{
@@ -164,11 +164,11 @@ componentComponent.updateProperty = function(component, property, update){
     }
 };
 
-componentComponent.createElement = function(tagName){
+genericComponent.createElement = function(tagName){
     if(tagName instanceof Node){
         return tagName;
     }
     return document.createElement(tagName);
 };
 
-module.exports = componentComponent;
+module.exports = genericComponent;
