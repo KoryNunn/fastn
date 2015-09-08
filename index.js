@@ -1,12 +1,45 @@
-var createComponent = require('./component'),
-    createProperty = require('./property'),
+var createProperty = require('./property'),
     createBinding = require('./binding'),
     BaseComponent = require('./baseComponent'),
     crel = require('crel'),
     Enti = require('enti'),
+    objectAssign = require('object-assign'),
     is = require('./is');
 
+function inflateProperties(component, settings){
+    for(var key in settings){
+        var setting = settings[key],
+            property = component[key];
+
+        if(is.property(settings[key])){
+
+            if(is.property(property)){
+                property.destroy();
+            }
+
+            setting.addTo(component, key);
+
+        }else if(is.property(property)){
+
+            if(is.binding(setting)){
+                property.binding(setting);
+            }else{
+                property(setting);
+            }
+
+            property.addTo(component, key);
+        }
+    }
+}
+
 module.exports = function(components, debug){
+
+    if(!components || typeof components !== 'object'){
+        throw new Error('fastn must be initialised with a components object');
+    }
+
+    components._container = components._container || require('./containerComponent');
+
     function fastn(type){
 
         var args = [];
@@ -24,7 +57,22 @@ module.exports = function(components, debug){
             settings = null;
         }
 
-        return createComponent(type, fastn, settings, args.slice(childrenIndex));
+        settings = objectAssign({}, settings || {});
+
+        var types = typeof type === 'string' ? type.split(':') : Array.isArray(type) ? type : [type],
+            baseType,
+            children = args.slice(childrenIndex),
+            component = fastn.base(type, settings, children);
+
+        while(baseType = types.shift()){
+            component.extend(baseType, settings, children);
+        }
+
+        component._properties = {};
+
+        inflateProperties(component, settings);
+
+        return component;
     }
 
     fastn.toComponent = function(component){
@@ -57,7 +105,7 @@ module.exports = function(components, debug){
     fastn.Model = Enti;
 
     fastn.base = function(type, settings, children){
-        return new BaseComponent(type, fastn, settings, children);
+        return new BaseComponent(fastn, type, settings, children);
     };
 
     return fastn;

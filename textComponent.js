@@ -12,9 +12,7 @@ function autoRender(content){
     this.element = document.createTextNode(content);
 }
 
-function autoText(fastn, content) {
-    var text = fastn.base('text');
-
+function autoText(text, fastn, content) {
     text.render = autoRender.bind(text, content);
 
     return text;
@@ -25,23 +23,21 @@ function render(){
     this.emit('render');
 };
 
-function textComponent(type, fastn, settings, children){
+function textComponent(fastn, component, type, settings, children){
     if(settings.auto){
         delete settings.auto;
         if(!fastn.isBinding(children[0])){
-            return autoText(fastn, children[0]);
+            return autoText(component, fastn, children[0]);
         }
         settings.text = children.pop();
     }
 
-    var text = fastn.base(type, settings, children);
+    component.createTextNode = textComponent.createTextNode;
+    component.render = render.bind(component);
 
-    text.createTextNode = textComponent.createTextNode;
-    text.render = render.bind(text);
+    component.setProperty('text', fastn.property('', updateText.bind(component)));
 
-    text.text = fastn.property('', updateText.bind(text));
-
-    return text;
+    return component;
 }
 
 textComponent.createTextNode = function(text){

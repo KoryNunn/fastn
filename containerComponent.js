@@ -30,39 +30,37 @@ function getContainerElement(){
 }
 
 function insert(child, index){
-    var component = child,
+    var childComponent = child,
         container = this.container,
         fastn = this.fastn;
 
     if(index && typeof index === 'object'){
-        component = Array.prototype.slice.call(arguments);
+        childComponent = Array.prototype.slice.call(arguments);
     }
 
     if(isNaN(index)){
         index = container._children.length;
     }
 
-    if(Array.isArray(component)){
-        for (var i = 0; i < component.length; i++) {
-            container.insert(component[i], i + index);
+    if(Array.isArray(childComponent)){
+        for (var i = 0; i < childComponent.length; i++) {
+            container.insert(childComponent[i], i + index);
         }
     }else{
-        insertChild(fastn, container, component, index);
+        insertChild(fastn, container, childComponent, index);
     }
 
     return container;
 }
 
-module.exports = function(type, fastn, settings, children){
-    var container = fastn.base(type, settings, children);
-
-    container.insert = insert.bind({
-        container: container,
+module.exports = function(fastn, component, type, settings, children){
+    component.insert = insert.bind({
+        container: component,
         fastn: fastn
     });
 
-    container._insert = function(element, index){
-        var containerElement = container.getContainerElement();
+    component._insert = function(element, index){
+        var containerElement = component.getContainerElement();
         if(!containerElement){
             return;
         }
@@ -74,21 +72,21 @@ module.exports = function(type, fastn, settings, children){
         containerElement.insertBefore(element, containerElement.childNodes[index]);
     };
 
-    container.remove = function(component){
-        var index = container._children.indexOf(component);
+    component.remove = function(childComponent){
+        var index = component._children.indexOf(childComponent);
         if(~index){
-            container._children.splice(index,1);
+            component._children.splice(index,1);
         }
 
-        component.detach(1);
+        childComponent.detach(1);
 
-        if(component.element){
-            container._remove(component.element);
+        if(childComponent.element){
+            component._remove(childComponent.element);
         }
     };
 
-    container._remove = function(element){
-        var containerElement = container.getContainerElement();
+    component._remove = function(element){
+        var containerElement = component.getContainerElement();
 
         if(!element || !containerElement || element.parentNode !== containerElement){
             return;
@@ -97,31 +95,31 @@ module.exports = function(type, fastn, settings, children){
         containerElement.removeChild(element);
     };
 
-    container.empty = function(){
-        while(container._children.length){
-            container.remove(container._children.pop());
+    component.empty = function(){
+        while(component._children.length){
+            component.remove(component._children.pop());
         }
     };
 
-    container.getContainerElement = getContainerElement.bind(container);
+    component.getContainerElement = getContainerElement.bind(component);
 
-    container.on('render', container.insert.bind(null, container._children, 0));
+    component.on('render', component.insert.bind(null, component._children, 0));
 
-    container.on('attach', function(data, firm){
-        for(var i = 0; i < container._children.length; i++){
-            if(fastn.isComponent(container._children[i])){
-                container._children[i].attach(data, firm);
+    component.on('attach', function(data, firm){
+        for(var i = 0; i < component._children.length; i++){
+            if(fastn.isComponent(component._children[i])){
+                component._children[i].attach(data, firm);
             }
         }
     });
 
-    container.on('destroy', function(data, firm){
-        for(var i = 0; i < container._children.length; i++){
-            if(fastn.isComponent(container._children[i])){
-                container._children[i].destroy(firm);
+    component.on('destroy', function(data, firm){
+        for(var i = 0; i < component._children.length; i++){
+            if(fastn.isComponent(component._children[i])){
+                component._children[i].destroy(firm);
             }
         }
     });
 
-    return container;
+    return component;
 };

@@ -3,7 +3,7 @@ var containerComponent = require('./containerComponent'),
     fancyProps = require('./fancyProps'),
     matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/;
 
-function createProperty(fastn, generic, key, settings){
+function createProperty(fastn, component, key, settings){
     var setting = settings[key],
         binding = fastn.isBinding(setting) && setting,
         property = fastn.isProperty(setting) && setting,
@@ -14,16 +14,16 @@ function createProperty(fastn, generic, key, settings){
     }
 
     function update(){
-        var element = generic.getContainerElement(),
+        var element = component.getContainerElement(),
             value = property();
 
-        if(!element || generic.destroyed()){
+        if(!element || component.destroyed()){
             return;
         }
 
         var isProperty = key in element,
             fancyProp = fancyProps[key],
-            previous = fancyProp ? fancyProp(generic, element) : isProperty ? element[key] : element.getAttribute(key);
+            previous = fancyProp ? fancyProp(component, element) : isProperty ? element[key] : element.getAttribute(key);
 
         if(!fancyProp && !isProperty && value == null){
             value = '';
@@ -31,7 +31,7 @@ function createProperty(fastn, generic, key, settings){
 
         if(value !== previous){
             if(fancyProp){
-                fancyProp(generic, element, value);
+                fancyProp(component, element, value);
                 return;
             }
 
@@ -48,7 +48,7 @@ function createProperty(fastn, generic, key, settings){
 
     if(!property){
         property = fastn.property(value, function(){
-            generic.updateProperty(generic, property, update);
+            component.updateProperty(component, property, update);
         });
     }
 
@@ -56,16 +56,16 @@ function createProperty(fastn, generic, key, settings){
         property.binding(binding);
     }
 
-    property.addTo(generic, key);
+    property.addTo(component, key);
 }
 
-function createProperties(fastn, generic, settings){
+function createProperties(fastn, component, settings){
     for(var key in settings){
-        createProperty(fastn, generic, key, settings);
+        createProperty(fastn, component, key, settings);
     }
 }
 
-function addDomHandler(generic, element, handlerName, eventName, capture){
+function addDomHandler(component, element, handlerName, eventName, capture){
     var eventParts = handlerName.split('.');
 
     if(eventParts[0] === 'on'){
@@ -73,17 +73,17 @@ function addDomHandler(generic, element, handlerName, eventName, capture){
     }
 
     var handler = function(event){
-            generic.emit(handlerName, event, generic.scope());
+            component.emit(handlerName, event, component.scope());
         };
 
     element.addEventListener(eventName, handler, capture);
 
-    generic.on('destroy', function(){
+    component.on('destroy', function(){
         element.removeEventListener(eventName, handler, capture);
     });
 }
 
-function addDomHandlers(generic, element, eventNames){
+function addDomHandlers(component, element, eventNames){
     var events = eventNames.split(' ');
 
     for(var i = 0; i < events.length; i++){
@@ -95,12 +95,12 @@ function addDomHandlers(generic, element, eventNames){
         }
 
         if(match[1] || 'on' + match[2] in element){
-            addDomHandler(generic, element, eventNames, match[2], match[3]);
+            addDomHandler(component, element, eventNames, match[2], match[3]);
         }
     }
 }
 
-function addAutoHandler(generic, element, key, settings){
+function addAutoHandler(component, element, key, settings){
     if(!settings[key]){
         return;
     }
@@ -112,52 +112,52 @@ function addAutoHandler(generic, element, key, settings){
 
     var handler = function(event){
         var fancyProp = fancyProps[autoEvent[1]],
-            value = fancyProp ? fancyProp(generic, element) : element[autoEvent[1]];
+            value = fancyProp ? fancyProp(component, element) : element[autoEvent[1]];
 
-        generic[autoEvent[0]](value);
+        component[autoEvent[0]](value);
     };
 
     element.addEventListener(eventName, handler);
 
-    generic.on('destroy', function(){
+    component.on('destroy', function(){
         element.removeEventListener(eventName, handler);
     });
 }
 
-function genericComponent(type, fastn, settings, children){
-    var generic = containerComponent(type, fastn, settings, children);
+function genericComponent(fastn, component, type, settings, children){
+    component.extend('_container', settings, children);
 
-    generic.updateProperty = genericComponent.updateProperty;
-    generic.createElement = genericComponent.createElement;
-    createProperties(fastn, generic, settings);
+    component.updateProperty = genericComponent.updateProperty;
+    component.createElement = genericComponent.createElement;
+    createProperties(fastn, component, settings);
 
-    generic.render = function(){
-        generic.element = generic.createElement(settings.tagName || type);
+    component.render = function(){
+        component.element = component.createElement(settings.tagName || type);
 
-        generic.emit('render');
+        component.emit('render');
 
-        return generic;
+        return component;
     };
 
-    generic.on('render', function(){
-        var element = generic.getContainerElement();
+    component.on('render', function(){
+        var element = component.getContainerElement();
 
         for(var key in settings){
             if(key.slice(0,2) === 'on' && key in element){
-                addAutoHandler(generic, element, key, settings);
+                addAutoHandler(component, element, key, settings);
             }
         }
 
-        for(var eventKey in generic._events){
-            addDomHandlers(generic, element, eventKey);
+        for(var eventKey in component._events){
+            addDomHandlers(component, element, eventKey);
         }
     });
 
-    return generic;
+    return component;
 }
 
-genericComponent.updateProperty = function(generic, property, update){
-    if(typeof document !== 'undefined' && document.contains(generic.element)){
+genericComponent.updateProperty = function(component, property, update){
+    if(typeof document !== 'undefined' && document.contains(component.element)){
         schedule(property, update);
     }else{
         update();

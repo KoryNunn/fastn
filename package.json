@@ -1,6 +1,6 @@
 {
   "name": "fastn",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,6 +9,10 @@
   },
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KoryNunn/fastn.git"
+  },
   "dependencies": {
     "classist": "^1.0.0",
     "crel": "^2.1.8",
