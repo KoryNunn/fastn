@@ -52,15 +52,13 @@ function values(object){
     return result;
 }
 
-module.exports = function(type, fastn, settings, children){
+module.exports = function(fastn, component, type, settings, children){
     settings.tagName = settings.tagName || 'div';
 
-    var list;
-
-    if(!fastn.components._generic){
-        list = fastn.base(type, settings, children);
+    if(fastn.components._generic){
+        component.extend('_generic', settings, children);
     }else{
-        list = fastn.components._generic(type, fastn, settings, children);
+        component.extend('_container', settings, children);
     }
 
     var itemsMap = new MultiMap(),
@@ -69,20 +67,20 @@ module.exports = function(type, fastn, settings, children){
         existingItem = {};
 
     function updateItems(){
-        var value = list.items(),
-            template = list.template(),
-            emptyTemplate = list.emptyTemplate(),
+        var value = component.items(),
+            template = component.template(),
+            emptyTemplate = component.emptyTemplate(),
             newTemplate = lastTemplate !== template;
 
         var currentItems = merge(template ? value : []);
 
-        itemsMap.forEach(function(component, item){
+        itemsMap.forEach(function(childComponent, item){
             var currentKey = keyFor(currentItems, item);
 
             if(!newTemplate && currentKey !== false){
-                currentItems[currentKey] = [existingItem, item, component];
+                currentItems[currentKey] = [existingItem, item, childComponent];
             }else{
-                removeComponent(component);
+                removeComponent(childComponent);
                 itemsMap.delete(item);
             }
         });
@@ -93,7 +91,7 @@ module.exports = function(type, fastn, settings, children){
             var child,
                 existing;
 
-            while(index < list._children.length && !list._children[index]._templated){
+            while(index < component._children.length && !component._children[index]._templated){
                 index++;
             }
 
@@ -111,7 +109,7 @@ module.exports = function(type, fastn, settings, children){
                     key: key
                 };
 
-                child = fastn.toComponent(template(new fastn.Model(data), list.scope()));
+                child = fastn.toComponent(template(new fastn.Model(data), component.scope()));
                 if(!child){
                     child = fastn('template');
                 }
@@ -125,11 +123,11 @@ module.exports = function(type, fastn, settings, children){
                 fastn.Model.set(data, 'key', key);
             }
 
-            if(fastn.isComponent(child) && list._settings.attachTemplates !== false){
+            if(fastn.isComponent(child) && component._settings.attachTemplates !== false){
                 child.attach(data, 2);
             }
 
-            list.insert(child, index);
+            component.insert(child, index);
             index++;
         }
 
@@ -138,7 +136,7 @@ module.exports = function(type, fastn, settings, children){
         lastTemplate = template;
 
         if(index === 0 && emptyTemplate){
-            var child = fastn.toComponent(emptyTemplate(list.scope()));
+            var child = fastn.toComponent(emptyTemplate(component.scope()));
             if(!child){
                 child = fastn('template');
             }
@@ -146,26 +144,26 @@ module.exports = function(type, fastn, settings, children){
 
             itemsMap.set({}, child);
 
-            list.insert(child);
+            component.insert(child);
         }
     }
 
-    function removeComponent(component){
-        list.remove(component);
-        component.destroy();
+    function removeComponent(childComponent){
+        component.remove(childComponent);
+        childComponent.destroy();
     }
 
     fastn.property([], settings.itemChanges || 'type keys shallowStructure')
-        .addTo(list, 'items')
+        .addTo(component, 'items')
         .on('change', updateItems);
 
     fastn.property(undefined, 'value')
-        .addTo(list, 'template')
+        .addTo(component, 'template')
         .on('change', updateItems);
 
     fastn.property(undefined, 'value')
-        .addTo(list, 'emptyTemplate')
+        .addTo(component, 'emptyTemplate')
         .on('change', updateItems);
 
-    return list;
+    return component;
 };

@@ -29,9 +29,9 @@ test('pre-created component', function(t){
     t.plan(3);
 
     var fastn = createFastn({
-        custom: function(type, fastn, settings, children){
+        custom: function(fastn, component, type, settings, children){
             t.pass('Used custom constructor');
-            return fastn('div', settings, children);
+            return component;
         }
     });
 

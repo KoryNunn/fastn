@@ -1,4 +1,5 @@
 var is = require('./is'),
+    GENERIC = '_generic',
     EventEmitter = require('events').EventEmitter,
     slice = Array.prototype.slice;
 
@@ -122,16 +123,49 @@ function isDestroyed(){
 }
 
 function setProperty(key, property){
+
+    // Add a default property or use the one already there
+    if(!property){
+        property = this.component[key] || this.fastn.property();
+    }
+
     this.component[key] = property;
     this.component._properties[key] = property;
 
     return this.component;
 }
 
-function FastnComponent(type, fastn, settings, children){
+function extendComponent(type, settings, children){
+
+    if(type in this.types){
+        return this.component;
+    }
+
+    this.types[type] = true;
+
+    if(!(type in this.fastn.components)){
+        if(!(GENERIC in this.fastn.components)){
+            throw new Error('No component of type "' + type + '" is loaded');
+        }
+
+        this.fastn.components._generic(this.fastn, this.component, type, settings, children);
+    }else{
+
+        this.fastn.components[type](this.fastn, this.component, type, settings, children);
+    }
+
+    return this.component;
+};
+
+function isType(type){
+    return type in this.types;
+}
+
+function FastnComponent(fastn, type, settings, children){
     var component = this;
 
     var componentScope = {
+        types: {},
         fastn: fastn,
         component: component,
         binding: fastn.binding('.'),
@@ -158,6 +192,8 @@ function FastnComponent(type, fastn, settings, children){
     component.setProperty = setProperty.bind(componentScope);
     component.clone = clone.bind(componentScope);
     component.children = slice.bind(component._children);
+    component.extend = extendComponent.bind(componentScope);
+    component.is = isType.bind(componentScope);
 
     component.binding(componentScope.binding);
 

@@ -1,82 +1,83 @@
-module.exports = function(type, fastn, settings, children){
-    var templater = fastn.base(type, settings, children),
-        itemModel = new fastn.Model({});
+module.exports = function(fastn, component, type, settings, children){
+    var itemModel = new fastn.Model({});
 
     function replaceElement(element){
-        if(templater.element && templater.element.parentNode){
-            templater.element.parentNode.replaceChild(element, templater.element);
+        if(component.element && component.element.parentNode){
+            component.element.parentNode.replaceChild(element, component.element);
         }
-        templater.element = element;
+        component.element = element;
     }
 
     function update(){
 
-        var value = templater.data(),
-            template = templater.template();
+        var value = component.data(),
+            template = component.template();
 
         itemModel.set('item', value);
 
-        var newComponent = template && fastn.toComponent(template(itemModel, templater.scope(), templater._currentComponent));
+        var newComponent = template && fastn.toComponent(template(itemModel, component.scope(), component._currentComponent));
 
-        if(templater._currentComponent && templater._currentComponent !== newComponent){
-            if(fastn.isComponent(templater._currentComponent)){
-                templater._currentComponent.destroy();
+        if(component._currentComponent && component._currentComponent !== newComponent){
+            if(fastn.isComponent(component._currentComponent)){
+                component._currentComponent.destroy();
             }
         }
 
-        templater._currentComponent = newComponent;
+        component._currentComponent = newComponent;
 
         if(!newComponent){
-            replaceElement(templater.emptyElement);
+            replaceElement(component.emptyElement);
             return;
         }
 
         if(fastn.isComponent(newComponent)){
-            if(templater._settings.attachTemplates !== false){
+            if(component._settings.attachTemplates !== false){
                 newComponent.attach(itemModel, 2);
             }else{
-                newComponent.attach(templater.scope(), 1);
+                newComponent.attach(component.scope(), 1);
             }
 
-            if(templater.element && templater.element !== newComponent.element){
+            if(component.element && component.element !== newComponent.element){
                 if(newComponent.element == null){
                     newComponent.render();
                 }
-                replaceElement(templater._currentComponent.element);
+                replaceElement(component._currentComponent.element);
             }
         }
     }
 
-    templater.render = function(){
+    component.render = function(){
         var element;
-        templater.emptyElement = document.createTextNode('');
-        if(templater._currentComponent){
-            templater._currentComponent.render();
-            element = templater._currentComponent.element;
+        component.emptyElement = document.createTextNode('');
+        if(component._currentComponent){
+            component._currentComponent.render();
+            element = component._currentComponent.element;
         }
-        templater.element = element || templater.emptyElement;
-        templater.emit('render');
+        component.element = element || component.emptyElement;
+        component.emit('render');
     };
 
-    fastn.property(undefined, settings.dataChanges || 'value structure')
-        .addTo(templater, 'data')
-        .on('change', update);
+    component.setProperty('data',
+        fastn.property(undefined, settings.dataChanges || 'value structure')
+            .on('change', update)
+    );
 
-    fastn.property(undefined, 'value')
-        .addTo(templater, 'template')
-        .on('change', update);
+    component.setProperty('template',
+        fastn.property(undefined, 'value')
+            .on('change', update)
+    );
 
-    templater.on('destroy', function(){
-        if(fastn.isComponent(templater._currentComponent)){
-            templater._currentComponent.destroy();
+    component.on('destroy', function(){
+        if(fastn.isComponent(component._currentComponent)){
+            component._currentComponent.destroy();
         }
     });
 
-    templater.on('attach', function(data){
-        if(fastn.isComponent(templater._currentComponent)){
-            templater._currentComponent.attach(data, 1);
+    component.on('attach', function(data){
+        if(fastn.isComponent(component._currentComponent)){
+            component._currentComponent.attach(data, 1);
         }
     });
 
-    return templater;
+    return component;
 };
