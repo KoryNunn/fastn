@@ -4949,18 +4949,21 @@ function extendComponent(type, settings, children){
         return this.component;
     }
 
-    this.types[type] = true;
-
     if(!(type in this.fastn.components)){
+
         if(!(GENERIC in this.fastn.components)){
             throw new Error('No component of type "' + type + '" is loaded');
         }
 
         this.fastn.components._generic(this.fastn, this.component, type, settings, children);
+
+        this.types._generic = true;
     }else{
 
         this.fastn.components[type](this.fastn, this.component, type, settings, children);
     }
+
+    this.types[type] = true;
 
     return this.component;
 };
@@ -5258,6 +5261,7 @@ function insertChild(fastn, container, child, index){
             newComponent.render();
         }
         container._insert(newComponent.element, index);
+        newComponent.emit('insert');
     }
 }
 
@@ -5462,7 +5466,8 @@ module.exports = functionEmitterPrototype;
 var containerComponent = require('./containerComponent'),
     schedule = require('./schedule'),
     fancyProps = require('./fancyProps'),
-    matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/;
+    matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/,
+    GENERIC = '_generic';
 
 function createProperty(fastn, component, key, settings){
     var setting = settings[key],
@@ -5585,15 +5590,29 @@ function addAutoHandler(component, element, key, settings){
     });
 }
 
-function componentComponent(fastn, component, type, settings, children){
+function genericComponent(fastn, component, type, settings, children){
+    if(component.is(type)){
+        return component;
+    }
+
+    if(type === GENERIC){
+        component._tagName = component._tagName || 'div';
+    }else{
+        component._tagName = type;
+    }
+
+    if(component.is(GENERIC)){
+        return component;
+    }
+
     component.extend('_container', settings, children);
 
-    component.updateProperty = componentComponent.updateProperty;
-    component.createElement = componentComponent.createElement;
+    component.updateProperty = genericComponent.updateProperty;
+    component.createElement = genericComponent.createElement;
     createProperties(fastn, component, settings);
 
     component.render = function(){
-        component.element = component.createElement(settings.tagName || type);
+        component.element = component.createElement(settings.tagName || component._tagName);
 
         component.emit('render');
 
@@ -5617,7 +5636,7 @@ function componentComponent(fastn, component, type, settings, children){
     return component;
 }
 
-componentComponent.updateProperty = function(component, property, update){
+genericComponent.updateProperty = function(component, property, update){
     if(typeof document !== 'undefined' && document.contains(component.element)){
         schedule(property, update);
     }else{
@@ -5625,14 +5644,14 @@ componentComponent.updateProperty = function(component, property, update){
     }
 };
 
-componentComponent.createElement = function(tagName){
+genericComponent.createElement = function(tagName){
     if(tagName instanceof Node){
         return tagName;
     }
     return document.createElement(tagName);
 };
 
-module.exports = componentComponent;
+module.exports = genericComponent;
 },{"./containerComponent":29,"./fancyProps":30,"./schedule":67}],34:[function(require,module,exports){
 var createProperty = require('./property'),
     createBinding = require('./binding'),
@@ -5837,7 +5856,6 @@ function values(object){
 }
 
 module.exports = function(fastn, component, type, settings, children){
-    settings.tagName = settings.tagName || 'div';
 
     if(fastn.components._generic){
         component.extend('_generic', settings, children);
@@ -5937,17 +5955,18 @@ module.exports = function(fastn, component, type, settings, children){
         childComponent.destroy();
     }
 
-    fastn.property([], settings.itemChanges || 'type keys shallowStructure')
-        .addTo(component, 'items')
-        .on('change', updateItems);
+    component.setProperty('items',
+        fastn.property([], settings.itemChanges || 'type keys shallowStructure')
+            .on('change', updateItems)
+    );
 
-    fastn.property(undefined, 'value')
-        .addTo(component, 'template')
-        .on('change', updateItems);
+    component.setProperty('template',
+        fastn.property().on('change', updateItems)
+    );
 
-    fastn.property(undefined, 'value')
-        .addTo(component, 'emptyTemplate')
-        .on('change', updateItems);
+    component.setProperty('emptyTemplate',
+        fastn.property().on('change', updateItems)
+    );
 
     return component;
 };
@@ -10013,6 +10032,88 @@ test('pre-created component', function(t){
 
     t.equal(component.scope().get('.'), data.foo);
 });
+
+test('auto extend component', function(t){
+
+    t.plan(6);
+
+    var fastn = createFastn({
+        foo: function(fastn, component, type, settings, children){
+            t.pass('Used foo constructor');
+            return component;
+        },
+        bar: function(fastn, component, type, settings, children){
+            t.pass('Used bar constructor');
+            return component;
+        },
+        baz: function(fastn, component, type, settings, children){
+            t.pass('Used baz constructor');
+            return component;
+        }
+    });
+
+    var component = fastn('foo:bar:baz');
+
+    t.ok(component.is('foo'), 'componant is foo');
+    t.ok(component.is('bar'), 'componant is bar');
+    t.ok(component.is('baz'), 'componant is baz');
+});
+
+test('manual extend component', function(t){
+
+    t.plan(6);
+
+    var fastn = createFastn({
+        foo: function(fastn, component, type, settings, children){
+            t.pass('Used foo constructor');
+            return component;
+        },
+        bar: function(fastn, component, type, settings, children){
+            t.pass('Used bar constructor');
+            return component;
+        },
+        baz: function(fastn, component, type, settings, children){
+            t.pass('Used baz constructor');
+            return component;
+        }
+    });
+
+    var component = fastn('foo');
+
+    component.extend('bar', {});
+
+    component.extend('baz', {});
+
+    t.ok(component.is('foo'), 'componant is foo');
+    t.ok(component.is('bar'), 'componant is bar');
+    t.ok(component.is('baz'), 'componant is baz');
+});
+
+test('cannot double-extend component', function(t){
+
+    t.plan(4);
+
+    var fastn = createFastn({
+        foo: function(fastn, component, type, settings, children){
+            t.pass('Used foo constructor');
+            return component;
+        },
+        bar: function(fastn, component, type, settings, children){
+            t.pass('Used bar constructor');
+            return component;
+        }
+    });
+
+    var component = fastn('foo');
+
+    component.extend('bar', {});
+
+    // Shouldn't cause another call to bar constructor.
+    component.extend('bar', {});
+
+    t.ok(component.is('foo'), 'componant is foo');
+    t.ok(component.is('bar'), 'componant is bar');
+});
 },{"./createFastn":74,"enti":41,"tape":49}],72:[function(require,module,exports){
 module.exports = function(components){
     if(!components){
@@ -10621,6 +10722,34 @@ test('same scope', function(t){
     t.equal(document.body.childNodes[0].textContent, '20');
 
     thing.element.remove();
+    thing.destroy();
+
+});
+
+test('default type', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var thing = fastn('_generic').render();
+
+    t.equal(thing.element.tagName, 'DIV');
+
+    thing.destroy();
+
+});
+
+test('override type', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var thing = fastn('span:div:section').render();
+
+    t.equal(thing.element.tagName, 'SECTION');
+
     thing.destroy();
 
 });

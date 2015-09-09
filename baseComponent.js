@@ -141,18 +141,21 @@ function extendComponent(type, settings, children){
         return this.component;
     }
 
-    this.types[type] = true;
-
     if(!(type in this.fastn.components)){
+
         if(!(GENERIC in this.fastn.components)){
             throw new Error('No component of type "' + type + '" is loaded');
         }
 
         this.fastn.components._generic(this.fastn, this.component, type, settings, children);
+
+        this.types._generic = true;
     }else{
 
         this.fastn.components[type](this.fastn, this.component, type, settings, children);
     }
+
+    this.types[type] = true;
 
     return this.component;
 };

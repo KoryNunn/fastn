@@ -53,7 +53,6 @@ function values(object){
 }
 
 module.exports = function(fastn, component, type, settings, children){
-    settings.tagName = settings.tagName || 'div';
 
     if(fastn.components._generic){
         component.extend('_generic', settings, children);

@@ -22,6 +22,7 @@ function insertChild(fastn, container, child, index){
             newComponent.render();
         }
         container._insert(newComponent.element, index);
+        newComponent.emit('insert');
     }
 }
 

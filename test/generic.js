@@ -216,3 +216,31 @@ test('same scope', function(t){
     thing.destroy();
 
 });
+
+test('default type', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var thing = fastn('_generic').render();
+
+    t.equal(thing.element.tagName, 'DIV');
+
+    thing.destroy();
+
+});
+
+test('override type', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var thing = fastn('span:div:section').render();
+
+    t.equal(thing.element.tagName, 'SECTION');
+
+    thing.destroy();
+
+});

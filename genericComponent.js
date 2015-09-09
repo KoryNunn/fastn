@@ -1,7 +1,8 @@
 var containerComponent = require('./containerComponent'),
     schedule = require('./schedule'),
     fancyProps = require('./fancyProps'),
-    matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/;
+    matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/,
+    GENERIC = '_generic';
 
 function createProperty(fastn, component, key, settings){
     var setting = settings[key],
@@ -125,6 +126,20 @@ function addAutoHandler(component, element, key, settings){
 }
 
 function genericComponent(fastn, component, type, settings, children){
+    if(component.is(type)){
+        return component;
+    }
+
+    if(type === GENERIC){
+        component._tagName = component._tagName || 'div';
+    }else{
+        component._tagName = type;
+    }
+
+    if(component.is(GENERIC)){
+        return component;
+    }
+
     component.extend('_container', settings, children);
 
     component.updateProperty = genericComponent.updateProperty;
@@ -132,7 +147,7 @@ function genericComponent(fastn, component, type, settings, children){
     createProperties(fastn, component, settings);
 
     component.render = function(){
-        component.element = component.createElement(settings.tagName || type);
+        component.element = component.createElement(settings.tagName || component._tagName);
 
         component.emit('render');
 
