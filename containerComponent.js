@@ -22,7 +22,7 @@ function insertChild(fastn, container, child, index){
             newComponent.render();
         }
         container._insert(newComponent.element, index);
-        newComponent.emit('insert');
+        newComponent.emit('insert', container);
     }
 }
 
@@ -100,6 +100,17 @@ module.exports = function(fastn, component, type, settings, children){
         while(component._children.length){
             component.remove(component._children.pop());
         }
+    };
+
+    component.replaceChild = function(oldChild, newChild){
+        var index = component._children.indexOf(oldChild);
+
+        if(!~index){
+            return;
+        }
+
+        component.remove(oldChild);
+        component.insert(newChild, index);
     };
 
     component.getContainerElement = getContainerElement.bind(component);
