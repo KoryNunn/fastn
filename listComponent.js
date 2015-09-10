@@ -38,20 +38,6 @@ function keyFor(object, value){
     return false;
 }
 
-function values(object){
-    if(Array.isArray(object)){
-        return object.slice();
-    }
-
-    var result = [];
-
-    for(var key in object){
-        result.push(object[key]);
-    }
-
-    return result;
-}
-
 module.exports = function(fastn, component, type, settings, children){
 
     if(fastn.components._generic){
