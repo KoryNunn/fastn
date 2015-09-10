@@ -111,19 +111,19 @@ fastn('list', settings, children...).extend('map', settings, children...);
 
 #### Removed
 
-    - fastn.createComponent
+ - fastn.createComponent
 
 #### Changed
 
-    - componant constructor parameters (fastn, type, settings, children) -> (fastn, component, type, settings, children)
-    - component.setProperty can now be passed only a key, which will use the existing property, or create a new default one for that key.
+ - componant constructor parameters (fastn, type, settings, children) -> (fastn, component, type, settings, children)
+ - component.setProperty can now be passed only a key, which will use the existing property, or create a new default one for that key.
 
 #### Added
 
-    - Mixin syntax, fastn('componantType1:componantType2')
-    - componant.extend(componantType, settings, children)
-    - componant.is(componantType) -> bool
-    - fastn.componants._container is now defaulted to containerComponant.
+ - Mixin syntax, fastn('componantType1:componantType2')
+ - componant.extend(componantType, settings, children)
+ - componant.is(componantType) -> bool
+ - fastn.componants._container is now defaulted to containerComponant.
 
 ### Best Practice
 
