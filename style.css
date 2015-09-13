@@ -411,7 +411,6 @@ nav a {
   flex: 1;
 }
 .setup pre {
-  max-width: 400px;
   margin: auto;
   margin-top: 16px;
 }
