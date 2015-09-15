@@ -6,7 +6,9 @@ var containerComponent = require('./containerComponent'),
 
 function createProperties(fastn, component, settings){
     for(var key in settings){
-        if(typeof settings[key] === 'function' && !fastn.isProperty(settings[key])){
+        var setting = settings[key];
+
+        if(typeof setting === 'function' && !fastn.isProperty(setting) && !fastn.isBinding(setting)){
             continue;
         }
 
@@ -133,9 +135,11 @@ function genericComponent(fastn, component, type, settings, children){
     component.extend('_container', settings, children);
 
     component.addDomProperty = addDomProperty.bind(component, fastn);
+    component.getEventElement = component.getContainerElement;
 
     component.updateProperty = genericComponent.updateProperty;
     component.createElement = genericComponent.createElement;
+
     createProperties(fastn, component, settings);
 
     component.render = function(){
@@ -147,7 +151,7 @@ function genericComponent(fastn, component, type, settings, children){
     };
 
     component.on('render', function(){
-        var element = component.getContainerElement();
+        var element = component.getEventElement();
 
         for(var key in settings){
             if(key.slice(0,2) === 'on' && key in element){
