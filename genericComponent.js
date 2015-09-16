@@ -134,6 +134,14 @@ function onRender(){
     }
 }
 
+function render(){
+    this.element = this.createElement(this._settings.tagName || this._tagName);
+
+    this.emit('render');
+
+    return this;
+};
+
 function genericComponent(fastn, component, type, settings, children){
     if(component.is(type)){
         return component;
@@ -154,19 +162,12 @@ function genericComponent(fastn, component, type, settings, children){
     component.addDomProperty = addDomProperty.bind(component, fastn);
     component.getEventElement = component.getContainerElement;
     component.getPropertyElement = component.getContainerElement;
-
     component.updateProperty = genericComponent.updateProperty;
     component.createElement = genericComponent.createElement;
 
     createProperties(fastn, component, settings);
 
-    component.render = function(){
-        component.element = component.createElement(settings.tagName || component._tagName);
-
-        component.emit('render');
-
-        return component;
-    };
+    component.render = render.bind(component);
 
     component.on('render', onRender);
 
