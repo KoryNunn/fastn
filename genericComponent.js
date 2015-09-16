@@ -82,7 +82,7 @@ function addDomProperty(fastn, key, property){
     component.setProperty(key, property);
 
     function update(){
-        var element = component.getContainerElement(),
+        var element = component.getPropertyElement(key),
             value = property();
 
         if(!element || component.destroyed()){
@@ -117,6 +117,23 @@ function addDomProperty(fastn, key, property){
     property.updater(update);
 }
 
+function onRender(){
+    var component = this,
+        element;
+
+    for(var key in component._settings){
+        element = component.getEventElement(key);
+        if(key.slice(0,2) === 'on' && key in element){
+            addAutoHandler(component, element, key, component._settings);
+        }
+    }
+
+    for(var eventKey in component._events){
+        element = component.getEventElement(key);
+        addDomHandlers(component, element, eventKey);
+    }
+}
+
 function genericComponent(fastn, component, type, settings, children){
     if(component.is(type)){
         return component;
@@ -136,6 +153,7 @@ function genericComponent(fastn, component, type, settings, children){
 
     component.addDomProperty = addDomProperty.bind(component, fastn);
     component.getEventElement = component.getContainerElement;
+    component.getPropertyElement = component.getContainerElement;
 
     component.updateProperty = genericComponent.updateProperty;
     component.createElement = genericComponent.createElement;
@@ -150,19 +168,7 @@ function genericComponent(fastn, component, type, settings, children){
         return component;
     };
 
-    component.on('render', function(){
-        var element = component.getEventElement();
-
-        for(var key in settings){
-            if(key.slice(0,2) === 'on' && key in element){
-                addAutoHandler(component, element, key, settings);
-            }
-        }
-
-        for(var eventKey in component._events){
-            addDomHandlers(component, element, eventKey);
-        }
-    });
+    component.on('render', onRender);
 
     return component;
 }
