@@ -137,6 +137,7 @@ function createBinding(path, more){
             if(bindingScope.attachedModel){
                 bindingScope.attachedModel.removeListener('attach', modelAttachHandler);
                 bindingScope.attachedModel.removeListener('detach', modelDetachHandler);
+                bindingScope.attachedModel = null;
             }
 
             if(isEnti){

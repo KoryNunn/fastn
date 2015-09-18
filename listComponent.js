@@ -105,7 +105,7 @@ module.exports = function(fastn, component, type, settings, children){
                 itemsMap.set(item, child);
             }else{
                 childModel = dataMap.get(child);
-                fastn.Model.set(childModel, 'key', key);
+                childModel.set('key', key);
             }
 
             if(fastn.isComponent(child) && component._settings.attachTemplates !== false){
