@@ -84,10 +84,6 @@ function attachProperty(object, firm){
 
     this.property._firm = firm;
 
-    if(object instanceof Enti){
-        object = object._model;
-    }
-
     if(!(object instanceof Object)){
         object = {};
     }

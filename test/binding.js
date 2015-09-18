@@ -70,9 +70,11 @@ test('no model', function(t){
 
     binding.on('change', function(value){
         t.equal(value, 'bar');
+        console.log(value)
     });
 
     binding('bar');
+    console.log(binding())
 
     t.equal(binding(), 'bar');
 });
@@ -412,4 +414,23 @@ test('soft destroy 2', function(t){
     binding.destroy(true);
 
     binding('bar');
+});
+
+test('model attach', function(t){
+    t.plan(2);
+
+    var model = new Enti();
+
+    var binding = createBinding('a');
+
+    binding.attach(model);
+
+    t.equal(binding(), undefined);
+
+    model.attach({
+        a: 2
+    });
+
+    t.equal(binding(), 2);
+
 });

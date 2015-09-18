@@ -86,30 +86,30 @@ module.exports = function(fastn, component, type, settings, children){
                 item = item[1];
             }
 
-            var data;
+            var childModel;
 
             if(!existing){
-                data = {
+                childModel = new fastn.Model({
                     item: item,
                     key: key
-                };
+                });
 
-                child = fastn.toComponent(template(new fastn.Model(data), component.scope()));
+                child = fastn.toComponent(template(childModel, component.scope()));
                 if(!child){
                     child = fastn('template');
                 }
                 child._listItem = item;
                 child._templated = true;
 
-                dataMap.set(child, data);
+                dataMap.set(child, childModel);
                 itemsMap.set(item, child);
             }else{
-                data = dataMap.get(child);
-                fastn.Model.set(data, 'key', key);
+                childModel = dataMap.get(child);
+                fastn.Model.set(childModel, 'key', key);
             }
 
             if(fastn.isComponent(child) && component._settings.attachTemplates !== false){
-                child.attach(data, 2);
+                child.attach(childModel, 2);
             }
 
             component.insert(child, index);

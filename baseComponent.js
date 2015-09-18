@@ -78,7 +78,7 @@ function emitAttach(){
     if(newBound !== this.lastBound){
         this.lastBound = newBound;
         this.scope.attach(this.lastBound);
-        this.component.emit('attach', this.lastBound, 1);
+        this.component.emit('attach', this.scope, 1);
     }
 }
 
