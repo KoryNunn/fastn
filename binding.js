@@ -133,21 +133,20 @@ function createBinding(path, more){
 
         var isEnti = object instanceof Enti;
 
-        if(bindingScope.attachedModel !== object){
-            if(bindingScope.attachedModel){
-                bindingScope.attachedModel.removeListener('attach', modelAttachHandler);
-                bindingScope.attachedModel.removeListener('detach', modelDetachHandler);
-                bindingScope.attachedModel = null;
-            }
+        if(isEnti && bindingScope.attachedModel === object){
+            return binding;
+        }
 
-            if(isEnti){
-                bindingScope.attachedModel = object;
-                bindingScope.attachedModel.on('attach', modelAttachHandler);
-                bindingScope.attachedModel.on('detach', modelDetachHandler);
-            }
+        if(bindingScope.attachedModel){
+            bindingScope.attachedModel.removeListener('attach', modelAttachHandler);
+            bindingScope.attachedModel.removeListener('detach', modelDetachHandler);
+            bindingScope.attachedModel = null;
         }
 
         if(isEnti){
+            bindingScope.attachedModel = object;
+            bindingScope.attachedModel.on('attach', modelAttachHandler);
+            bindingScope.attachedModel.on('detach', modelDetachHandler);
             object = object._model;
         }
 
@@ -163,6 +162,7 @@ function createBinding(path, more){
 
         return binding;
     };
+
     binding.detach = function(firm){
         if(firmer(binding, firm)){
             return binding;
