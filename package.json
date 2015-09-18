@@ -16,7 +16,7 @@
   "dependencies": {
     "classist": "^1.0.0",
     "crel": "^2.1.8",
-    "enti": "^4.0.0",
+    "enti": "^4.1.0",
     "flat-merge": "^1.0.0",
     "flatten": "0.0.1",
     "multimap": "KoryNunn/multi-map#ee03c15a485e529dedf0c0cf836fcc8b22543a42",

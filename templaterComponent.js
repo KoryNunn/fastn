@@ -75,7 +75,7 @@ module.exports = function(fastn, component, type, settings, children){
 
     component.on('attach', function(data){
         if(fastn.isComponent(component._currentComponent)){
-            component._currentComponent.attach(data, 1);
+            component._currentComponent.attach(component.scope(), 1);
         }
     });
 

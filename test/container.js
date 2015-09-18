@@ -110,3 +110,48 @@ test('insert returns container', function(t){
     container.destroy();
 
 });
+
+test('children passed attachment', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var container = fastn('div', fastn.binding('foo'));
+
+    container.render();
+
+    container.attach({foo: 'bar'});
+
+    t.equal(container.element.textContent, 'bar');
+
+    container.attach({foo: 'baz'});
+
+    t.equal(container.element.textContent, 'baz');
+
+    container.destroy();
+
+});
+
+test('children passed model change attachment', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var container = fastn('div', fastn.binding('foo')),
+        model = new fastn.Model({foo: 'bar'});
+
+    container.render();
+
+    container.attach(model);
+
+    t.equal(container.element.textContent, 'bar');
+
+    model.attach({foo: 'baz'});
+
+    t.equal(container.element.textContent, 'baz');
+
+    container.destroy();
+
+});

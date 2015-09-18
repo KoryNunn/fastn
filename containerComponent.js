@@ -117,10 +117,10 @@ module.exports = function(fastn, component, type, settings, children){
 
     component.on('render', component.insert.bind(null, component._children, 0));
 
-    component.on('attach', function(data, firm){
+    component.on('attach', function(model, firm){
         for(var i = 0; i < component._children.length; i++){
             if(fastn.isComponent(component._children[i])){
-                component._children[i].attach(data, firm);
+                component._children[i].attach(model, firm);
             }
         }
     });

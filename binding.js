@@ -111,6 +111,16 @@ function createBinding(path, more){
     binding._fastn_binding = path;
     binding._firm = -Infinity;
 
+    function modelAttachHandler(data){
+        binding._model.attach(data);
+        binding._change(binding._model.get(path));
+        binding.emit('attach', data, 1);
+    }
+
+    function modelDetachHandler(){
+        binding._model.detach();
+    }
+
     binding.attach = function(object, firm){
 
         // If the binding is being asked to attach loosly to an object,
@@ -121,7 +131,22 @@ function createBinding(path, more){
 
         binding._firm = firm;
 
-        if(object instanceof Enti){
+        var isEnti = object instanceof Enti;
+
+        if(isEnti && bindingScope.attachedModel === object){
+            return binding;
+        }
+
+        if(bindingScope.attachedModel){
+            bindingScope.attachedModel.removeListener('attach', modelAttachHandler);
+            bindingScope.attachedModel.removeListener('detach', modelDetachHandler);
+            bindingScope.attachedModel = null;
+        }
+
+        if(isEnti){
+            bindingScope.attachedModel = object;
+            bindingScope.attachedModel.on('attach', modelAttachHandler);
+            bindingScope.attachedModel.on('detach', modelDetachHandler);
             object = object._model;
         }
 
@@ -133,11 +158,11 @@ function createBinding(path, more){
             return binding;
         }
 
-        binding._model.attach(object);
-        binding._change(binding._model.get(path));
-        binding.emit('attach', object, 1);
+        modelAttachHandler(object);
+
         return binding;
     };
+
     binding.detach = function(firm){
         if(firmer(binding, firm)){
             return binding;
@@ -167,7 +192,7 @@ function createBinding(path, more){
         var newBinding = createBinding.apply(null, binding._arguments);
 
         if(keepAttachment){
-            newBinding.attach(binding._model, binding._firm);
+            newBinding.attach(bindingScope.attachedModel || binding._model._model, binding._firm);
         }
 
         return newBinding;
