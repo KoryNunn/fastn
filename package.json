@@ -19,7 +19,7 @@
     "enti": "^4.1.0",
     "flat-merge": "^1.0.0",
     "flatten": "0.0.1",
-    "multimap": "KoryNunn/multi-map#ee03c15a485e529dedf0c0cf836fcc8b22543a42",
+    "multimap": "^1.0.0",
     "object-assign": "^3.0.0",
     "same-value": "^1.0.0",
     "setify": "^1.0.2",
@@ -27,7 +27,6 @@
     "what-changed": "^2.1.0"
   },
   "devDependencies": {
-    "crel": "^2.1.5",
     "dom-lite": "^0.4.0",
     "tape": "^3.2.0"
   }
