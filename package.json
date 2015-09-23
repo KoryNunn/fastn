@@ -6,7 +6,8 @@
   "scripts": {
     "watch": "watchify index.js -o index.browser.js -d & stylus -u nib -w style.styl -o style.css",
     "build": "browserify -g uglifyify index.js --noparse clone > index.browser.js & stylus -u nib style.styl -o style.css",
-    "buildAll": "npm run build; cd example; npm run build; cd ../try; npm run build"
+    "buildAll": "npm run build; cd example; npm run build; cd ../try; npm run build",
+    "watchTry": "cd ../try; npm run watch"
   },
   "author": "Kory Nunn",
   "license": "ISC",
@@ -18,7 +19,8 @@
     "fastn": "^2.3.0",
     "flat-merge": "^1.0.0",
     "highlight": "^0.2.3",
-    "laidout": "^1.0.0"
+    "laidout": "^1.0.0",
+    "lzutf8": "^0.3.2"
   },
   "devDependencies": {
     "nib": "^1.1.0",
