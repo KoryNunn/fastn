@@ -131,7 +131,7 @@ function createBinding(path, more){
 
         binding._firm = firm;
 
-        var isEnti = object instanceof Enti;
+        var isEnti = Enti.isEnti(object);
 
         if(isEnti && bindingScope.attachedModel === object){
             return binding;
