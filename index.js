@@ -32,6 +32,19 @@ function inflateProperties(component, settings){
     }
 }
 
+function validateExpectedComponents(components, componentName, expectedComponents){
+    expectedComponents = expectedComponents.filter(function(componentName){
+        return !(componentName in components);
+    });
+
+    if(expectedComponents.length){
+        console.warn([
+            'fastn("' + componentName + '") uses some components that have not been registered with fastn',
+            'Expected conponent constructors: ' + expectedComponents.join(', ')
+        ].join('\n\n'));
+    }
+}
+
 module.exports = function(components, debug){
 
     if(!components || typeof components !== 'object'){
@@ -107,6 +120,14 @@ module.exports = function(components, debug){
     fastn.base = function(type, settings, children){
         return new BaseComponent(fastn, type, settings, children);
     };
+
+    for(var key in components){
+        var componentConstructor = components[key];
+
+        if(componentConstructor.expectedComponents){
+            validateExpectedComponents(components, key, componentConstructor.expectedComponents);
+        }
+    }
 
     return fastn;
 };
