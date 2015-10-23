@@ -68,7 +68,22 @@ module.exports = {
             value = null;
         }
 
+        if(element.nodeName === 'PROGRESS'){
+            value = parseFloat(value) || 0;
+        }
+
         setify(element, value);
+    },
+    max: function(generic, element, value) {
+        if(arguments.length === 2){
+            return element.value;
+        }
+
+        if(element.nodeName === 'PROGRESS'){
+            value = parseFloat(value) || 0;
+        }
+
+        element.max = value;
     },
     style: function(generic, element, value){
         if(arguments.length === 2){
