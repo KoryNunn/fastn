@@ -63,7 +63,7 @@ module.exports = function(fastn, component, type, settings, children){
     );
 
     component.setProperty('template',
-        fastn.property(undefined, 'value')
+        fastn.property(undefined, 'value reference')
             .on('change', update)
     );
 
