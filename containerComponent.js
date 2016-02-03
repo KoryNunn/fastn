@@ -2,7 +2,7 @@ function insertChild(fastn, container, child, index){
     var currentIndex = container._children.indexOf(child),
         newComponent = fastn.toComponent(child);
 
-    if(newComponent !== child){
+    if(newComponent !== child && ~currentIndex){
         container._children.splice(currentIndex, 1, newComponent);
     }
 
@@ -23,6 +23,7 @@ function insertChild(fastn, container, child, index){
         }
         container._insert(newComponent.element, index);
         newComponent.emit('insert', container);
+        container.emit('childInsert', newComponent);
     }
 }
 
@@ -83,7 +84,9 @@ module.exports = function(fastn, component, type, settings, children){
 
         if(childComponent.element){
             component._remove(childComponent.element);
+            childComponent.emit('remove', container);
         }
+        component.emit('childRemove', childComponent);
     };
 
     component._remove = function(element){
