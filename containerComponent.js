@@ -84,7 +84,7 @@ module.exports = function(fastn, component, type, settings, children){
 
         if(childComponent.element){
             component._remove(childComponent.element);
-            childComponent.emit('remove', container);
+            childComponent.emit('remove', component);
         }
         component.emit('childRemove', childComponent);
     };
