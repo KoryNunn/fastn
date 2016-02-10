@@ -15,7 +15,13 @@ module.exports = function(fastn, component, type, settings, children){
 
         itemModel.set('item', value);
 
-        var newComponent = template && fastn.toComponent(template(itemModel, component.scope(), component._currentComponent));
+        var newComponent;
+
+        if(template){
+           newComponent = fastn.toComponent(template(itemModel, component.scope(), component._currentComponent));
+        }else{
+            console.warn('No "template" function was assigned to settings');
+        }
 
         if(component._currentComponent && component._currentComponent !== newComponent){
             if(fastn.isComponent(component._currentComponent)){

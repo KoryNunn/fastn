@@ -57,6 +57,10 @@ module.exports = function(fastn, component, type, settings, children){
             emptyTemplate = component.emptyTemplate(),
             newTemplate = lastTemplate !== template;
 
+        if(!template){
+            console.warn('No "template" function was assigned to settings');
+        }
+
         var currentItems = merge(template ? value : []);
 
         itemsMap.forEach(function(childComponent, item){
