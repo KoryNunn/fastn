@@ -1,4 +1,5 @@
 var test = require('tape'),
+    consoleWatch = require('console-watch'),
     Enti = require('enti'),
     createFastn = require('./createFastn');
 
@@ -237,5 +238,19 @@ test('reattach templater with attachTemplates = false', function(t){
 
     template.element.remove();
     template.destroy();
+
+});
+
+test('warns on no template', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    consoleWatch(function(getResults) {
+        var list = fastn('templater');
+
+        t.deepEqual(getResults(), {warn: ['No "template" function was set for this templater component']})
+    });
 
 });

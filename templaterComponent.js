@@ -1,6 +1,10 @@
 module.exports = function(fastn, component, type, settings, children){
     var itemModel = new fastn.Model({});
 
+    if(!('template' in settings)){
+        console.warn('No "template" function was set for this templater component');
+    }
+
     function replaceElement(element){
         if(component.element && component.element.parentNode){
             component.element.parentNode.replaceChild(element, component.element);
@@ -19,8 +23,6 @@ module.exports = function(fastn, component, type, settings, children){
 
         if(template){
            newComponent = fastn.toComponent(template(itemModel, component.scope(), component._currentComponent));
-        }else{
-            console.warn('No "template" function was assigned to settings');
         }
 
         if(component._currentComponent && component._currentComponent !== newComponent){

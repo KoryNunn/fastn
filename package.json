@@ -27,6 +27,7 @@
     "what-changed": "^2.1.0"
   },
   "devDependencies": {
+    "console-watch": "^1.0.0",
     "dom-lite": "^0.4.0",
     "tape": "^3.2.0"
   }
