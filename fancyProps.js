@@ -38,7 +38,12 @@ module.exports = {
     },
     textContent: updateTextProperty,
     innerText: updateTextProperty,
-    innerHTML: updateTextProperty,
+    innerHTML: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.innerHTML;
+        }
+        element.innerHTML = (value == null ? '' : value);
+    },
     value: function(generic, element, value){
         var inputType = element.type;
 
