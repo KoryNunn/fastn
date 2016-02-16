@@ -1,4 +1,5 @@
 var test = require('tape'),
+    consoleWatch = require('console-watch'),
     Enti = require('enti'),
     createFastn = require('./createFastn');
 
@@ -406,5 +407,19 @@ test('object item keys', function(t){
     list.attach();
 
     list.destroy();
+
+});
+
+test('warns on no template', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    consoleWatch(function(getResults) {
+        var list = fastn('list');
+
+        t.deepEqual(getResults(), {warn: ['No "template" function was set for this templater component']})
+    });
 
 });

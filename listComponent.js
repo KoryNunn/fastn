@@ -46,6 +46,10 @@ module.exports = function(fastn, component, type, settings, children){
         component.extend('_container', settings, children);
     }
 
+    if(!('template' in settings)){
+        console.warn('No "template" function was set for this templater component');
+    }
+
     var itemsMap = new MultiMap(),
         dataMap = new WeakMap(),
         lastTemplate,
@@ -56,10 +60,6 @@ module.exports = function(fastn, component, type, settings, children){
             template = component.template(),
             emptyTemplate = component.emptyTemplate(),
             newTemplate = lastTemplate !== template;
-
-        if(!template){
-            console.warn('No "template" function was assigned to settings');
-        }
 
         var currentItems = merge(template ? value : []);
 
