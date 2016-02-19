@@ -1,4 +1,8 @@
 function insertChild(fastn, container, child, index){
+    if(child == null || child === false){
+        return;
+    }
+
     var currentIndex = container._children.indexOf(child),
         newComponent = fastn.toComponent(child);
 

@@ -5205,6 +5205,10 @@ createBinding.from = from;
 module.exports = createBinding;
 },{"./firmer":32,"./functionEmitter":33,"./is":36,"enti":47,"same-value":52,"setprototypeof":55}],30:[function(require,module,exports){
 function insertChild(fastn, container, child, index){
+    if(child == null || child === false){
+        return;
+    }
+
     var currentIndex = container._children.indexOf(child),
         newComponent = fastn.toComponent(child);
 
@@ -6199,12 +6203,13 @@ if (typeof module === 'object' && module.exports) {
 
 }).call(this,require("buffer").Buffer)
 },{"buffer":4}],40:[function(require,module,exports){
-var methods = Object.keys(console),
+var methods = [],
     originals = {};
 
-methods.map(function(key){
-    return originals[key] = console[key];
-});
+for(var key in console){
+    methods.push(key);
+    originals[key] = console[key];
+}
 
 module.exports = function(callback) {
     var results = {};
@@ -10388,6 +10393,55 @@ test('children passed model change attachment', function(t){
     t.equal(container.element.textContent, 'baz');
 
     container.destroy();
+
+});
+
+test('insert undefined', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+
+    container.insert(undefined);
+
+    t.equal(container.children().length, 0, 'Nothing was added');
+
+});
+
+test('insert undefined in array', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+
+    container.insert([1, undefined, 2]);
+
+    t.equal(container.children().length, 2, 'Only values added');
+
+});
+
+test('insert mixed array', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+
+    container.insert([
+        undefined,
+        null,
+        false,
+        1,
+        '2',
+        NaN
+    ]);
+
+    t.equal(container.children().length, 3, 'Only values added');
 
 });
 },{"./createFastn":77,"tape":56}],77:[function(require,module,exports){

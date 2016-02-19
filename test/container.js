@@ -155,3 +155,52 @@ test('children passed model change attachment', function(t){
     container.destroy();
 
 });
+
+test('insert undefined', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+
+    container.insert(undefined);
+
+    t.equal(container.children().length, 0, 'Nothing was added');
+
+});
+
+test('insert undefined in array', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+
+    container.insert([1, undefined, 2]);
+
+    t.equal(container.children().length, 2, 'Only values added');
+
+});
+
+test('insert mixed array', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+
+    container.insert([
+        undefined,
+        null,
+        false,
+        1,
+        '2',
+        NaN
+    ]);
+
+    t.equal(container.children().length, 3, 'Only values added');
+
+});
