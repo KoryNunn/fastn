@@ -98,5 +98,11 @@ module.exports = {
         for(var key in value){
             element.style[key] = value[key];
         }
+    },
+    type: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.type;
+        }
+        element.setAttribute('type', value);
     }
 };
