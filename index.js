@@ -107,8 +107,8 @@ module.exports = function(components, debug){
     };
 
     fastn.debug = debug;
-    fastn.property = createProperty;
-    fastn.binding = createBinding;
+    fastn.property = createProperty.bind(fastn);
+    fastn.binding = createBinding.bind(fastn);
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;
     fastn.isDefaultBinding = is.defaultBinding;
@@ -116,6 +116,7 @@ module.exports = function(components, debug){
     fastn.isProperty = is.property;
     fastn.components = components;
     fastn.Model = Enti;
+    fastn.isModel = Enti.isEnti.bind(Enti);
 
     fastn.base = function(type, settings, children){
         return new BaseComponent(fastn, type, settings, children);
