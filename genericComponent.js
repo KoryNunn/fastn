@@ -16,6 +16,13 @@ function createProperties(fastn, component, settings){
     }
 }
 
+function trackKeyEvents(component, element, event){
+    if('_lastStates' in component && 'charCode' in event){
+        component._lastStates.unshift(element.value);
+        component._lastStates.pop();
+    }
+}
+
 function addDomHandler(component, element, handlerName, eventName, capture){
     var eventParts = handlerName.split('.');
 
@@ -24,6 +31,7 @@ function addDomHandler(component, element, handlerName, eventName, capture){
     }
 
     var handler = function(event){
+            trackKeyEvents(component, element, event);
             component.emit(handlerName, event, component.scope());
         };
 
@@ -65,6 +73,8 @@ function addAutoHandler(component, element, key, settings){
         var fancyProp = fancyProps[autoEvent[1]],
             value = fancyProp ? fancyProp(component, element) : element[autoEvent[1]];
 
+        trackKeyEvents(component, element, event);
+
         component[autoEvent[0]](value);
     };
 
@@ -76,16 +86,28 @@ function addAutoHandler(component, element, key, settings){
 }
 
 function addDomProperty(fastn, key, property){
-    var component = this;
+    var component = this,
+        timeout;
 
     property = property || component[key] || fastn.property();
     component.setProperty(key, property);
 
     function update(){
+
         var element = component.getPropertyElement(key),
             value = property();
 
         if(!element || component.destroyed()){
+            return;
+        }
+
+        if(
+            key === 'value' &&
+            component._lastStates &&
+            ~component._lastStates.indexOf(value)
+        ){
+            clearTimeout(timeout);
+            timeout = setTimeout(update, 50);
             return;
         }
 
@@ -136,6 +158,10 @@ function onRender(){
 
 function render(){
     this.element = this.createElement(this._settings.tagName || this._tagName);
+
+    if('value' in this.element){
+        this._lastStates = new Array(2);
+    }
 
     this.emit('render');
 
