@@ -13,6 +13,92 @@ function CustomModel(instance){
 
     return this;
 }
+CustomModel.get = function(target, key){
+    var match = key.match(matchKeys);
+
+    if(!match){
+        return;
+    }
+
+    while(match[2]){
+        if(!target){
+            return;
+        }
+
+        target = target[match[1]];
+        match = match[2].match(matchKeys);
+    }
+
+    if(!target){
+        return;
+    }
+
+    return target[match[1]];
+};
+CustomModel.set = function(target, key, value){
+    var instance = target,
+        match = key.match(matchKeys);
+
+    if(!match){
+        return;
+    }
+
+    while(match[2]){
+        if(!target){
+            return;
+        }
+
+        target = target[match[1]];
+        match = match[2].match(matchKeys);
+    }
+
+    if(!target){
+        return;
+    }
+
+    target[match[1]] = value;
+    allModels.forEach(function(model){
+        if(model.isAttached() && model._model === instance){
+            model._events && Object.keys(model._events).forEach(function(key){
+                if(model.get(key.match(/(.*?)\./)[1]) === target){
+                    model.emit(key, value);
+                }
+            });
+        }
+    });
+};
+CustomModel.remove = function(target, key){
+    var instance = target,
+        match = key.match(matchKeys);
+
+    if(!match){
+        return;
+    }
+
+    while(match[2]){
+        if(!target){
+            return;
+        }
+
+        target = target[match[1]];
+        match = match[2].match(matchKeys);
+    }
+
+    if(!target){
+        return;
+    }
+
+    delete target[match[1]];
+    allModels.forEach(function(model){
+        if(model.isAttached() && model._model === instance){
+            model._events && Object.keys(model._events).forEach(function(key){
+                if(model.get(key.match(/(.*?)\./)[1]) === target){
+                    model.emit(key);
+                }
+            });
+        }
+    });
+};
 CustomModel.prototype = Object.create(EventEmitter.prototype);
 CustomModel.prototype.constructor = CustomModel;
 CustomModel.prototype._maxListeners = 100;
@@ -41,61 +127,13 @@ CustomModel.prototype.destroy = function(){
 };
 var matchKeys = /(.*?)(?:\.(.*)|$)/;
 CustomModel.prototype.get = function(key){
-    var match = key.match(matchKeys),
-        target = this._model;
-
-    if(!match){
-        return;
-    }
-
-    while(match[2]){
-        if(!target){
-            return;
-        }
-
-        target = target[match[1]];
-        match = match[2].match(matchKeys);
-    }
-
-    if(!target){
-        return;
-    }
-
-    return target[match[1]];
+    return CustomModel.get(this._model, key);
 };
 CustomModel.prototype.set = function(key, value){
-    var customModel = this,
-        match = key.match(matchKeys),
-        target = this._model;
-
-    if(!match){
-        return;
-    }
-
-    while(match[2]){
-        if(!target){
-            return;
-        }
-
-        target = target[match[1]];
-        match = match[2].match(matchKeys);
-    }
-
-    if(!target){
-        return;
-    }
-
-    target[match[1]] = value;
-    allModels.forEach(function(model){
-        if(model.isAttached() && model._model === customModel._model){
-            model._events && Object.keys(model._events).forEach(function(key){
-                if(model.get(key.match(/(.*?)\./)[1]) === target){
-                    model.emit(key, value);
-                }
-            });
-        }
-    });
-    return this;
+    return CustomModel.set(this._model, key, value);
+};
+CustomModel.prototype.remove = function(key){
+    return CustomModel.remove(this._model, key);
 };
 CustomModel.prototype.isAttached = function(){
     return !!this._model;
