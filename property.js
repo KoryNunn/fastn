@@ -1,11 +1,8 @@
-var Enti = require('enti'),
-    WhatChanged = require('what-changed'),
+var WhatChanged = require('what-changed'),
     same = require('same-value'),
     firmer = require('./firmer'),
-    createBinding = require('./binding'),
     functionEmitter = require('./functionEmitter'),
-    setPrototypeOf = require('setprototypeof'),
-    is = require('./is');
+    setPrototypeOf = require('setprototypeof');
 
 var propertyProto = Object.create(functionEmitter);
 
@@ -53,8 +50,8 @@ function propertyBinding(newBinding){
         return this.binding;
     }
 
-    if(!is.binding(newBinding)){
-        newBinding = createBinding(newBinding);
+    if(!this.fastn.isBinding(newBinding)){
+        newBinding = this.fastn.binding(newBinding);
     }
 
     if(newBinding === this.binding){
@@ -175,16 +172,17 @@ function createProperty(currentValue, changes, updater){
     var propertyScope =
         property = propertyTemplate.bind(propertyScope)
         propertyScope = {
-        hasChanged: changeChecker(currentValue, changes),
-        valueUpdate: function(value){
-            property._value = value;
-            if(!propertyScope.hasChanged(value)){
-                return;
+            fastn: this,
+            hasChanged: changeChecker(currentValue, changes),
+            valueUpdate: function(value){
+                property._value = value;
+                if(!propertyScope.hasChanged(value)){
+                    return;
+                }
+                property.emit('change', property._value);
+                property.update();
             }
-            property.emit('change', property._value);
-            property.update();
-        }
-    };
+        };
 
     var property = propertyScope.property = propertyTemplate.bind(propertyScope);
 

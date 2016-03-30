@@ -12,6 +12,7 @@ function run(){
     require('./generic.js');
     require('./attach.js');
     require('./fancyProps.js');
+    require('./customModel.js');
 }
 
 if(typeof document !== 'undefined'){

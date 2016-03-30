@@ -1,6 +1,7 @@
 var test = require('tape'),
-    createBinding = require('../binding'),
-    createProperty = require('../property'),
+    fastn = require('../index')({}),
+    createBinding = fastn.binding,
+    createProperty = fastn.property,
     Enti = require('enti');
 
 test('simple property initialisation', function(t){

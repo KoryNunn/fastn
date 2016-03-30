@@ -1,17 +1,17 @@
-var Enti = require('enti'),
-    is = require('./is'),
+var is = require('./is'),
     firmer = require('./firmer'),
     functionEmitter = require('./functionEmitter'),
     setPrototypeOf = require('setprototypeof'),
     same = require('same-value');
 
 function fuseBinding(){
-    var args = Array.prototype.slice.call(arguments);
+    var fastn = this,
+        args = Array.prototype.slice.call(arguments);
 
     var bindings = args.slice(),
         transform = bindings.pop(),
         updateTransform,
-        resultBinding = createBinding('result'),
+        resultBinding = createBinding.call(fastn, 'result'),
         selfChanging;
 
     resultBinding._arguments = args;
@@ -47,7 +47,7 @@ function fuseBinding(){
 
     bindings.forEach(function(binding, index){
         if(!is.binding(binding)){
-            binding = createBinding(binding);
+            binding = createBinding.call(fastn, binding);
             bindings.splice(index,1,binding);
         }
         binding.on('change', change);
@@ -70,8 +70,8 @@ function fuseBinding(){
     return resultBinding;
 }
 
-function createValueBinding(){
-    var valueBinding = createBinding('value');
+function createValueBinding(fastn){
+    var valueBinding = createBinding.call(fastn, 'value');
     valueBinding.attach = function(){return valueBinding;};
     valueBinding.detach = function(){return valueBinding;};
     return valueBinding;
@@ -91,13 +91,18 @@ function bindingTemplate(newValue){
 }
 
 function createBinding(path, more){
+    var fastn = this;
+
+    if(!fastn.binding){
+        throw new Error();
+    }
 
     if(more){ // used instead of arguments.length for performance
-        return fuseBinding.apply(null, arguments);
+        return fuseBinding.apply(fastn, arguments);
     }
 
     if(path == null){
-        return createValueBinding();
+        return createValueBinding(fastn);
     }
 
     var bindingScope = {},
@@ -107,7 +112,7 @@ function createBinding(path, more){
     setPrototypeOf(binding, functionEmitter);
     binding.setMaxListeners(10000);
     binding._arguments = [path];
-    binding._model = new Enti(false);
+    binding._model = new fastn.Model(false);
     binding._fastn_binding = path;
     binding._firm = -Infinity;
 
@@ -131,9 +136,9 @@ function createBinding(path, more){
 
         binding._firm = firm;
 
-        var isEnti = Enti.isEnti(object);
+        var isModel = fastn.isModel(object);
 
-        if(isEnti && bindingScope.attachedModel === object){
+        if(isModel && bindingScope.attachedModel === object){
             return binding;
         }
 
@@ -143,7 +148,7 @@ function createBinding(path, more){
             bindingScope.attachedModel = null;
         }
 
-        if(isEnti){
+        if(isModel){
             bindingScope.attachedModel = object;
             bindingScope.attachedModel.on('attach', modelAttachHandler);
             bindingScope.attachedModel.on('detach', modelDetachHandler);
@@ -189,7 +194,7 @@ function createBinding(path, more){
         binding.emit('change', binding());
     };
     binding.clone = function(keepAttachment){
-        var newBinding = createBinding.apply(null, binding._arguments);
+        var newBinding = createBinding.apply(fastn, binding._arguments);
 
         if(keepAttachment){
             newBinding.attach(bindingScope.attachedModel || binding._model._model, binding._firm);
@@ -226,9 +231,9 @@ function from(valueOrBinding){
         return valueOrBinding;
     }
 
-    return createBinding()(valueOrBinding);
+    return this(valueOrBinding);
 }
 
-createBinding.from = from;
+createBinding.from = from.bind(createBinding);
 
 module.exports = createBinding;

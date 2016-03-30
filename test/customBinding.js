@@ -1,5 +1,5 @@
 var test = require('tape'),
-    createBinding = require('../index')({}).binding,
+    createBinding = require('../binding'),
     Enti = require('enti');
 
 test('simple binding initialisation', function(t){
