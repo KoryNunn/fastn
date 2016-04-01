@@ -1,7 +1,7 @@
 var WhatChanged = require('what-changed'),
     same = require('same-value'),
     firmer = require('./firmer'),
-    functionEmitter = require('./functionEmitter'),
+    functionEmitter = require('function-emitter'),
     setPrototypeOf = require('setprototypeof');
 
 var propertyProto = Object.create(functionEmitter);

@@ -19,6 +19,7 @@
     "enti": "^5.0.0",
     "flat-merge": "^1.0.0",
     "flatten": "0.0.1",
+    "function-emitter": "^1.0.0",
     "multimap": "^1.0.0",
     "object-assign": "^3.0.0",
     "same-value": "^1.0.0",

@@ -1,6 +1,6 @@
 var is = require('./is'),
     firmer = require('./firmer'),
-    functionEmitter = require('./functionEmitter'),
+    functionEmitter = require('function-emitter'),
     setPrototypeOf = require('setprototypeof'),
     same = require('same-value');
 
