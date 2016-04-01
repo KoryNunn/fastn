@@ -108,7 +108,7 @@ module.exports = function(components, debug){
 
     fastn.debug = debug;
     fastn.property = createProperty.bind(fastn);
-    fastn.binding = createBinding.bind(fastn);
+    fastn.binding = createBinding(fastn);
     fastn.isComponent = is.component;
     fastn.isBinding = is.binding;
     fastn.isDefaultBinding = is.defaultBinding;

@@ -434,3 +434,20 @@ test('model attach', function(t){
     t.equal(binding(), 2);
 
 });
+
+test('from', function(t){
+    t.plan(3);
+
+    var binding = createBinding(),
+        value = 5;
+
+    binding(10);
+
+    var from1 = createBinding.from(binding);
+    var from2 = createBinding.from(value);
+
+    t.equal(from1(), 10);
+    t.equal(from1, binding);
+    t.equal(from2(), 5);
+
+});

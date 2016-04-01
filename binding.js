@@ -93,10 +93,6 @@ function bindingTemplate(newValue){
 function createBinding(path, more){
     var fastn = this;
 
-    if(!fastn.binding){
-        throw new Error();
-    }
-
     if(more){ // used instead of arguments.length for performance
         return fuseBinding.apply(fastn, arguments);
     }
@@ -231,9 +227,14 @@ function from(valueOrBinding){
         return valueOrBinding;
     }
 
-    return this(valueOrBinding);
+    var result = this();
+    result(valueOrBinding)
+
+    return result;
 }
 
-createBinding.from = from.bind(createBinding);
-
-module.exports = createBinding;
+module.exports = function(fastn){
+    var binding = createBinding.bind(fastn);
+    binding.from = from.bind(binding);
+    return binding;
+};
