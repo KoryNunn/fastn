@@ -21,8 +21,23 @@ var fastn = require('fastn')({
     text: require('fastn/textComponent'), // Renders text
     _generic: require('fastn/genericComponent') // Renders DOM nodes
 });
+```
 
+Or use the default DOM component constructors:
+```javascript
+var fastn = require('fastn')({
+    require('fastn/domComponents')(/* optional extra constructors */), // Default components for rendering DOM.
+});
+```
+
+Make components:
+```
 var something = fastn('h1', 'Hello World');
+
+```
+
+Put them on the screen:
+```
 
 something.render();
 
