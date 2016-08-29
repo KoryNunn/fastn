@@ -12,7 +12,17 @@ Create ultra-lightweight UI components
 
 The absolute minimum required to make a fastn component:
 
-initialise fastn:
+initialise fastn with default DOM components:
+
+```javascript
+var fastn = require('fastn')(
+    // Default components for rendering DOM.
+    require('fastn/domComponents')(/* optional extra constructors */)
+);
+```
+
+Or use your own selection of constructors:
+
 ```javascript
 // Require and initialise fastn
 var fastn = require('fastn')({
@@ -23,22 +33,14 @@ var fastn = require('fastn')({
 });
 ```
 
-Or use the default DOM component constructors:
-```javascript
-var fastn = require('fastn')({
-    require('fastn/domComponents')(/* optional extra constructors */), // Default components for rendering DOM.
-});
-```
-
 Make components:
-```
+```javascript
 var something = fastn('h1', 'Hello World');
 
 ```
 
 Put them on the screen:
-```
-
+```javascript
 something.render();
 
 window.addEventListener('load', function(){
@@ -120,7 +122,7 @@ fastn includes 4 extremely simple default components that render as DOM nodes. I
 
 A default handler for the `text` component type that renders a textNode. e.g.:
 
-```
+```javascript
 fastn('something', // render a thing
     'Some string passed as a child' // falls into the `text` component, renders as a textNode
 )
@@ -130,7 +132,7 @@ fastn('something', // render a thing
 
 A default handler for the `_generic` component type that renders DOM nodes based on the type passed, e.g.:
 
-```
+```javascript
 fastn('div') // no component is assigned to 'div', fastn will search for _generic, and if this component is assigned to it, it will create a div element.
 ```
 
@@ -138,7 +140,7 @@ fastn('div') // no component is assigned to 'div', fastn will search for _generi
 
 takes a template and inserts children based on the result of its `items` property, e.g.:
 
-```
+```javascript
 fastn('list', {
     items: [1,2,3],
     template: function(){
@@ -154,7 +156,7 @@ takes a template and replaces itself with the component rendered by the template
 
 The template function will be passed the last component that was rendered by it as the third parameter.
 
-```
+```javascript
 fastn('templater', {
     data: 'foo',
     template: function(model, scope, currentComponent){
