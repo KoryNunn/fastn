@@ -58,6 +58,7 @@ h3 {
   color: #333;
   font-size: 1.2em;
   font-weight: 200;
+  margin: 25px 10;
 }
 a {
   color: #0077b3;
@@ -429,4 +430,19 @@ nav a {
 .tryIt a {
   font-size: 1.2em;
   padding: 8px;
+}
+section.justification {
+  -webkit-box-shadow: none;
+  box-shadow: none;
+  background: #f6f6fa;
+  margin-bottom: 40px;
+}
+section.justification h1 {
+  margin-bottom: 20px;
+}
+section.justification h3 {
+  font-weight: 300;
+  font-size: 1.5em;
+  line-height: 1.5em;
+  margin-bottom: 20px;
 }
