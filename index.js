@@ -3,10 +3,11 @@ var fastn = require('./fastn');
 var app = fastn('div',
     require('./header')(),
     fastn('div', {class: 'content'},
-        fastn('p', {class: 'hook'}, 
+        fastn('p', {class: 'hook'},
             'A javascript tool for building user interfaces'
         ),
         require('./nav')(),
+        require('./justification')(),
         require('./setup')(),
         require('./counter')(),
         require('./todo')(),

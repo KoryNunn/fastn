@@ -1,5 +1,7 @@
 var fastn = require('./fastn'),
     cpjax = require('cpjax'),
+    lzutf8 = require('lzutf8'),
+    compressionSuffix = '-lzutf8',
     defaultCode,
     codeModel = {
         code: ''
@@ -24,14 +26,21 @@ var fastn = require('./fastn'),
         var stringifiedCode = JSON.stringify(code);
 
         localStorage.setItem('fastnTryCode', stringifiedCode);
-        window.location.hash = '#' + btoa(stringifiedCode);
+        window.location.hash = '#' + lzutf8.compress(stringifiedCode, {outputEncoding: 'Base64'}) + compressionSuffix;
     });
 
 var storedCode;
 
 function loadFromHash(){
     try{
-        var hashSource = JSON.parse(atob(window.location.hash.slice(1)));
+        var hashSource = window.location.hash.slice(1);
+        if(hashSource.slice(-compressionSuffix.length) === compressionSuffix){
+            hashSource = lzutf8.decompress(hashSource.slice(0, -compressionSuffix.length), {inputEncoding: 'Base64', outputEncoding: 'String'});
+        }else{
+            hashSource = atob(window.location.hash.slice(1));
+        }
+        hashSource = JSON.parse(hashSource);
+
         if(hashSource !== code()){
             code(hashSource);
         }

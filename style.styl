@@ -1,5 +1,8 @@
+@import 'nib';
+
 minScreenWidth = 350px;
 highlight = #0AF;
+backgroundColor = #f6f6fa;
 
 @import url(//fonts.googleapis.com/css?family=Roboto:400,300,100);
 
@@ -17,10 +20,10 @@ body {
     font-weight: 400;
     color: #222;
     margin: 0;
-    background: #f6f6fa;
+    background: backgroundColor;
     padding-bottom: 60px;
     padding-top: 135px;
-    
+
     &:before {
       content: "";
       z-index: -1;
@@ -61,6 +64,7 @@ h3{
     color: #333;
     font-size: 1.2em;
     font-weight: 200;
+    margin: 25px 10;
 }
 
 a{
@@ -166,6 +170,13 @@ i{
     margin: 8px;
     display: inline-block;
     vertical-align: middle;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    &.twitter{
+        background-image: url(https://upload.wikimedia.org/wikipedia/en/9/9f/Twitter_bird_logo_2012.svg);
+    }
 }
 
 .mainHeader{
@@ -186,19 +197,19 @@ i{
     flex-flow: row wrap;
     align-items: center;
     -webkit-mask-image: -webkit-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
     );
     -moz-mask-image: -moz-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
     );
     -ms-mask-image: -ms-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
@@ -303,6 +314,19 @@ nav{
     }
 }
 
+@media screen and (max-width: 700px){
+    nav{
+        justify-content: stretch;
+        a{
+            min-width: 200px;
+            flex: 1 1 50%;
+            margin: 0px;
+            padding: 4px;
+            border-radius: 0;
+        }
+    }
+}
+
 .example{
     display: flex;
     flex-flow: row wrap;
@@ -321,7 +345,6 @@ nav{
 
 .setup{
     pre{
-        max-width: 400px;
         margin: auto;
         margin-top: 16px;
     }
@@ -348,5 +371,22 @@ nav{
     a{
         font-size: 1.2em;
         padding: 8px;
+    }
+}
+
+section.justification{
+    box-shadow: none;
+    background: backgroundColor;
+    margin-bottom: 40px;
+
+    h1{
+        margin-bottom: 20px;
+    }
+
+    h3{
+        font-weight: 300;
+        font-size: 1.5em;
+        line-height: 1.5em;
+        margin-bottom: 20px;
     }
 }

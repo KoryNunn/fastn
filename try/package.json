@@ -4,8 +4,8 @@
   "description": "A little fastn app for trying out fastn in your browser",
   "main": "index.js",
   "scripts": {
-    "watch": "watchify index.js -o index.browser.js -d",
-    "build": "browserify -g uglifyify index.js --noparse clone > index.browser.js"
+    "watch": "watchify index.js -o index.browser.js -d & stylus -u nib -w style.styl -o style.css",
+    "build": "browserify -g uglifyify index.js --noparse clone > index.browser.js & stylus -u nib style.styl -o style.css"
   },
   "author": "",
   "license": "ISC",

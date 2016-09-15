@@ -1,0 +1,420 @@
+@import nib;
+@import url(http://fonts.googleapis.com/css?family=Roboto:400,300,100);
+
+*{
+    box-sizing: border-box;
+}
+
+html, body{
+    margin: 0;
+    padding: 0;
+}
+
+body{
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    color: #222;
+    margin:0;
+    background: #f6f6fa;
+    padding-bottom: 60px;
+    padding-top: 155px;
+
+}
+
+body:before{
+    content: "";
+    top:0;
+    width: 100%;
+    height: 220px;
+    position: fixed;
+    background: #0AF;
+    background-image: url(../images/background.svg);
+    background-size: 120%;
+    background-position: center top;
+    background-attachment: fixed;
+    box-shadow: 0 0 1px 1px rgba(0,0,0,0.4);
+}
+
+h1, h2, h3{
+    margin: 8px 4px;
+}
+
+h3{
+    color: #999;
+    font-weight: 400;
+}
+
+a{
+    color: #36f;
+    text-decoration: none;
+}
+
+button{
+    border:none;
+    border-radius: 3px;
+    margin:10px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #3080dd;
+}
+
+input{
+    border: none;
+    background: none;
+    border-bottom: solid 1px #aaa;
+    padding: 4px;
+    width: auto;
+    max-width: 250px;
+    height: 30px;
+}
+
+input:focus{
+    outline: none;
+    border-bottom-color: #0AF;
+    border-bottom-width: 2px;
+}
+
+field{
+    display: block;
+    padding: 4px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+field label{
+    min-width: 100px;
+    display: inline-block;
+    font-size: 0.9em;
+    color: #666;
+}
+
+form{
+    padding: 8px;
+    padding-bottom: 56px;
+    position: relative;
+}
+
+form button{
+    position: absolute;
+    bottom:8px;
+    right:8px;
+    background: transparent;
+    text-transform: uppercase;
+}
+
+.mainHeader{
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    min-height: 145px;
+    padding-bottom: 20px;
+    background: #0AF;
+    background-image: url(../images/background.svg);
+    background-size: 120%;
+    background-position: center top;
+    opacity: 0.98;
+    z-index: 1;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    -webkit-mask-image: -webkit-gradient(
+        linear, right top, right bottom,
+        color-stop(0.00,  rgba(0,0,0,1)),
+        color-stop(0.85,  rgba(0,0,0,1)),
+        color-stop(1.00,  rgba(0,0,0,0))
+    );
+    -moz-mask-image: -moz-gradient(
+        linear, right top, right bottom,
+        color-stop(0.00,  rgba(0,0,0,1)),
+        color-stop(0.85,  rgba(0,0,0,1)),
+        color-stop(1.00,  rgba(0,0,0,0))
+    );
+    -ms-mask-image: -ms-gradient(
+        linear, right top, right bottom,
+        color-stop(0.00,  rgba(0,0,0,1)),
+        color-stop(0.85,  rgba(0,0,0,1)),
+        color-stop(1.00,  rgba(0,0,0,0))
+    );
+}
+
+.mainHeader img{
+    height: 70px;
+    margin: 10px;
+    margin-right: -25px;
+    filter: drop-shadow(0 3px 3px 0,0,0,0.3);
+    -webkit-filter: drop-shadow(0 3px 1px rgba(0,0,0,0.3));
+    -moz-filter: drop-shadow(0 3px 1px rgba(0,0,0,0.3));
+}
+
+.mainHeader h1{
+    margin: 16px;
+    font-size: 1.3em;
+    color: white;
+    text-shadow: 0 3px 4px rgba(0,0,0,0.5);
+}
+
+.mainHeader span{
+    font-size: 0.8em;
+}
+
+.mainHeader *:not(:last-child):not(:first-child){
+    margin-right: 20px;
+}
+
+.mainHeader .faint{
+    color: rgba(255,255,255,0.5);
+    text-shadow: 0 3px 4px rgba(0,0,0,0.2);
+}
+
+.search{
+    color: white;
+    padding: 0 16px;
+    padding-top: 0;
+    display: flex;
+    align-items: center;
+    flex:1;
+    min-width: 250px;
+    max-width: 400px;
+    margin:auto;
+}
+
+.search label{
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.search input{
+    font-weight: 600;
+    padding: 4px;
+    margin: 8px;
+    font-size: 1.1em;
+    flex: 1;
+    color: white;
+    border-bottom-color: white;
+}
+
+.users{
+    margin:auto;
+    max-width: 600px;
+}
+
+
+.user{
+    position: relative;
+    margin: 10px;
+    box-shadow: 0 3px 15px -2px rgba(0,0,0,0.5);
+    border-radius: 1px;
+    background: white;
+    transition: all 0.3s cubic-bezier(.29,.7,0,.99);
+    height: 98px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.user button.remove{
+    position: absolute;
+    bottom: 0;
+    right:-50px;
+}
+
+.user.selected button.remove{
+    right:0;
+}
+
+.user .details{
+    display: inline-block;
+    vertical-align: middle;
+    padding: 5px;
+}
+
+.user.selected .details{
+    position: absolute;
+    bottom:0;
+    left:0;
+    right:0;
+    background: rgba(255,255,255,0.8);
+    padding: 5px;
+}
+
+.user .info{
+    vertical-align: middle;
+    margin: 5px;
+    display: none;
+}
+
+.user.selected .info{
+    display: inline-block;
+}
+
+.user .name{
+    font-size: 1.2em;
+    margin: 10px;
+}
+
+.user.selected{
+    margin: 5px 0;
+    padding: 0px;
+    height: 100vw;
+    max-height: 600px;
+}
+
+.user.deleted, .user.hidden{
+    height: 0px;
+    padding: 0px;
+    opacity: 0;
+    margin-top: -10px;
+}
+
+.user.deleted:first-child, .user.hidden:first-child{
+    margin-top: 0;
+}
+
+.user img{
+    width:80px;
+    height: 80px;
+    vertical-align: middle;
+    transition: all 0.3s cubic-bezier(.29,.7,0,.99);
+    border-radius: 50%;
+    border: none;
+    margin: 8px;
+    background-color: white;
+    background-image: url(http://upload.wikimedia.org/wikipedia/commons/0/0e/Lakeyboy_Silhouette.PNG);
+    background-size: 120%;
+    background-position: center;
+    background-attachment: fixed;
+    flex:none;
+}
+
+.user.selected img{
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0%;
+    margin: 0;
+}
+
+.user .extra{
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(.29,.7,0,.99);
+    pointer-events:none;
+    line-height: 1.8em;
+}
+
+.user.selected .extra{
+    opacity: 1;
+    pointer-events:all;
+}
+
+.user label{
+    padding-right: 3px;
+}
+
+.user p{
+    margin: 3px 0;
+}
+
+.user .primary label{
+    text-transform: capitalize;
+    font-size: 1.2em;
+}
+
+.user .extra{
+    color: #444;
+    font-size: 0.9em;
+}
+
+button.add{
+    position:fixed;
+    z-index: 1;
+    bottom: 4px;
+    right: 4px;
+    height: 52px;
+    width: 52px;
+    border-radius: 50%;
+    background: #0AF;
+    font-size: 40px;
+    font-weight: 100;
+    color: white;
+    box-shadow: 0 4px 4px 0px rgba(0,0,0,0.4);
+}
+
+
+.stats{
+    position: fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:16px;
+    background: white;
+    box-shadow: 0 3px 3px 3px rgba(0,0,0,0.4);
+    font-size: 0.8em;
+}
+
+@keyframes show {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity:1;
+    }
+}
+@-webkit-keyframes show {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity:1;
+    }
+}
+
+@keyframes hide {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+@-webkit-keyframes hide {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+.dialog{
+    position: fixed;
+    z-index: 2;
+    top:0;
+    bottom:0;
+    left:0;
+    right:0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: show 0.2s linear;
+    -webkit-animation: show 0.2s linear;
+    animation-fill-mode: backwards;
+    -webkit-animation-fill-mode: backwards;
+}
+
+.dialog.closed{
+    animation: hide 0.2s linear;
+    -webkit-animation: hide 0.2s linear;
+    animation-fill-mode: forwards;
+    -webkit-animation-fill-mode: forwards;
+    pointer-events: none;
+}
+
+.dialog .modal{
+    background: white;
+    margin: 16px;
+    box-shadow: 0 6px 12px 3px rgba(0,0,0,0.4);
+    border-radius: 3px;
+}
