@@ -119,19 +119,19 @@ form button{
     flex-flow: row wrap;
     align-items: center;
     -webkit-mask-image: -webkit-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
     );
     -moz-mask-image: -moz-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
     );
     -ms-mask-image: -ms-gradient(
-        linear, right top, right bottom, 
+        linear, right top, right bottom,
         color-stop(0.00,  rgba(0,0,0,1)),
         color-stop(0.85,  rgba(0,0,0,1)),
         color-stop(1.00,  rgba(0,0,0,0))
@@ -257,7 +257,7 @@ form button{
     margin: 5px 0;
     padding: 0px;
     height: 100vw;
-    max-height: 600px;
+    max-height: 300px;
 }
 
 .user.deleted, .user.hidden{

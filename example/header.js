@@ -6,19 +6,21 @@ module.exports = function(searchModel){
         fastn('img', {src: '../images/fastn-sml.png'}),
         fastn('h1', 'fastn', fastn('span', {class: 'faint'}, '.js')),
         fastn('span',
-            fastn.binding('users|*.deleted', require('./search').result,  function(users, results){
+            fastn.binding('users|*', 'deletedUsers|*', require('./search').result,  function(users, deleted, results){
                 if(!users){
-                    users = [];
+                    'No users';
                 }
 
                 var total = users.filter(function(user){
-                        return !user.deleted;
+                        return !~deleted.indexOf(user);
                     }).length;
 
                 var result = '';
 
                 if(results){
-                    result += 'Showing ' + results.length +' of ';
+                    result += 'Showing ' + results.filter(function(user){
+                        return !~deleted.indexOf(user);
+                    }).length +' of ';
                 }
 
                 result += total;
