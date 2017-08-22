@@ -63,6 +63,7 @@ module.exports = function(fastn, component, type, settings, children){
         }
         component.element = element || component.emptyElement;
         component.emit('render');
+        return component;
     };
 
     component.setProperty('data',
