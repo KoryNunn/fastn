@@ -135,6 +135,31 @@ function setProperty(key, property){
     return this.component;
 }
 
+function bindInternalProperty(component, model, propertyName, propertyTransform){
+    if(!(propertyName in component)){
+        component.setProperty(propertyName);
+    }
+    component[propertyName].on('change', function(value){
+        model.set(propertyName, propertyTransform ? propertyTransform(value) : value);
+    });
+}
+
+function createInternalScope(data, propertyTransforms){
+    var componentScope = this;
+    var model = new componentScope.fastn.Model(data);
+
+    for(var key in data){
+        bindInternalProperty(componentScope.component, model, key, propertyTransforms[key]);
+    }
+
+    return {
+        binding: function(){
+            return componentScope.fastn.binding.apply(null, arguments).attach(model);
+        },
+        model: model
+    };
+}
+
 function extendComponent(type, settings, children){
 
     if(type in this.types){
@@ -147,12 +172,12 @@ function extendComponent(type, settings, children){
             throw new Error('No component of type "' + type + '" is loaded');
         }
 
-        this.fastn.components._generic(this.fastn, this.component, type, settings, children);
+        this.fastn.components._generic(this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
 
         this.types._generic = true;
     }else{
 
-        this.fastn.components[type](this.fastn, this.component, type, settings, children);
+        this.fastn.components[type](this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
     }
 
     this.types[type] = true;

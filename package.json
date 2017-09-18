@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "browserify ./test/index.js > ./test/index.browser.js; google-chrome ./test/index.html",
+    "test": "browserify ./test/index.js > ./test/index.browser.js && google-chrome ./test/index.html",
     "watch": "watchify test/index.js -o test/index.browser.js -d"
   },
   "author": "",
