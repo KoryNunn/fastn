@@ -150,6 +150,21 @@ fastn('list', {
 ```
 the templated components will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
 
+#### Lazy templating
+
+If you need to render a huge list of items, and you're noticing a UI hang, you can choose to enable
+lazy templating, by setting a lists `insertionFrameTime` to some value:
+
+```javascript
+fastn('list', {
+    insertionFrameTime: 32, // Only render items for 32 milliseconds at a time before awaiting idle time.
+    items: [1,2,3],
+    template: function(){
+        return fastn.binding('item')
+    }
+})
+```
+
 ### templaterComponent
 
 takes a template and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted.

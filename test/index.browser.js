@@ -1,6 +1,1351 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var is = require('./is'),
+    GENERIC = '_generic',
+    EventEmitter = require('events').EventEmitter,
+    slice = Array.prototype.slice;
 
-},{}],2:[function(require,module,exports){
+function flatten(item){
+    return Array.isArray(item) ? item.reduce(function(result, element){
+        if(element == null){
+            return result;
+        }
+        return result.concat(flatten(element));
+    },[]) : item;
+}
+
+function attachProperties(object, firm){
+    for(var key in this._properties){
+        this._properties[key].attach(object, firm);
+    }
+}
+
+function onRender(){
+
+    // Ensure all bindings are somewhat attached just before rendering
+    this.attach(undefined, 0);
+
+    for(var key in this._properties){
+        this._properties[key].update();
+    }
+}
+
+function detachProperties(firm){
+    for(var key in this._properties){
+        this._properties[key].detach(firm);
+    }
+}
+
+function destroyProperties(){
+    for(var key in this._properties){
+        this._properties[key].destroy();
+    }
+}
+
+function clone(){
+    return this.fastn(this.component._type, this.component._settings, this.component._children.filter(function(child){
+            return !child._templated;
+        }).map(function(child){
+            return child.clone();
+        })
+    );
+}
+
+function getSetBinding(newBinding){
+    if(!arguments.length){
+        return this.binding;
+    }
+
+    if(!is.binding(newBinding)){
+        newBinding = this.fastn.binding(newBinding);
+    }
+
+    if(this.binding && this.binding !== newBinding){
+        this.binding.removeListener('change', this.emitAttach);
+        newBinding.attach(this.binding._model, this.binding._firm);
+    }
+
+    this.binding = newBinding;
+
+    this.binding.on('change', this.emitAttach);
+    this.binding.on('detach', this.emitDetach);
+
+    this.emitAttach();
+
+    return this.component;
+};
+
+function emitAttach(){
+    var newBound = this.binding();
+    if(newBound !== this.lastBound){
+        this.lastBound = newBound;
+        this.scope.attach(this.lastBound);
+        this.component.emit('attach', this.scope, 1);
+    }
+}
+
+function emitDetach(){
+    this.component.emit('detach', 1);
+}
+
+function getScope(){
+    return this.scope;
+}
+
+function destroy(){
+    if(this.destroyed){
+        return;
+    }
+    this.destroyed = true;
+
+    this.component
+        .removeAllListeners('render')
+        .removeAllListeners('attach');
+
+    this.component.emit('destroy');
+    this.component.element = null;
+    this.scope.destroy();
+    this.binding.destroy();
+
+    return this.component;
+}
+
+function attachComponent(object, firm){
+    this.binding.attach(object, firm);
+    return this.component;
+}
+
+function detachComponent(firm){
+    this.binding.detach(firm);
+    return this.component;
+}
+
+function isDestroyed(){
+    return this.destroyed;
+}
+
+function setProperty(key, property){
+
+    // Add a default property or use the one already there
+    if(!property){
+        property = this.component[key] || this.fastn.property();
+    }
+
+    this.component[key] = property;
+    this.component._properties[key] = property;
+
+    return this.component;
+}
+
+function bindInternalProperty(component, model, propertyName, propertyTransform){
+    if(!(propertyName in component)){
+        component.setProperty(propertyName);
+    }
+    component[propertyName].on('change', function(value){
+        model.set(propertyName, propertyTransform ? propertyTransform(value) : value);
+    });
+}
+
+function createInternalScope(data, propertyTransforms){
+    var componentScope = this;
+    var model = new componentScope.fastn.Model(data);
+
+    for(var key in data){
+        bindInternalProperty(componentScope.component, model, key, propertyTransforms[key]);
+    }
+
+    return {
+        binding: function(){
+            return componentScope.fastn.binding.apply(null, arguments).attach(model);
+        },
+        model: model
+    };
+}
+
+function extendComponent(type, settings, children){
+
+    if(type in this.types){
+        return this.component;
+    }
+
+    if(!(type in this.fastn.components)){
+
+        if(!(GENERIC in this.fastn.components)){
+            throw new Error('No component of type "' + type + '" is loaded');
+        }
+
+        this.fastn.components._generic(this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
+
+        this.types._generic = true;
+    }else{
+
+        this.fastn.components[type](this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
+    }
+
+    this.types[type] = true;
+
+    return this.component;
+};
+
+function isType(type){
+    return type in this.types;
+}
+
+function FastnComponent(fastn, type, settings, children){
+    var component = this;
+
+    var componentScope = {
+        types: {},
+        fastn: fastn,
+        component: component,
+        binding: fastn.binding('.'),
+        destroyed: false,
+        scope: new fastn.Model(false),
+        lastBound: null
+    };
+
+    componentScope.emitAttach = emitAttach.bind(componentScope);
+    componentScope.emitDetach = emitDetach.bind(componentScope);
+    componentScope.binding._default_binding = true;
+
+    component._type = type;
+    component._properties = {};
+    component._settings = settings || {};
+    component._children = children ? flatten(children) : [];
+
+    component.attach = attachComponent.bind(componentScope);
+    component.detach = detachComponent.bind(componentScope);
+    component.scope = getScope.bind(componentScope);
+    component.destroy = destroy.bind(componentScope);
+    component.destroyed = isDestroyed.bind(componentScope);
+    component.binding = getSetBinding.bind(componentScope);
+    component.setProperty = setProperty.bind(componentScope);
+    component.clone = clone.bind(componentScope);
+    component.children = slice.bind(component._children);
+    component.extend = extendComponent.bind(componentScope);
+    component.is = isType.bind(componentScope);
+
+    component.binding(componentScope.binding);
+
+    component.on('attach', attachProperties.bind(this));
+    component.on('render', onRender.bind(this));
+    component.on('detach', detachProperties.bind(this));
+    component.on('destroy', destroyProperties.bind(this));
+
+    if(fastn.debug){
+        component.on('render', function(){
+            if(component.element && typeof component.element === 'object'){
+                component.element._component = component;
+            }
+        });
+    }
+}
+FastnComponent.prototype = Object.create(EventEmitter.prototype);
+FastnComponent.prototype.constructor = FastnComponent;
+FastnComponent.prototype._fastn_component = true;
+
+module.exports = FastnComponent;
+},{"./is":8,"events":34}],2:[function(require,module,exports){
+var is = require('./is'),
+    firmer = require('./firmer'),
+    functionEmitter = require('function-emitter'),
+    setPrototypeOf = require('setprototypeof'),
+    same = require('same-value');
+
+function fuseBinding(){
+    var fastn = this,
+        args = Array.prototype.slice.call(arguments);
+
+    var bindings = args.slice(),
+        transform = bindings.pop(),
+        updateTransform,
+        resultBinding = createBinding.call(fastn, 'result'),
+        selfChanging;
+
+    resultBinding._arguments = args;
+
+    if(typeof bindings[bindings.length-1] === 'function' && !is.binding(bindings[bindings.length-1])){
+        updateTransform = transform;
+        transform = bindings.pop();
+    }
+
+    resultBinding._model.removeAllListeners();
+    resultBinding._set = function(value){
+        if(updateTransform){
+            selfChanging = true;
+            var newValue = updateTransform(value);
+            if(!same(newValue, bindings[0]())){
+                bindings[0](newValue);
+                resultBinding._change(newValue);
+            }
+            selfChanging = false;
+        }else{
+            resultBinding._change(value);
+        }
+    };
+
+    function change(){
+        if(selfChanging){
+            return;
+        }
+        resultBinding(transform.apply(null, bindings.map(function(binding){
+            return binding();
+        })));
+    }
+
+    bindings.forEach(function(binding, index){
+        if(!is.binding(binding)){
+            binding = createBinding.call(fastn, binding);
+            bindings.splice(index,1,binding);
+        }
+        binding.on('change', change);
+        resultBinding.on('detach', binding.detach);
+    });
+
+    var lastAttached;
+    resultBinding.on('attach', function(object){
+        selfChanging = true;
+        bindings.forEach(function(binding){
+            binding.attach(object, 1);
+        });
+        selfChanging = false;
+        if(lastAttached !== object){
+            change();
+        }
+        lastAttached = object;
+    });
+
+    return resultBinding;
+}
+
+function createValueBinding(fastn){
+    var valueBinding = createBinding.call(fastn, 'value');
+    valueBinding.attach = function(){return valueBinding;};
+    valueBinding.detach = function(){return valueBinding;};
+    return valueBinding;
+}
+
+function bindingTemplate(newValue){
+    if(!arguments.length){
+        return this.value;
+    }
+
+    if(this.binding._fastn_binding === '.'){
+        return;
+    }
+
+    this.binding._set(newValue);
+    return this.binding;
+}
+
+function createBinding(path, more){
+    var fastn = this;
+
+    if(more){ // used instead of arguments.length for performance
+        return fuseBinding.apply(fastn, arguments);
+    }
+
+    if(path == null){
+        return createValueBinding(fastn);
+    }
+
+    var bindingScope = {},
+        binding = bindingScope.binding = bindingTemplate.bind(bindingScope),
+        destroyed;
+
+    setPrototypeOf(binding, functionEmitter);
+    binding.setMaxListeners(10000);
+    binding._arguments = [path];
+    binding._model = new fastn.Model(false);
+    binding._fastn_binding = path;
+    binding._firm = -Infinity;
+
+    function modelAttachHandler(data){
+        binding._model.attach(data);
+        binding._change(binding._model.get(path));
+        binding.emit('attach', data, 1);
+    }
+
+    function modelDetachHandler(){
+        binding._model.detach();
+    }
+
+    binding.attach = function(object, firm){
+
+        // If the binding is being asked to attach loosly to an object,
+        // but it has already been defined as being firmly attached, do not attach.
+        if(firmer(binding, firm)){
+            return binding;
+        }
+
+        binding._firm = firm;
+
+        var isModel = fastn.isModel(object);
+
+        if(isModel && bindingScope.attachedModel === object){
+            return binding;
+        }
+
+        if(bindingScope.attachedModel){
+            bindingScope.attachedModel.removeListener('attach', modelAttachHandler);
+            bindingScope.attachedModel.removeListener('detach', modelDetachHandler);
+            bindingScope.attachedModel = null;
+        }
+
+        if(isModel){
+            bindingScope.attachedModel = object;
+            bindingScope.attachedModel.on('attach', modelAttachHandler);
+            bindingScope.attachedModel.on('detach', modelDetachHandler);
+            object = object._model;
+        }
+
+        if(!(object instanceof Object)){
+            object = {};
+        }
+
+        if(binding._model._model === object){
+            return binding;
+        }
+
+        modelAttachHandler(object);
+
+        return binding;
+    };
+
+    binding.detach = function(firm){
+        if(firmer(binding, firm)){
+            return binding;
+        }
+
+        bindingScope.value = undefined;
+        if(binding._model.isAttached()){
+            binding._model.detach();
+        }
+        binding.emit('detach', 1);
+        return binding;
+    };
+    binding._set = function(newValue){
+        if(same(binding._model.get(path), newValue)){
+            return;
+        }
+        if(!binding._model.isAttached()){
+            binding._model.attach(binding._model.get('.'));
+        }
+        binding._model.set(path, newValue);
+    };
+    binding._change = function(newValue){
+        bindingScope.value = newValue;
+        binding.emit('change', binding());
+    };
+    binding.clone = function(keepAttachment){
+        var newBinding = createBinding.apply(fastn, binding._arguments);
+
+        if(keepAttachment){
+            newBinding.attach(bindingScope.attachedModel || binding._model._model, binding._firm);
+        }
+
+        return newBinding;
+    };
+    binding.destroy = function(soft){
+        if(destroyed){
+            return;
+        }
+        if(soft && binding.listeners('change').length){
+            return;
+        }
+        destroyed = true;
+        binding.emit('destroy');
+        binding.detach();
+        binding._model.destroy();
+    };
+
+    binding.destroyed = function(){
+        return destroyed;
+    };
+
+    if(path !== '.'){
+        binding._model.on(path, binding._change);
+    }
+
+    return binding;
+}
+
+function from(valueOrBinding){
+    if(is.binding(valueOrBinding)){
+        return valueOrBinding;
+    }
+
+    var result = this();
+    result(valueOrBinding)
+
+    return result;
+}
+
+module.exports = function(fastn){
+    var binding = createBinding.bind(fastn);
+    binding.from = from.bind(binding);
+    return binding;
+};
+},{"./firmer":5,"./is":8,"function-emitter":40,"same-value":73,"setprototypeof":76}],3:[function(require,module,exports){
+function insertChild(fastn, container, child, index){
+    if(child == null || child === false){
+        return;
+    }
+
+    var currentIndex = container._children.indexOf(child),
+        newComponent = fastn.toComponent(child);
+
+    if(newComponent !== child && ~currentIndex){
+        container._children.splice(currentIndex, 1, newComponent);
+    }
+
+    if(!~currentIndex || newComponent !== child){
+        newComponent.attach(container.scope(), 1);
+    }
+
+    if(currentIndex !== index){
+        if(~currentIndex){
+            container._children.splice(currentIndex, 1);
+        }
+        container._children.splice(index, 0, newComponent);
+    }
+
+    if(container.element){
+        if(!newComponent.element){
+            newComponent.render();
+        }
+        container._insert(newComponent.element, index);
+        newComponent.emit('insert', container);
+        container.emit('childInsert', newComponent);
+    }
+}
+
+function getContainerElement(){
+    return this.containerElement || this.element;
+}
+
+function insert(child, index){
+    var childComponent = child,
+        container = this.container,
+        fastn = this.fastn;
+
+    if(index && typeof index === 'object'){
+        childComponent = Array.prototype.slice.call(arguments);
+    }
+
+    if(isNaN(index)){
+        index = container._children.length;
+    }
+
+    if(Array.isArray(childComponent)){
+        for (var i = 0; i < childComponent.length; i++) {
+            container.insert(childComponent[i], i + index);
+        }
+    }else{
+        insertChild(fastn, container, childComponent, index);
+    }
+
+    return container;
+}
+
+module.exports = function(fastn, component, type, settings, children){
+    component.insert = insert.bind({
+        container: component,
+        fastn: fastn
+    });
+
+    component._insert = function(element, index){
+        var containerElement = component.getContainerElement();
+        if(!containerElement){
+            return;
+        }
+
+        if(containerElement.childNodes[index] === element){
+            return;
+        }
+
+        containerElement.insertBefore(element, containerElement.childNodes[index]);
+    };
+
+    component.remove = function(childComponent){
+        var index = component._children.indexOf(childComponent);
+        if(~index){
+            component._children.splice(index,1);
+        }
+
+        childComponent.detach(1);
+
+        if(childComponent.element){
+            component._remove(childComponent.element);
+            childComponent.emit('remove', component);
+        }
+        component.emit('childRemove', childComponent);
+    };
+
+    component._remove = function(element){
+        var containerElement = component.getContainerElement();
+
+        if(!element || !containerElement || element.parentNode !== containerElement){
+            return;
+        }
+
+        containerElement.removeChild(element);
+    };
+
+    component.empty = function(){
+        while(component._children.length){
+            component.remove(component._children.pop());
+        }
+    };
+
+    component.replaceChild = function(oldChild, newChild){
+        var index = component._children.indexOf(oldChild);
+
+        if(!~index){
+            return;
+        }
+
+        component.remove(oldChild);
+        component.insert(newChild, index);
+    };
+
+    component.getContainerElement = getContainerElement.bind(component);
+
+    component.on('render', component.insert.bind(null, component._children, 0));
+
+    component.on('attach', function(model, firm){
+        for(var i = 0; i < component._children.length; i++){
+            if(fastn.isComponent(component._children[i])){
+                component._children[i].attach(model, firm);
+            }
+        }
+    });
+
+    component.on('destroy', function(data, firm){
+        for(var i = 0; i < component._children.length; i++){
+            if(fastn.isComponent(component._children[i])){
+                component._children[i].destroy(firm);
+            }
+        }
+    });
+
+    return component;
+};
+},{}],4:[function(require,module,exports){
+var setify = require('setify'),
+    classist = require('classist');
+
+function updateTextProperty(generic, element, value){
+    if(arguments.length === 2){
+        return element.textContent;
+    }
+    element.textContent = (value == null ? '' : value);
+}
+
+module.exports = {
+    class: function(generic, element, value){
+        if(!generic._classist){
+            generic._classist = classist(element);
+        }
+
+        if(arguments.length < 3){
+            return generic._classist();
+        }
+
+        generic._classist(value);
+    },
+    display: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.style.display !== 'none';
+        }
+        element.style.display = value ? null : 'none';
+    },
+    disabled: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.hasAttribute('disabled');
+        }
+        if(value){
+            element.setAttribute('disabled', 'disabled');
+        }else{
+            element.removeAttribute('disabled');
+        }
+    },
+    textContent: updateTextProperty,
+    innerText: updateTextProperty,
+    innerHTML: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.innerHTML;
+        }
+        element.innerHTML = (value == null ? '' : value);
+    },
+    value: function(generic, element, value){
+        var inputType = element.type;
+
+        if(element.nodeName === 'INPUT' && inputType === 'date'){
+            if(arguments.length === 2){
+                return element.value ? new Date(element.value.replace(/-/g,'/').replace('T',' ')) : null;
+            }
+
+            value = value != null ? new Date(value) : null;
+
+            if(!value || isNaN(value)){
+                element.value = null;
+            }else{
+                element.value = [
+                    value.getFullYear(),
+                    ('0' + (value.getMonth() + 1)).slice(-2),
+                    ('0' + value.getDate()).slice(-2)
+                ].join('-');
+            }
+            return;
+        }
+
+        if(arguments.length === 2){
+            return element.value;
+        }
+        if(value === undefined){
+            value = null;
+        }
+
+        if(element.nodeName === 'PROGRESS'){
+            value = parseFloat(value) || 0;
+        }
+
+        setify(element, value);
+    },
+    max: function(generic, element, value) {
+        if(arguments.length === 2){
+            return element.value;
+        }
+
+        if(element.nodeName === 'PROGRESS'){
+            value = parseFloat(value) || 0;
+        }
+
+        element.max = value;
+    },
+    style: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.style;
+        }
+
+        for(var key in value){
+            element.style[key] = value[key];
+        }
+    },
+    type: function(generic, element, value){
+        if(arguments.length === 2){
+            return element.type;
+        }
+        element.setAttribute('type', value);
+    }
+};
+},{"classist":14,"setify":75}],5:[function(require,module,exports){
+// Is the entity firmer than the new firmness
+module.exports = function(entity, firm){
+    if(firm != null && (entity._firm === undefined || firm < entity._firm)){
+        return true;
+    }
+};
+},{}],6:[function(require,module,exports){
+var containerComponent = require('./containerComponent'),
+    schedule = require('./schedule'),
+    fancyProps = require('./fancyProps'),
+    matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/,
+    GENERIC = '_generic';
+
+function createProperties(fastn, component, settings){
+    for(var key in settings){
+        var setting = settings[key];
+
+        if(typeof setting === 'function' && !fastn.isProperty(setting) && !fastn.isBinding(setting)){
+            continue;
+        }
+
+        component.addDomProperty(key);
+    }
+}
+
+function trackKeyEvents(component, element, event){
+    if('_lastStates' in component && 'charCode' in event){
+        component._lastStates.unshift(element.value);
+        component._lastStates.pop();
+    }
+}
+
+function addDomHandler(component, element, handlerName, eventName, capture){
+    var eventParts = handlerName.split('.');
+
+    if(eventParts[0] === 'on'){
+        eventParts.shift();
+    }
+
+    var handler = function(event){
+            trackKeyEvents(component, element, event);
+            component.emit(handlerName, event, component.scope());
+        };
+
+    element.addEventListener(eventName, handler, capture);
+
+    component.on('destroy', function(){
+        element.removeEventListener(eventName, handler, capture);
+    });
+}
+
+function addDomHandlers(component, element, eventNames){
+    var events = eventNames.split(' ');
+
+    for(var i = 0; i < events.length; i++){
+        var eventName = events[i],
+            match = eventName.match(matchDomHandlerName);
+
+        if(!match){
+            continue;
+        }
+
+        if(match[1] || 'on' + match[2] in element){
+            addDomHandler(component, element, eventNames, match[2], match[3]);
+        }
+    }
+}
+
+function addAutoHandler(component, element, key, settings){
+    if(!settings[key]){
+        return;
+    }
+
+    var autoEvent = settings[key].split(':'),
+        eventName = key.slice(2);
+
+    delete settings[key];
+
+    var handler = function(event){
+        var fancyProp = fancyProps[autoEvent[1]],
+            value = fancyProp ? fancyProp(component, element) : element[autoEvent[1]];
+
+        trackKeyEvents(component, element, event);
+
+        component[autoEvent[0]](value);
+    };
+
+    element.addEventListener(eventName, handler);
+
+    component.on('destroy', function(){
+        element.removeEventListener(eventName, handler);
+    });
+}
+
+function addDomProperty(fastn, key, property){
+    var component = this,
+        timeout;
+
+    property = property || component[key] || fastn.property();
+    component.setProperty(key, property);
+
+    function update(){
+
+        var element = component.getPropertyElement(key),
+            value = property();
+
+        if(!element || component.destroyed()){
+            return;
+        }
+
+        if(
+            key === 'value' &&
+            component._lastStates &&
+            ~component._lastStates.indexOf(value)
+        ){
+            clearTimeout(timeout);
+            timeout = setTimeout(update, 50);
+            return;
+        }
+
+        var isProperty = key in element,
+            fancyProp = fancyProps[key],
+            previous = fancyProp ? fancyProp(component, element) : isProperty ? element[key] : element.getAttribute(key);
+
+        if(!fancyProp && !isProperty && value == null){
+            value = '';
+        }
+
+        if(value !== previous){
+            if(fancyProp){
+                fancyProp(component, element, value);
+                return;
+            }
+
+            if(isProperty){
+                element[key] = value;
+                return;
+            }
+
+            if(typeof value !== 'function' && typeof value !== 'object'){
+                element.setAttribute(key, value);
+            }
+        }
+    }
+
+    property.updater(update);
+}
+
+function onRender(){
+    var component = this,
+        element;
+
+    for(var key in component._settings){
+        element = component.getEventElement(key);
+        if(key.slice(0,2) === 'on' && key in element){
+            addAutoHandler(component, element, key, component._settings);
+        }
+    }
+
+    for(var eventKey in component._events){
+        element = component.getEventElement(key);
+        addDomHandlers(component, element, eventKey);
+    }
+}
+
+function render(){
+    this.element = this.createElement(this._settings.tagName || this._tagName);
+
+    if('value' in this.element){
+        this._lastStates = new Array(2);
+    }
+
+    this.emit('render');
+
+    return this;
+};
+
+function genericComponent(fastn, component, type, settings, children){
+    if(component.is(type)){
+        return component;
+    }
+
+    if(type === GENERIC){
+        component._tagName = component._tagName || 'div';
+    }else{
+        component._tagName = type;
+    }
+
+    if(component.is(GENERIC)){
+        return component;
+    }
+
+    component.extend('_container', settings, children);
+
+    component.addDomProperty = addDomProperty.bind(component, fastn);
+    component.getEventElement = component.getContainerElement;
+    component.getPropertyElement = component.getContainerElement;
+    component.updateProperty = genericComponent.updateProperty;
+    component.createElement = genericComponent.createElement;
+
+    createProperties(fastn, component, settings);
+
+    component.render = render.bind(component);
+
+    component.on('render', onRender);
+
+    return component;
+}
+
+genericComponent.updateProperty = function(component, property, update){
+    if(typeof document !== 'undefined' && document.contains(component.element)){
+        schedule(property, update);
+    }else{
+        update();
+    }
+};
+
+genericComponent.createElement = function(tagName){
+    if(tagName instanceof Node){
+        return tagName;
+    }
+    return document.createElement(tagName);
+};
+
+module.exports = genericComponent;
+},{"./containerComponent":3,"./fancyProps":4,"./schedule":91}],7:[function(require,module,exports){
+var createProperty = require('./property'),
+    createBinding = require('./binding'),
+    BaseComponent = require('./baseComponent'),
+    crel = require('crel'),
+    Enti = require('enti'),
+    objectAssign = require('object-assign'),
+    is = require('./is');
+
+function inflateProperties(component, settings){
+    for(var key in settings){
+        var setting = settings[key],
+            property = component[key];
+
+        if(is.property(settings[key])){
+
+            if(is.property(property)){
+                property.destroy();
+            }
+
+            setting.addTo(component, key);
+
+        }else if(is.property(property)){
+
+            if(is.binding(setting)){
+                property.binding(setting);
+            }else{
+                property(setting);
+            }
+
+            property.addTo(component, key);
+        }
+    }
+}
+
+function validateExpectedComponents(components, componentName, expectedComponents){
+    expectedComponents = expectedComponents.filter(function(componentName){
+        return !(componentName in components);
+    });
+
+    if(expectedComponents.length){
+        console.warn([
+            'fastn("' + componentName + '") uses some components that have not been registered with fastn',
+            'Expected conponent constructors: ' + expectedComponents.join(', ')
+        ].join('\n\n'));
+    }
+}
+
+module.exports = function(components, debug){
+
+    if(!components || typeof components !== 'object'){
+        throw new Error('fastn must be initialised with a components object');
+    }
+
+    components._container = components._container || require('./containerComponent');
+
+    function fastn(type){
+
+        var args = [];
+        for(var i = 0; i < arguments.length; i++){
+            args[i] = arguments[i];
+        }
+
+        var settings = args[1],
+            childrenIndex = 2,
+            settingsChild = fastn.toComponent(args[1]);
+
+        if(Array.isArray(args[1]) || settingsChild || !args[1]){
+            args[1] = settingsChild || args[1];
+            childrenIndex--;
+            settings = null;
+        }
+
+        settings = objectAssign({}, settings || {});
+
+        var types = typeof type === 'string' ? type.split(':') : Array.isArray(type) ? type : [type],
+            baseType,
+            children = args.slice(childrenIndex),
+            component = fastn.base(type, settings, children);
+
+        while(baseType = types.shift()){
+            component.extend(baseType, settings, children);
+        }
+
+        component._properties = {};
+
+        inflateProperties(component, settings);
+
+        return component;
+    }
+
+    fastn.toComponent = function(component){
+        if(component == null){
+            return;
+        }
+        if(is.component(component)){
+            return component;
+        }
+        if(typeof component !== 'object' || component instanceof Date){
+            return fastn('text', {auto: true}, component);
+        }
+        if(crel.isElement(component)){
+            return fastn(component);
+        }
+        if(crel.isNode(component)){
+            return fastn('text', {auto: true}, component.textContent);
+        }
+    };
+
+    fastn.debug = debug;
+    fastn.property = createProperty.bind(fastn);
+    fastn.binding = createBinding(fastn);
+    fastn.isComponent = is.component;
+    fastn.isBinding = is.binding;
+    fastn.isDefaultBinding = is.defaultBinding;
+    fastn.isBindingObject = is.bindingObject;
+    fastn.isProperty = is.property;
+    fastn.components = components;
+    fastn.Model = Enti;
+    fastn.isModel = Enti.isEnti.bind(Enti);
+
+    fastn.base = function(type, settings, children){
+        return new BaseComponent(fastn, type, settings, children);
+    };
+
+    for(var key in components){
+        var componentConstructor = components[key];
+
+        if(componentConstructor.expectedComponents){
+            validateExpectedComponents(components, key, componentConstructor.expectedComponents);
+        }
+    }
+
+    return fastn;
+};
+},{"./baseComponent":1,"./binding":2,"./containerComponent":3,"./is":8,"./property":90,"crel":18,"enti":26,"object-assign":51}],8:[function(require,module,exports){
+var FUNCTION = 'function',
+    OBJECT = 'object',
+    FASTNBINDING = '_fastn_binding',
+    FASTNPROPERTY = '_fastn_property',
+    FASTNCOMPONENT = '_fastn_component',
+    DEFAULTBINDING = '_default_binding';
+
+function isComponent(thing){
+    return thing && typeof thing === OBJECT && FASTNCOMPONENT in thing;
+}
+
+function isBindingObject(thing){
+    return thing && typeof thing === OBJECT && FASTNBINDING in thing;
+}
+
+function isBinding(thing){
+    return typeof thing === FUNCTION && FASTNBINDING in thing;
+}
+
+function isProperty(thing){
+    return typeof thing === FUNCTION && FASTNPROPERTY in thing;
+}
+
+function isDefaultBinding(thing){
+    return typeof thing === FUNCTION && FASTNBINDING in thing && DEFAULTBINDING in thing;
+}
+
+module.exports = {
+    component: isComponent,
+    bindingObject: isBindingObject,
+    binding: isBinding,
+    defaultBinding: isDefaultBinding,
+    property: isProperty
+};
+},{}],9:[function(require,module,exports){
+(function (global){
+var MultiMap = require('multimap'),
+    merge = require('flat-merge');
+
+var requestIdleCallback = global.requestIdleCallback || global.requestAnimationFrame || global.setTimeout;
+
+MultiMap.Map = Map;
+
+function each(value, fn){
+    if(!value || typeof value !== 'object'){
+        return;
+    }
+
+    if(Array.isArray(value)){
+        for(var i = 0; i < value.length; i++){
+            fn(value[i], i)
+        }
+    }else{
+        for(var key in value){
+            fn(value[key], key);
+        }
+    }
+}
+
+function keyFor(object, value){
+    if(!object || typeof object !== 'object'){
+        return false;
+    }
+
+    if(Array.isArray(object)){
+        var index = object.indexOf(value);
+        return index >=0 ? index : false;
+    }
+
+    for(var key in object){
+        if(object[key] === value){
+            return key;
+        }
+    }
+
+    return false;
+}
+
+module.exports = function(fastn, component, type, settings, children){
+
+    if(fastn.components._generic){
+        component.extend('_generic', settings, children);
+    }else{
+        component.extend('_container', settings, children);
+    }
+
+    if(!('template' in settings)){
+        console.warn('No "template" function was set for this templater component');
+    }
+
+    var itemsMap = new MultiMap(),
+        dataMap = new WeakMap(),
+        lastTemplate,
+        existingItem = {};
+
+    var insertQueue = [];
+    var inserting;
+
+    function updateOrCreateChild(template, item, key){
+        var child,
+            existing;
+
+        if(Array.isArray(item) && item[0] === existingItem){
+            existing = true;
+            child = item[2];
+            item = item[1];
+        }
+
+        var childModel;
+
+        if(!existing){
+            childModel = new fastn.Model({
+                item: item,
+                key: key
+            });
+
+            child = fastn.toComponent(template(childModel, component.scope()));
+            if(!child){
+                child = fastn('template');
+            }
+            child._listItem = item;
+            child._templated = true;
+
+            dataMap.set(child, childModel);
+            itemsMap.set(item, child);
+        }else{
+            childModel = dataMap.get(child);
+            childModel.set('key', key);
+        }
+
+        if(fastn.isComponent(child) && component._settings.attachTemplates !== false){
+            child.attach(childModel, 2);
+        }
+
+        return child;
+    }
+
+    function insertNextItems(template, insertionFrameTime){
+        if(inserting){
+            return;
+        }
+
+        inserting = true;
+
+        insertQueue.sort(function(a, b){
+            return a[2] - b[2];
+        });
+
+        function insertNext(){
+            var startTime = Date.now();
+
+            while(insertQueue.length && Date.now() - startTime < insertionFrameTime) {
+                var nextInsersion = insertQueue.shift();
+                var child = updateOrCreateChild(template, nextInsersion[0], nextInsersion[1]);
+                component.insert(child, nextInsersion[2]);
+            }
+
+            if(!insertQueue.length){
+                inserting = false;
+                return;
+            }
+
+            requestIdleCallback(insertNext);
+        }
+
+        insertNext();
+    }
+
+    function updateItems(){
+        insertQueue = [];
+
+        var value = component.items(),
+            template = component.template(),
+            emptyTemplate = component.emptyTemplate(),
+            insertionFrameTime = component.insertionFrameTime() || Infinity,
+            newTemplate = lastTemplate !== template;
+
+        var currentItems = merge(template ? value : []);
+
+        itemsMap.forEach(function(childComponent, item){
+            var currentKey = keyFor(currentItems, item);
+
+            if(!newTemplate && currentKey !== false){
+                currentItems[currentKey] = [existingItem, item, childComponent];
+            }else{
+                removeComponent(childComponent);
+                itemsMap.delete(item);
+            }
+        });
+
+        var index = 0;
+        var templateIndex = 0;
+
+        function updateItem(item, key){
+            while(index < component._children.length && !component._children[index]._templated){
+                index++;
+            }
+
+            insertQueue.push([item, key, index + templateIndex]);
+            templateIndex++;
+        }
+
+        each(currentItems, updateItem);
+
+        template && insertNextItems(template, insertionFrameTime);
+
+        lastTemplate = template;
+
+        if(templateIndex === 0 && emptyTemplate){
+            var child = fastn.toComponent(emptyTemplate(component.scope()));
+            if(!child){
+                child = fastn('template');
+            }
+            child._templated = true;
+
+            itemsMap.set({}, child);
+
+            component.insert(child);
+        }
+    }
+
+    function removeComponent(childComponent){
+        component.remove(childComponent);
+        childComponent.destroy();
+    }
+
+    component.setProperty('insertionFrameTime');
+
+    component.setProperty('items',
+        fastn.property([], settings.itemChanges || 'type keys shallowStructure')
+            .on('change', updateItems)
+    );
+
+    component.setProperty('template',
+        fastn.property().on('change', updateItems)
+    );
+
+    component.setProperty('emptyTemplate',
+        fastn.property().on('change', updateItems)
+    );
+
+    return component;
+};
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"flat-merge":35,"multimap":49}],10:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -116,13 +1461,15 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],3:[function(require,module,exports){
-arguments[4][1][0].apply(exports,arguments)
-},{"dup":1}],4:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
+
+},{}],12:[function(require,module,exports){
+arguments[4][11][0].apply(exports,arguments)
+},{"dup":11}],13:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @author   Feross Aboukhadijeh <https://feross.org>
  * @license  MIT
  */
 /* eslint-disable no-proto */
@@ -1834,7 +3181,244 @@ function numberIsNaN (obj) {
   return obj !== obj // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":2,"ieee754":7}],5:[function(require,module,exports){
+},{"base64-js":10,"ieee754":42}],14:[function(require,module,exports){
+module.exports = function(element){
+    var lastClasses = [];
+
+    return function(classes){
+
+        if(!arguments.length){
+            return lastClasses.join(' ');
+        }
+
+        function cleanClassName(result, className){
+            if(typeof className === 'string' && className.match(/\s/)){
+                className = className.split(' ');
+            }
+
+            if(Array.isArray(className)){
+                return result.concat(className.reduce(cleanClassName, []));
+            }
+
+            if(className != null && className !== '' && typeof className !== 'boolean'){
+                result.push(String(className).trim());
+            }
+
+            return result;
+        }
+
+        var newClasses = cleanClassName([], classes),
+            currentClasses = element.className ? element.className.split(' ') : [];
+
+        lastClasses.map(function(className){
+            if(!className){
+                return;
+            }
+
+            var index = currentClasses.indexOf(className);
+
+            if(~index){
+                currentClasses.splice(index, 1);
+            }
+        });
+
+        currentClasses = currentClasses.concat(newClasses);
+        lastClasses = newClasses;
+
+        element.className = currentClasses.join(' ');
+    };
+};
+
+},{}],15:[function(require,module,exports){
+(function (Buffer){
+var clone = (function() {
+'use strict';
+
+/**
+ * Clones (copies) an Object using deep copying.
+ *
+ * This function supports circular references by default, but if you are certain
+ * there are no circular references in your object, you can save some CPU time
+ * by calling clone(obj, false).
+ *
+ * Caution: if `circular` is false and `parent` contains circular references,
+ * your program may enter an infinite loop and crash.
+ *
+ * @param `parent` - the object to be cloned
+ * @param `circular` - set to true if the object to be cloned may contain
+ *    circular references. (optional - true by default)
+ * @param `depth` - set to a number if the object is only to be cloned to
+ *    a particular depth. (optional - defaults to Infinity)
+ * @param `prototype` - sets the prototype to be used when cloning an object.
+ *    (optional - defaults to parent prototype).
+*/
+function clone(parent, circular, depth, prototype) {
+  var filter;
+  if (typeof circular === 'object') {
+    depth = circular.depth;
+    prototype = circular.prototype;
+    filter = circular.filter;
+    circular = circular.circular
+  }
+  // maintain two arrays for circular references, where corresponding parents
+  // and children have the same index
+  var allParents = [];
+  var allChildren = [];
+
+  var useBuffer = typeof Buffer != 'undefined';
+
+  if (typeof circular == 'undefined')
+    circular = true;
+
+  if (typeof depth == 'undefined')
+    depth = Infinity;
+
+  // recurse this function so we don't reset allParents and allChildren
+  function _clone(parent, depth) {
+    // cloning null always returns null
+    if (parent === null)
+      return null;
+
+    if (depth == 0)
+      return parent;
+
+    var child;
+    var proto;
+    if (typeof parent != 'object') {
+      return parent;
+    }
+
+    if (clone.__isArray(parent)) {
+      child = [];
+    } else if (clone.__isRegExp(parent)) {
+      child = new RegExp(parent.source, __getRegExpFlags(parent));
+      if (parent.lastIndex) child.lastIndex = parent.lastIndex;
+    } else if (clone.__isDate(parent)) {
+      child = new Date(parent.getTime());
+    } else if (useBuffer && Buffer.isBuffer(parent)) {
+      child = new Buffer(parent.length);
+      parent.copy(child);
+      return child;
+    } else {
+      if (typeof prototype == 'undefined') {
+        proto = Object.getPrototypeOf(parent);
+        child = Object.create(proto);
+      }
+      else {
+        child = Object.create(prototype);
+        proto = prototype;
+      }
+    }
+
+    if (circular) {
+      var index = allParents.indexOf(parent);
+
+      if (index != -1) {
+        return allChildren[index];
+      }
+      allParents.push(parent);
+      allChildren.push(child);
+    }
+
+    for (var i in parent) {
+      var attrs;
+      if (proto) {
+        attrs = Object.getOwnPropertyDescriptor(proto, i);
+      }
+
+      if (attrs && attrs.set == null) {
+        continue;
+      }
+      child[i] = _clone(parent[i], depth - 1);
+    }
+
+    return child;
+  }
+
+  return _clone(parent, depth);
+}
+
+/**
+ * Simple flat clone using prototype, accepts only objects, usefull for property
+ * override on FLAT configuration object (no nested props).
+ *
+ * USE WITH CAUTION! This may not behave as you wish if you do not know how this
+ * works.
+ */
+clone.clonePrototype = function clonePrototype(parent) {
+  if (parent === null)
+    return null;
+
+  var c = function () {};
+  c.prototype = parent;
+  return new c();
+};
+
+// private utility functions
+
+function __objToStr(o) {
+  return Object.prototype.toString.call(o);
+};
+clone.__objToStr = __objToStr;
+
+function __isDate(o) {
+  return typeof o === 'object' && __objToStr(o) === '[object Date]';
+};
+clone.__isDate = __isDate;
+
+function __isArray(o) {
+  return typeof o === 'object' && __objToStr(o) === '[object Array]';
+};
+clone.__isArray = __isArray;
+
+function __isRegExp(o) {
+  return typeof o === 'object' && __objToStr(o) === '[object RegExp]';
+};
+clone.__isRegExp = __isRegExp;
+
+function __getRegExpFlags(re) {
+  var flags = '';
+  if (re.global) flags += 'g';
+  if (re.ignoreCase) flags += 'i';
+  if (re.multiline) flags += 'm';
+  return flags;
+};
+clone.__getRegExpFlags = __getRegExpFlags;
+
+return clone;
+})();
+
+if (typeof module === 'object' && module.exports) {
+  module.exports = clone;
+}
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":13}],16:[function(require,module,exports){
+var methods = [],
+    originals = {};
+
+for(var key in console){
+    methods.push(key);
+    originals[key] = console[key];
+}
+
+module.exports = function(callback) {
+    var results = {};
+    methods.forEach(function(key){
+        console[key] = function(){
+            results[key] = results[key] || [];
+            results[key] = results[key].concat(Array.prototype.slice.call(arguments));
+            originals[key].apply(console, arguments);
+        };
+    });
+    callback(function(){
+        methods.forEach(function(key){
+            console[key] = originals[key];
+        });
+        return results;
+    });
+}
+},{}],17:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -1945,7 +3529,1782 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":9}],6:[function(require,module,exports){
+},{"../../is-buffer/index.js":44}],18:[function(require,module,exports){
+//Copyright (C) 2012 Kory Nunn
+
+//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+/*
+
+    This code is not formatted for readability, but rather run-speed and to assist compilers.
+
+    However, the code's intention should be transparent.
+
+    *** IE SUPPORT ***
+
+    If you require this library to work in IE7, add the following after declaring crel.
+
+    var testDiv = document.createElement('div'),
+        testLabel = document.createElement('label');
+
+    testDiv.setAttribute('class', 'a');
+    testDiv['className'] !== 'a' ? crel.attrMap['class'] = 'className':undefined;
+    testDiv.setAttribute('name','a');
+    testDiv['name'] !== 'a' ? crel.attrMap['name'] = function(element, value){
+        element.id = value;
+    }:undefined;
+
+
+    testLabel.setAttribute('for', 'a');
+    testLabel['htmlFor'] !== 'a' ? crel.attrMap['for'] = 'htmlFor':undefined;
+
+
+
+*/
+
+(function (root, factory) {
+    if (typeof exports === 'object') {
+        module.exports = factory();
+    } else if (typeof define === 'function' && define.amd) {
+        define(factory);
+    } else {
+        root.crel = factory();
+    }
+}(this, function () {
+    var fn = 'function',
+        obj = 'object',
+        nodeType = 'nodeType',
+        textContent = 'textContent',
+        setAttribute = 'setAttribute',
+        attrMapString = 'attrMap',
+        isNodeString = 'isNode',
+        isElementString = 'isElement',
+        d = typeof document === obj ? document : {},
+        isType = function(a, type){
+            return typeof a === type;
+        },
+        isNode = typeof Node === fn ? function (object) {
+            return object instanceof Node;
+        } :
+        // in IE <= 8 Node is an object, obviously..
+        function(object){
+            return object &&
+                isType(object, obj) &&
+                (nodeType in object) &&
+                isType(object.ownerDocument,obj);
+        },
+        isElement = function (object) {
+            return crel[isNodeString](object) && object[nodeType] === 1;
+        },
+        isArray = function(a){
+            return a instanceof Array;
+        },
+        appendChild = function(element, child) {
+            if (isArray(child)) {
+                child.map(function(subChild){
+                    appendChild(element, subChild);
+                });
+                return;
+            }
+            if(!crel[isNodeString](child)){
+                child = d.createTextNode(child);
+            }
+            element.appendChild(child);
+        };
+
+
+    function crel(){
+        var args = arguments, //Note: assigned to a variable to assist compilers. Saves about 40 bytes in closure compiler. Has negligable effect on performance.
+            element = args[0],
+            child,
+            settings = args[1],
+            childIndex = 2,
+            argumentsLength = args.length,
+            attributeMap = crel[attrMapString];
+
+        element = crel[isElementString](element) ? element : d.createElement(element);
+        // shortcut
+        if(argumentsLength === 1){
+            return element;
+        }
+
+        if(!isType(settings,obj) || crel[isNodeString](settings) || isArray(settings)) {
+            --childIndex;
+            settings = null;
+        }
+
+        // shortcut if there is only one child that is a string
+        if((argumentsLength - childIndex) === 1 && isType(args[childIndex], 'string') && element[textContent] !== undefined){
+            element[textContent] = args[childIndex];
+        }else{
+            for(; childIndex < argumentsLength; ++childIndex){
+                child = args[childIndex];
+
+                if(child == null){
+                    continue;
+                }
+
+                if (isArray(child)) {
+                  for (var i=0; i < child.length; ++i) {
+                    appendChild(element, child[i]);
+                  }
+                } else {
+                  appendChild(element, child);
+                }
+            }
+        }
+
+        for(var key in settings){
+            if(!attributeMap[key]){
+                if(isType(settings[key],fn)){
+                    element[key] = settings[key];
+                }else{
+                    element[setAttribute](key, settings[key]);
+                }
+            }else{
+                var attr = attributeMap[key];
+                if(typeof attr === fn){
+                    attr(element, settings[key]);
+                }else{
+                    element[setAttribute](attr, settings[key]);
+                }
+            }
+        }
+
+        return element;
+    }
+
+    // Used for mapping one kind of attribute to the supported version of that in bad browsers.
+    crel[attrMapString] = {};
+
+    crel[isElementString] = isElement;
+
+    crel[isNodeString] = isNode;
+
+    if(typeof Proxy !== 'undefined'){
+        crel.proxy = new Proxy(crel, {
+            get: function(target, key){
+                !(key in crel) && (crel[key] = crel.bind(null, key));
+                return crel[key];
+            }
+        });
+    }
+
+    return crel;
+}));
+
+},{}],19:[function(require,module,exports){
+function compare(a, b, visited){
+    var aType = typeof a;
+
+    if(aType !== typeof b){
+        return false;
+    }
+
+    if(a == null || b == null || !(aType === 'object' || aType === 'function')){
+        if(aType === 'number' && isNaN(a) && isNaN(b)){
+            return true;
+        }
+
+        return a === b;
+    }
+
+    if(Array.isArray(a) !== Array.isArray(b)){
+        return false;
+    }
+
+    var aKeys = Object.keys(a),
+        bKeys = Object.keys(b);
+
+    if(aKeys.length !== bKeys.length){
+        return false;
+    }
+
+    var equal = true;
+
+    if(!visited){
+        visited = new Set();
+    }
+
+    aKeys.forEach(function(key){
+        if(!(key in b)){
+            equal = false;
+            return;
+        }
+        if(a[key] && a[key] instanceof Object){
+            if(visited.has(a[key])){
+                return;
+            }
+            visited.add(a[key]);
+        }
+        if(!compare(a[key], b[key], visited)){
+            equal = false;
+            return;
+        }
+    });
+
+    return equal;
+};
+
+module.exports = function(a, b){
+    return compare(a, b);
+}
+},{}],20:[function(require,module,exports){
+var pSlice = Array.prototype.slice;
+var objectKeys = require('./lib/keys.js');
+var isArguments = require('./lib/is_arguments.js');
+
+var deepEqual = module.exports = function (actual, expected, opts) {
+  if (!opts) opts = {};
+  // 7.1. All identical values are equivalent, as determined by ===.
+  if (actual === expected) {
+    return true;
+
+  } else if (actual instanceof Date && expected instanceof Date) {
+    return actual.getTime() === expected.getTime();
+
+  // 7.3. Other pairs that do not both pass typeof value == 'object',
+  // equivalence is determined by ==.
+  } else if (!actual || !expected || typeof actual != 'object' && typeof expected != 'object') {
+    return opts.strict ? actual === expected : actual == expected;
+
+  // 7.4. For all other Object pairs, including Array objects, equivalence is
+  // determined by having the same number of owned properties (as verified
+  // with Object.prototype.hasOwnProperty.call), the same set of keys
+  // (although not necessarily the same order), equivalent values for every
+  // corresponding key, and an identical 'prototype' property. Note: this
+  // accounts for both named and indexed properties on Arrays.
+  } else {
+    return objEquiv(actual, expected, opts);
+  }
+}
+
+function isUndefinedOrNull(value) {
+  return value === null || value === undefined;
+}
+
+function isBuffer (x) {
+  if (!x || typeof x !== 'object' || typeof x.length !== 'number') return false;
+  if (typeof x.copy !== 'function' || typeof x.slice !== 'function') {
+    return false;
+  }
+  if (x.length > 0 && typeof x[0] !== 'number') return false;
+  return true;
+}
+
+function objEquiv(a, b, opts) {
+  var i, key;
+  if (isUndefinedOrNull(a) || isUndefinedOrNull(b))
+    return false;
+  // an identical 'prototype' property.
+  if (a.prototype !== b.prototype) return false;
+  //~~~I've managed to break Object.keys through screwy arguments passing.
+  //   Converting to array solves the problem.
+  if (isArguments(a)) {
+    if (!isArguments(b)) {
+      return false;
+    }
+    a = pSlice.call(a);
+    b = pSlice.call(b);
+    return deepEqual(a, b, opts);
+  }
+  if (isBuffer(a)) {
+    if (!isBuffer(b)) {
+      return false;
+    }
+    if (a.length !== b.length) return false;
+    for (i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+  try {
+    var ka = objectKeys(a),
+        kb = objectKeys(b);
+  } catch (e) {//happens when one is a string literal and the other isn't
+    return false;
+  }
+  // having the same number of owned properties (keys incorporates
+  // hasOwnProperty)
+  if (ka.length != kb.length)
+    return false;
+  //the same set of keys (although not necessarily the same order),
+  ka.sort();
+  kb.sort();
+  //~~~cheap key test
+  for (i = ka.length - 1; i >= 0; i--) {
+    if (ka[i] != kb[i])
+      return false;
+  }
+  //equivalent values for every corresponding key, and
+  //~~~possibly expensive deep test
+  for (i = ka.length - 1; i >= 0; i--) {
+    key = ka[i];
+    if (!deepEqual(a[key], b[key], opts)) return false;
+  }
+  return typeof a === typeof b;
+}
+
+},{"./lib/is_arguments.js":21,"./lib/keys.js":22}],21:[function(require,module,exports){
+var supportsArgumentsClass = (function(){
+  return Object.prototype.toString.call(arguments)
+})() == '[object Arguments]';
+
+exports = module.exports = supportsArgumentsClass ? supported : unsupported;
+
+exports.supported = supported;
+function supported(object) {
+  return Object.prototype.toString.call(object) == '[object Arguments]';
+};
+
+exports.unsupported = unsupported;
+function unsupported(object){
+  return object &&
+    typeof object == 'object' &&
+    typeof object.length == 'number' &&
+    Object.prototype.hasOwnProperty.call(object, 'callee') &&
+    !Object.prototype.propertyIsEnumerable.call(object, 'callee') ||
+    false;
+};
+
+},{}],22:[function(require,module,exports){
+exports = module.exports = typeof Object.keys === 'function'
+  ? Object.keys : shim;
+
+exports.shim = shim;
+function shim (obj) {
+  var keys = [];
+  for (var key in obj) keys.push(key);
+  return keys;
+}
+
+},{}],23:[function(require,module,exports){
+'use strict';
+
+var keys = require('object-keys');
+var foreach = require('foreach');
+var hasSymbols = typeof Symbol === 'function' && typeof Symbol() === 'symbol';
+
+var toStr = Object.prototype.toString;
+
+var isFunction = function (fn) {
+	return typeof fn === 'function' && toStr.call(fn) === '[object Function]';
+};
+
+var arePropertyDescriptorsSupported = function () {
+	var obj = {};
+	try {
+		Object.defineProperty(obj, 'x', { enumerable: false, value: obj });
+        /* eslint-disable no-unused-vars, no-restricted-syntax */
+        for (var _ in obj) { return false; }
+        /* eslint-enable no-unused-vars, no-restricted-syntax */
+		return obj.x === obj;
+	} catch (e) { /* this is IE 8. */
+		return false;
+	}
+};
+var supportsDescriptors = Object.defineProperty && arePropertyDescriptorsSupported();
+
+var defineProperty = function (object, name, value, predicate) {
+	if (name in object && (!isFunction(predicate) || !predicate())) {
+		return;
+	}
+	if (supportsDescriptors) {
+		Object.defineProperty(object, name, {
+			configurable: true,
+			enumerable: false,
+			value: value,
+			writable: true
+		});
+	} else {
+		object[name] = value;
+	}
+};
+
+var defineProperties = function (object, map) {
+	var predicates = arguments.length > 2 ? arguments[2] : {};
+	var props = keys(map);
+	if (hasSymbols) {
+		props = props.concat(Object.getOwnPropertySymbols(map));
+	}
+	foreach(props, function (name) {
+		defineProperty(object, name, map[name], predicates[name]);
+	});
+};
+
+defineProperties.supportsDescriptors = !!supportsDescriptors;
+
+module.exports = defineProperties;
+
+},{"foreach":37,"object-keys":53}],24:[function(require,module,exports){
+module.exports = function () {
+    for (var i = 0; i < arguments.length; i++) {
+        if (arguments[i] !== undefined) return arguments[i];
+    }
+};
+
+},{}],25:[function(require,module,exports){
+
+
+/**
+ * @version    0.5.1
+ * @date       2016-07-26
+ * @stability  2 - Unstable
+ * @author     Lauri Rooden <lauri@rooden.ee>
+ * @license    MIT License
+ */
+
+
+// Void elements: http://www.w3.org/html/wg/drafts/html/master/syntax.html#void-elements
+var voidElements = {
+	AREA:1, BASE:1, BR:1, COL:1, EMBED:1, HR:1, IMG:1, INPUT:1,
+	KEYGEN:1, LINK:1, MENUITEM:1, META:1, PARAM:1, SOURCE:1, TRACK:1, WBR:1
+}
+, hasOwn = Object.prototype.hasOwnProperty
+, selector = require("selector-lite")
+, elementGetters = {
+	getElementById: function(id) {
+		return selector.find(this, "#" + id, 1)
+	},
+	getElementsByTagName: function(tag) {
+		return selector.find(this, tag)
+	},
+	getElementsByClassName: function(sel) {
+		return selector.find(this, "." + sel.replace(/\s+/g, "."))
+	},
+	querySelector: function(sel) {
+		return selector.find(this, sel, 1)
+	},
+	querySelectorAll: function(sel) {
+		return selector.find(this, sel)
+	}
+}
+, Node = {
+	ELEMENT_NODE:                1,
+	TEXT_NODE:                   3,
+	PROCESSING_INSTRUCTION_NODE: 7,
+	COMMENT_NODE:                8,
+	DOCUMENT_NODE:               9,
+	DOCUMENT_TYPE_NODE:         10,
+	DOCUMENT_FRAGMENT_NODE:     11,
+	nodeName:        null,
+	parentNode:      null,
+	ownerDocument:   null,
+	childNodes:      null,
+	get nodeValue() {
+		return this.nodeType === 3 || this.nodeType === 8 ? this.data : null
+	},
+	set nodeValue(text) {
+		return this.nodeType === 3 || this.nodeType === 8 ? (this.data = text) : null
+	},
+	get textContent() {
+		return this.hasChildNodes() ? this.childNodes.map(function(child) {
+			return child[ child.nodeType == 3 ? "data" : "textContent" ]
+		}).join("") : this.nodeType === 3 ? this.data : ""
+	},
+	set textContent(text) {
+		if (this.nodeType === 3) return (this.data = text)
+		for (var node = this; node.firstChild;) node.removeChild(node.firstChild)
+		node.appendChild(node.ownerDocument.createTextNode(text))
+	},
+	get firstChild() {
+		return this.childNodes && this.childNodes[0] || null
+	},
+	get lastChild() {
+		return this.childNodes && this.childNodes[ this.childNodes.length - 1 ] || null
+	},
+	get previousSibling() {
+		return getSibling(this, -1)
+	},
+	get nextSibling() {
+		return getSibling(this, 1)
+	},
+	// innerHTML and outerHTML should be extensions to the Element interface
+	get innerHTML() {
+		return Node.toString.call(this)
+	},
+	set innerHTML(html) {
+		var match, child
+		, node = this
+		, doc = node.ownerDocument || node
+		, tagRe = /<(!--([\s\S]*?)--|!\[[\s\S]*?\]|[?!][\s\S]*?)>|<(\/?)([^ \/>]+)([^>]*?)(\/?)>|[^<]+/mg
+		, attrRe = /([^= ]+)\s*=\s*(?:("|')((?:\\?.)*?)\2|(\S+))/g
+
+		for (; node.firstChild; ) node.removeChild(node.firstChild)
+
+		for (; (match = tagRe.exec(html)); ) {
+			if (match[3]) {
+				node = node.parentNode
+			} else if (match[4]) {
+				child = doc.createElement(match[4])
+				if (match[5]) {
+					match[5].replace(attrRe, setAttr)
+				}
+				node.appendChild(child)
+				if (!voidElements[child.tagName] && !match[6]) node = child
+			} else if (match[2]) {
+				node.appendChild(doc.createComment(htmlUnescape(match[2])))
+			} else if (match[1]) {
+				node.appendChild(doc.createDocumentType(match[1]))
+			} else {
+				node.appendChild(doc.createTextNode(htmlUnescape(match[0])))
+			}
+		}
+
+		return html
+
+		function setAttr(_, name, q, a, b) {
+			child.setAttribute(name, htmlUnescape(a || b || ""))
+		}
+	},
+	get outerHTML() {
+		return this.toString()
+	},
+	set outerHTML(html) {
+		var frag = this.ownerDocument.createDocumentFragment()
+		frag.innerHTML = html
+		this.parentNode.replaceChild(frag, this)
+		return html
+	},
+	get htmlFor() {
+		return this["for"]
+	},
+	set htmlFor(value) {
+		this["for"] = value
+	},
+	get className() {
+		return this["class"] || ""
+	},
+	set className(value) {
+		this["class"] = value
+	},
+	get style() {
+		return this.styleMap || (this.styleMap = new StyleMap())
+	},
+	set style(value) {
+		this.styleMap = new StyleMap(value)
+	},
+	hasChildNodes: function() {
+		return this.childNodes && this.childNodes.length > 0
+	},
+	appendChild: function(el) {
+		return this.insertBefore(el)
+	},
+	insertBefore: function(el, ref) {
+		var node = this
+		, childs = node.childNodes
+
+		if (el.nodeType == 11) {
+			while (el.firstChild) node.insertBefore(el.firstChild, ref)
+		} else {
+			if (el.parentNode) el.parentNode.removeChild(el)
+			el.parentNode = node
+
+			// If ref is null, insert el at the end of the list of children.
+			childs.splice(ref ? childs.indexOf(ref) : childs.length, 0, el)
+			// TODO:2015-07-24:lauri:update document.body and document.documentElement
+		}
+		return el
+	},
+	removeChild: function(el) {
+		var node = this
+		, index = node.childNodes.indexOf(el)
+		if (index == -1) throw new Error("NOT_FOUND_ERR")
+
+		node.childNodes.splice(index, 1)
+		el.parentNode = null
+		return el
+	},
+	replaceChild: function(el, ref) {
+		this.insertBefore(el, ref)
+		return this.removeChild(ref)
+	},
+	cloneNode: function(deep) {
+		var key
+		, node = this
+		, clone = new node.constructor(node.tagName || node.data)
+		clone.ownerDocument = node.ownerDocument
+
+		if (node.hasAttribute) {
+			for (key in node) if (node.hasAttribute(key)) clone[key] = node[key].valueOf()
+		}
+
+		if (deep && node.hasChildNodes()) {
+			node.childNodes.forEach(function(child) {
+				clone.appendChild(child.cloneNode(deep))
+			})
+		}
+		return clone
+	},
+	toString: function() {
+		return this.hasChildNodes() ? this.childNodes.reduce(function(memo, node) {
+			return memo + node
+		}, "") : ""
+	}
+}
+
+
+
+function extendNode(obj, extras) {
+	obj.prototype = Object.create(Node)
+	for (var descriptor, key, i = 1; (extras = arguments[i++]); ) {
+		for (key in extras) {
+			descriptor = Object.getOwnPropertyDescriptor(extras, key)
+			Object.defineProperty(obj.prototype, key, descriptor)
+		}
+	}
+	obj.prototype.constructor = obj
+}
+
+function camelCase(str) {
+	return str.replace(/[ _-]+([a-z])/g, function(_, a) { return a.toUpperCase() })
+}
+
+function hyphenCase(str) {
+	return str.replace(/[A-Z]/g, "-$&").toLowerCase()
+}
+
+function htmlEscape(str) {
+	return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
+function htmlUnescape(str) {
+	return str.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&amp;/g, "&")
+}
+
+function StyleMap(style) {
+	var styleMap = this
+	if (style) style.split(/\s*;\s*/g).map(function(val) {
+		val = val.split(/\s*:\s*/)
+		if(val[1]) styleMap[val[0] == "float" ? "cssFloat" : camelCase(val[0])] = val[1]
+	})
+}
+
+StyleMap.prototype.valueOf = function() {
+	var styleMap = this
+	return Object.keys(styleMap).map(function(key) {
+		return (key == "cssFloat" ? "float: " : hyphenCase(key) + ": ") + styleMap[key]
+	}).join("; ")
+}
+
+function getSibling(node, step) {
+	var silbings = node.parentNode && node.parentNode.childNodes
+	, index = silbings && silbings.indexOf(node)
+
+	return silbings && index > -1 && silbings[ index + step ] || null
+}
+
+
+
+function DocumentFragment() {
+	this.childNodes = []
+}
+
+extendNode(DocumentFragment, {
+	nodeType: 11,
+	nodeName: "#document-fragment"
+})
+
+function Attr(node, name) {
+	this.ownerElement = node
+	this.name = name.toLowerCase()
+}
+
+Attr.prototype = {
+	get value() { return this.ownerElement.getAttribute(this.name) },
+	set value(val) { this.ownerElement.setAttribute(this.name, val) },
+	toString: function() {
+		return this.name + "=\"" + htmlEscape(this.value) + "\""
+	}
+}
+
+function escapeAttributeName(name) {
+	name = name.toLowerCase()
+	if (name === "constructor" || name === "attributes") return name.toUpperCase()
+	return name
+}
+
+function HTMLElement(tag) {
+	var element = this
+	element.nodeName = element.tagName = tag.toUpperCase()
+	element.localName = tag.toLowerCase()
+	element.childNodes = []
+}
+
+extendNode(HTMLElement, elementGetters, {
+	get attributes() {
+		var key
+		, attrs = []
+		, element = this
+		for (key in element) if (key === escapeAttributeName(key) && element.hasAttribute(key))
+			attrs.push(new Attr(element, escapeAttributeName(key)))
+		return attrs
+	},
+	matches: function(sel) {
+		return selector.matches(this, sel)
+	},
+	closest: function(sel) {
+		return selector.closest(this, sel)
+	},
+	namespaceURI: "http://www.w3.org/1999/xhtml",
+	nodeType: 1,
+	localName: null,
+	tagName: null,
+	styleMap: null,
+	hasAttribute: function(name) {
+		name = escapeAttributeName(name)
+		return name != "style" ? hasOwn.call(this, name) :
+		!!(this.styleMap && Object.keys(this.styleMap).length)
+	},
+	getAttribute: function(name) {
+		name = escapeAttributeName(name)
+		return this.hasAttribute(name) ? "" + this[name] : null
+	},
+	setAttribute: function(name, value) {
+		this[escapeAttributeName(name)] = "" + value
+	},
+	removeAttribute: function(name) {
+		name = escapeAttributeName(name)
+		this[name] = ""
+		delete this[name]
+	},
+	toString: function() {
+		var attrs = this.attributes.join(" ")
+		return "<" + this.localName + (attrs ? " " + attrs : "") + ">" +
+		(voidElements[this.tagName] ? "" : this.innerHTML + "</" + this.localName + ">")
+	}
+})
+
+function ElementNS(namespace, tag) {
+	var element = this
+	element.namespaceURI = namespace
+	element.nodeName = element.tagName = element.localName = tag
+	element.childNodes = []
+}
+
+ElementNS.prototype = HTMLElement.prototype
+
+function Text(data) {
+	this.data = data
+}
+
+extendNode(Text, {
+	nodeType: 3,
+	nodeName: "#text",
+	toString: function() {
+		return htmlEscape("" + this.data)
+	}
+})
+
+function Comment(data) {
+	this.data = data
+}
+
+extendNode(Comment, {
+	nodeType: 8,
+	nodeName: "#comment",
+	toString: function() {
+		return "<!--" + this.data + "-->"
+	}
+})
+
+function DocumentType(data) {
+	this.data = data
+}
+
+extendNode(DocumentType, {
+	nodeType: 10,
+	toString: function() {
+		return "<" + this.data + ">"
+		// var node = document.doctype
+		// return "<!DOCTYPE " + node.name +
+		// 	(node.publicId ? ' PUBLIC "' + node.publicId + '"' : '') +
+		// 	(!node.publicId && node.systemId ? ' SYSTEM' : '') +
+		// 	(node.systemId ? ' "' + node.systemId + '"' : '') + '>'
+	}
+})
+
+function Document() {
+	this.childNodes = []
+	this.documentElement = this.createElement("html")
+	this.appendChild(this.documentElement)
+	this.body = this.createElement("body")
+	this.documentElement.appendChild(this.body)
+}
+
+function own(Element) {
+	return function($1, $2) {
+		var node = new Element($1, $2)
+		node.ownerDocument = this
+		return node
+	}
+}
+
+extendNode(Document, elementGetters, {
+	nodeType: 9,
+	nodeName: "#document",
+	createElement: own(HTMLElement),
+	createElementNS: own(ElementNS),
+	createTextNode: own(Text),
+	createComment: own(Comment),
+	createDocumentType: own(DocumentType), //Should be document.implementation.createDocumentType(name, publicId, systemId)
+	createDocumentFragment: own(DocumentFragment)
+})
+
+module.exports = {
+	document: new Document(),
+	StyleMap: StyleMap,
+	Node: Node,
+	HTMLElement: HTMLElement,
+	Document: Document
+}
+
+
+},{"selector-lite":74}],26:[function(require,module,exports){
+(function (global){
+var EventEmitter = require('events').EventEmitter,
+    isInstance = require('is-instance');
+
+function toArray(items){
+    return Array.prototype.slice.call(items);
+}
+
+var deepRegex = /[|.]/i;
+
+function matchDeep(path){
+    return (path + '').match(deepRegex);
+}
+
+function isWildcardPath(path){
+    var stringPath = (path + '');
+    return ~stringPath.indexOf('*');
+}
+
+function getTargetKey(path){
+    var stringPath = (path + '');
+    return stringPath.split('|').shift();
+}
+
+var eventSystemVersion = 1,
+    globalKey = '_entiEventState' + eventSystemVersion
+    globalState = global[globalKey] = global[globalKey] || {
+        instances: []
+    };
+
+var modifiedEnties = globalState.modifiedEnties = globalState.modifiedEnties || new Set(),
+    trackedObjects = globalState.trackedObjects = globalState.trackedObjects || new WeakMap();
+
+function leftAndRest(path){
+    var stringPath = (path + '');
+
+    // Special case when you want to filter on self (.)
+    if(stringPath.slice(0,2) === '.|'){
+        return ['.', stringPath.slice(2)];
+    }
+
+    var match = matchDeep(stringPath);
+    if(match){
+        return [stringPath.slice(0, match.index), stringPath.slice(match.index+1)];
+    }
+    return stringPath;
+}
+
+function isWildcardKey(key){
+    return key.charAt(0) === '*';
+}
+
+function isFeralcardKey(key){
+    return key === '**';
+}
+
+function addHandler(object, key, handler, eventName){
+    var trackedKeys = trackedObjects.get(object);
+
+    if(trackedKeys == null){
+        trackedKeys = {};
+        trackedObjects.set(object, trackedKeys);
+    }
+
+    var handlers = trackedKeys[key];
+
+    if(!handlers){
+        handlers = new Map();
+        trackedKeys[key] = handlers;
+    }
+
+    if(handlers.has(eventName)){
+        handlers.get(eventName).add(handler);
+        return;
+    }
+
+    var handlerSet = new Set();
+    handlerSet.add(handler);
+    handlers.set(eventName, handlerSet);
+}
+
+function removeHandler(object, key, handler, eventName){
+    var trackedKeys = trackedObjects.get(object);
+
+    if(trackedKeys == null){
+        return;
+    }
+
+    var handlers = trackedKeys[key];
+
+    if(!handlers){
+        return;
+    }
+
+    var handlerSet = handlers.get(eventName);
+
+    if(!handlerSet){
+        return
+    }
+
+    handlerSet.delete(handler);
+}
+
+function trackObjects(eventName, tracked, handler, object, key, path){
+    if(!object || typeof object !== 'object'){
+        return;
+    }
+
+    var target = object[key];
+
+    if(target && typeof target === 'object' && tracked.has(target)){
+        return;
+    }
+
+    trackObject(eventName, tracked, handler, object, key, path);
+}
+
+function trackKeys(eventName, tracked, handler, target, root, rest){
+    var keys = Object.keys(target);
+    for(var i = 0; i < keys.length; i++){
+        if(isFeralcardKey(root)){
+            trackObjects(eventName, tracked, handler, target, keys[i], '**' + (rest ? '.' : '') + (rest || ''));
+        }else{
+            trackObjects(eventName, tracked, handler, target, keys[i], rest);
+        }
+    }
+}
+
+function trackObject(eventName, tracked, handler, object, key, path){
+    var eventKey = key === '**' ? '*' : key,
+        target = object[key],
+        targetIsObject = target && typeof target === 'object';
+
+    var handle = function(value, event, emitKey){
+        if(eventKey !== '*' && typeof object[eventKey] === 'object' && object[eventKey] !== target){
+            if(targetIsObject){
+                tracked.delete(target);
+            }
+            removeHandler(object, eventKey, handle, eventName);
+            trackObjects(eventName, tracked, handler, object, key, path);
+            return;
+        }
+
+        if(eventKey === '*'){
+            trackKeys(eventName, tracked, handler, object, key, path);
+        }
+
+        if(!tracked.has(object)){
+            return;
+        }
+
+        if(key !== '**' || !path){
+            handler(value, event, emitKey);
+        }
+    };
+
+    addHandler(object, eventKey, handle, eventName);
+
+    if(!targetIsObject){
+        return;
+    }
+
+    tracked.add(target);
+
+    if(!path){
+        return;
+    }
+
+    var rootAndRest = leftAndRest(path),
+        root,
+        rest;
+
+    if(!Array.isArray(rootAndRest)){
+        root = rootAndRest;
+    }else{
+        root = rootAndRest[0];
+        rest = rootAndRest[1];
+
+        // If the root is '.', watch for events on *
+        if(root === '.'){
+            root = '*';
+        }
+    }
+
+    if(targetIsObject && isWildcardKey(root)){
+        trackKeys(eventName, tracked, handler, target, root, rest);
+    }
+
+    trackObjects(eventName, tracked, handler, target, root, rest);
+}
+
+var trackedEvents = new WeakMap();
+function createHandler(enti, trackedObjectPaths, eventName){
+    var oldModel = enti._model;
+    return function(event, emitKey){
+        var trackedPaths = trackedObjectPaths[eventName];
+        trackedPaths && trackedPaths.entis.forEach(function(enti){
+            if(enti._emittedEvents[eventName] === emitKey){
+                return;
+            }
+
+            if(enti._model !== oldModel){
+                trackedPaths.entis.delete(enti);
+                if(trackedPaths.entis.size === 0){
+                    delete trackedObjectPaths[eventName];
+                    if(!Object.keys(trackedObjectPaths).length){
+                        trackedEvents.delete(oldModel);
+                    }
+                }
+                return;
+            }
+
+            enti._emittedEvents[eventName] = emitKey;
+
+            var targetKey = getTargetKey(eventName),
+                value = isWildcardPath(targetKey) ? undefined : enti.get(targetKey);
+
+            enti.emit(eventName, value, event);
+        });
+    };
+}
+
+function trackPath(enti, eventName){
+    var object = enti._model,
+        trackedObjectPaths = trackedEvents.get(object);
+
+    if(!trackedObjectPaths){
+        trackedObjectPaths = {};
+        trackedEvents.set(object, trackedObjectPaths);
+    }
+
+    var trackedPaths = trackedObjectPaths[eventName];
+
+    if(!trackedPaths){
+        trackedPaths = {
+            entis: new Set(),
+            trackedObjects: new WeakSet()
+        };
+        trackedObjectPaths[eventName] = trackedPaths;
+    }else if(trackedPaths.entis.has(enti)){
+        return;
+    }
+
+    trackedPaths.entis.add(enti);
+
+    var handler = createHandler(enti, trackedObjectPaths, eventName);
+
+    trackObjects(eventName, trackedPaths.trackedObjects, handler, {model:object}, 'model', eventName);
+}
+
+function trackPaths(enti){
+    if(!enti._events || !enti._model){
+        return;
+    }
+
+    for(var key in enti._events){
+        trackPath(enti, key);
+    }
+    modifiedEnties.delete(enti);
+}
+
+function emitEvent(object, key, value, emitKey){
+
+    modifiedEnties.forEach(trackPaths);
+
+    var trackedKeys = trackedObjects.get(object);
+
+    if(!trackedKeys){
+        return;
+    }
+
+    var event = {
+        value: value,
+        key: key,
+        object: object
+    };
+
+    function emitForKey(handlers){
+        handlers.forEach(function(handler){
+            handler(event, emitKey);
+        });
+    }
+
+    if(trackedKeys[key]){
+        trackedKeys[key].forEach(emitForKey);
+    }
+
+    if(trackedKeys['*']){
+        trackedKeys['*'].forEach(emitForKey);
+    }
+}
+
+function emit(events){
+    var emitKey = {};
+    events.forEach(function(event){
+        emitEvent(event[0], event[1], event[2], emitKey);
+    });
+}
+
+function Enti(model){
+    var detached = model === false;
+
+    if(!model || (typeof model !== 'object' && typeof model !== 'function')){
+        model = {};
+    }
+
+    this._emittedEvents = {};
+    if(detached){
+        this._model = {};
+    }else{
+        this.attach(model);
+    }
+
+    this.on('newListener', function(){
+        modifiedEnties.add(this);
+    });
+}
+Enti.emit = function(model, key, value){
+    if(!(typeof model === 'object' || typeof model === 'function')){
+        return;
+    }
+
+    emit([[model, key, value]]);
+};
+Enti.get = function(model, key){
+    if(!model || typeof model !== 'object'){
+        return;
+    }
+
+    key = getTargetKey(key);
+
+    if(key === '.'){
+        return model;
+    }
+
+
+    var path = leftAndRest(key);
+    if(Array.isArray(path)){
+        return Enti.get(model[path[0]], path[1]);
+    }
+
+    return model[key];
+};
+Enti.set = function(model, key, value){
+    if(!model || typeof model !== 'object'){
+        return;
+    }
+
+    key = getTargetKey(key);
+
+    var path = leftAndRest(key);
+    if(Array.isArray(path)){
+        return Enti.set(model[path[0]], path[1], value);
+    }
+
+    var original = model[key];
+
+    if(typeof value !== 'object' && value === original){
+        return;
+    }
+
+    var keysChanged = !(key in model);
+
+    model[key] = value;
+
+    var events = [[model, key, value]];
+
+    if(keysChanged){
+        if(Array.isArray(model)){
+            events.push([model, 'length', model.length]);
+        }
+    }
+
+    emit(events);
+};
+Enti.push = function(model, key, value){
+    if(!model || typeof model !== 'object'){
+        return;
+    }
+
+    var target;
+    if(arguments.length < 3){
+        value = key;
+        key = '.';
+        target = model;
+    }else{
+        var path = leftAndRest(key);
+        if(Array.isArray(path)){
+            return Enti.push(model[path[0]], path[1], value);
+        }
+
+        target = model[key];
+    }
+
+    if(!Array.isArray(target)){
+        throw 'The target is not an array.';
+    }
+
+    target.push(value);
+
+    var events = [
+        [target, target.length-1, value],
+        [target, 'length', target.length]
+    ];
+
+    emit(events);
+};
+Enti.insert = function(model, key, value, index){
+    if(!model || typeof model !== 'object'){
+        return;
+    }
+
+
+    var target;
+    if(arguments.length < 4){
+        index = value;
+        value = key;
+        key = '.';
+        target = model;
+    }else{
+        var path = leftAndRest(key);
+        if(Array.isArray(path)){
+            return Enti.insert(model[path[0]], path[1], value, index);
+        }
+
+        target = model[key];
+    }
+
+    if(!Array.isArray(target)){
+        throw 'The target is not an array.';
+    }
+
+    target.splice(index, 0, value);
+
+    var events = [
+        [target, index, value],
+        [target, 'length', target.length]
+    ];
+
+    emit(events);
+};
+Enti.remove = function(model, key, subKey){
+    if(!model || typeof model !== 'object'){
+        return;
+    }
+
+    var path = leftAndRest(key);
+    if(Array.isArray(path)){
+        return Enti.remove(model[path[0]], path[1], subKey);
+    }
+
+    // Remove a key off of an object at 'key'
+    if(subKey != null){
+        Enti.remove(model[key], subKey);
+        return;
+    }
+
+    if(key === '.'){
+        throw '. (self) is not a valid key to remove';
+    }
+
+    var events = [];
+
+    if(Array.isArray(model)){
+        model.splice(key, 1);
+        events.push([model, 'length', model.length]);
+    }else{
+        delete model[key];
+        events.push([model, key]);
+    }
+
+    emit(events);
+};
+Enti.move = function(model, key, index){
+    if(!model || typeof model !== 'object'){
+        return;
+    }
+
+    var path = leftAndRest(key);
+    if(Array.isArray(path)){
+        return Enti.move(model[path[0]], path[1], index);
+    }
+
+    if(key === index){
+        return;
+    }
+
+    if(!Array.isArray(model)){
+        throw 'The model is not an array.';
+    }
+
+    var item = model[key];
+
+    model.splice(key, 1);
+
+    model.splice(index - (index > key ? 0 : 1), 0, item);
+
+    emit([[model, index, item]]);
+};
+Enti.update = function(model, key, value){
+    if(!model || typeof model !== 'object'){
+        return;
+    }
+
+    var target,
+        isArray = Array.isArray(value);
+
+    if(arguments.length < 3){
+        value = key;
+        key = '.';
+        target = model;
+    }else{
+        var path = leftAndRest(key);
+        if(Array.isArray(path)){
+            return Enti.update(model[path[0]], path[1], value);
+        }
+
+        target = model[key];
+
+        if(target == null){
+            model[key] = isArray ? [] : {};
+        }
+    }
+
+    if(typeof value !== 'object'){
+        throw 'The value is not an object.';
+    }
+
+    if(typeof target !== 'object'){
+        throw 'The target is not an object.';
+    }
+
+    var events = [],
+        updatedObjects = new WeakSet();
+
+    function updateTarget(target, value){
+        for(var key in value){
+            var currentValue = target[key];
+            if(currentValue instanceof Object && !updatedObjects.has(currentValue) && !(currentValue instanceof Date)){
+                updatedObjects.add(currentValue);
+                updateTarget(currentValue, value[key]);
+                continue;
+            }
+            target[key] = value[key];
+            events.push([target, key, value[key]]);
+        }
+
+        if(Array.isArray(target)){
+            events.push([target, 'length', target.length]);
+        }
+    }
+
+    updateTarget(target, value);
+
+    emit(events);
+};
+Enti.prototype = Object.create(EventEmitter.prototype);
+Enti.prototype._maxListeners = 100;
+Enti.prototype.constructor = Enti;
+Enti.prototype.attach = function(model){
+    if(this._model !== model){
+        this.detach();
+    }
+
+    if(model && !isInstance(model)){
+        throw 'Entis may only be attached to an object, or null/undefined';
+    }
+
+    modifiedEnties.add(this);
+    this._attached = true;
+    this._model = model;
+    this.emit('attach', model);
+};
+Enti.prototype.detach = function(){
+    modifiedEnties.delete(this);
+
+    this._emittedEvents = {};
+    this._model = {};
+    this._attached = false;
+    this.emit('detach');
+};
+Enti.prototype.destroy = function(){
+    this.detach();
+    this._events = null;
+    this.emit('destroy');
+};
+Enti.prototype.get = function(key){
+    return Enti.get(this._model, key);
+};
+
+Enti.prototype.set = function(key, value){
+    return Enti.set(this._model, key, value);
+};
+
+Enti.prototype.push = function(key, value){
+    return Enti.push.apply(null, [this._model].concat(toArray(arguments)));
+};
+
+Enti.prototype.insert = function(key, value, index){
+    return Enti.insert.apply(null, [this._model].concat(toArray(arguments)));
+};
+
+Enti.prototype.remove = function(key, subKey){
+    return Enti.remove.apply(null, [this._model].concat(toArray(arguments)));
+};
+
+Enti.prototype.move = function(key, index){
+    return Enti.move.apply(null, [this._model].concat(toArray(arguments)));
+};
+
+Enti.prototype.update = function(key, index){
+    return Enti.update.apply(null, [this._model].concat(toArray(arguments)));
+};
+Enti.prototype.isAttached = function(){
+    return this._attached;
+};
+Enti.prototype.attachedCount = function(){
+    return modifiedEnties.size;
+};
+
+Enti.isEnti = function(target){
+    return target && !!~globalState.instances.indexOf(target.constructor);
+};
+
+Enti.store = function(target, key, value){
+    if(arguments.length < 2){
+        return Enti.get(target, key);
+    }
+
+    Enti.set(target, key, value);
+};
+
+globalState.instances.push(Enti);
+
+module.exports = Enti;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"events":34,"is-instance":47}],27:[function(require,module,exports){
+'use strict';
+
+var $isNaN = require('./helpers/isNaN');
+var $isFinite = require('./helpers/isFinite');
+
+var sign = require('./helpers/sign');
+var mod = require('./helpers/mod');
+
+var IsCallable = require('is-callable');
+var toPrimitive = require('es-to-primitive/es5');
+
+var has = require('has');
+
+// https://es5.github.io/#x9
+var ES5 = {
+	ToPrimitive: toPrimitive,
+
+	ToBoolean: function ToBoolean(value) {
+		return !!value;
+	},
+	ToNumber: function ToNumber(value) {
+		return Number(value);
+	},
+	ToInteger: function ToInteger(value) {
+		var number = this.ToNumber(value);
+		if ($isNaN(number)) { return 0; }
+		if (number === 0 || !$isFinite(number)) { return number; }
+		return sign(number) * Math.floor(Math.abs(number));
+	},
+	ToInt32: function ToInt32(x) {
+		return this.ToNumber(x) >> 0;
+	},
+	ToUint32: function ToUint32(x) {
+		return this.ToNumber(x) >>> 0;
+	},
+	ToUint16: function ToUint16(value) {
+		var number = this.ToNumber(value);
+		if ($isNaN(number) || number === 0 || !$isFinite(number)) { return 0; }
+		var posInt = sign(number) * Math.floor(Math.abs(number));
+		return mod(posInt, 0x10000);
+	},
+	ToString: function ToString(value) {
+		return String(value);
+	},
+	ToObject: function ToObject(value) {
+		this.CheckObjectCoercible(value);
+		return Object(value);
+	},
+	CheckObjectCoercible: function CheckObjectCoercible(value, optMessage) {
+		/* jshint eqnull:true */
+		if (value == null) {
+			throw new TypeError(optMessage || 'Cannot call method on ' + value);
+		}
+		return value;
+	},
+	IsCallable: IsCallable,
+	SameValue: function SameValue(x, y) {
+		if (x === y) { // 0 === -0, but they are not identical.
+			if (x === 0) { return 1 / x === 1 / y; }
+			return true;
+		}
+		return $isNaN(x) && $isNaN(y);
+	},
+
+	// http://www.ecma-international.org/ecma-262/5.1/#sec-8
+	Type: function Type(x) {
+		if (x === null) {
+			return 'Null';
+		}
+		if (typeof x === 'undefined') {
+			return 'Undefined';
+		}
+		if (typeof x === 'function' || typeof x === 'object') {
+			return 'Object';
+		}
+		if (typeof x === 'number') {
+			return 'Number';
+		}
+		if (typeof x === 'boolean') {
+			return 'Boolean';
+		}
+		if (typeof x === 'string') {
+			return 'String';
+		}
+	},
+
+	// http://ecma-international.org/ecma-262/6.0/#sec-property-descriptor-specification-type
+	IsPropertyDescriptor: function IsPropertyDescriptor(Desc) {
+		if (this.Type(Desc) !== 'Object') {
+			return false;
+		}
+		var allowed = {
+			'[[Configurable]]': true,
+			'[[Enumerable]]': true,
+			'[[Get]]': true,
+			'[[Set]]': true,
+			'[[Value]]': true,
+			'[[Writable]]': true
+		};
+		// jscs:disable
+		for (var key in Desc) { // eslint-disable-line
+			if (has(Desc, key) && !allowed[key]) {
+				return false;
+			}
+		}
+		// jscs:enable
+		var isData = has(Desc, '[[Value]]');
+		var IsAccessor = has(Desc, '[[Get]]') || has(Desc, '[[Set]]');
+		if (isData && IsAccessor) {
+			throw new TypeError('Property Descriptors may not be both accessor and data descriptors');
+		}
+		return true;
+	},
+
+	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.1
+	IsAccessorDescriptor: function IsAccessorDescriptor(Desc) {
+		if (typeof Desc === 'undefined') {
+			return false;
+		}
+
+		if (!this.IsPropertyDescriptor(Desc)) {
+			throw new TypeError('Desc must be a Property Descriptor');
+		}
+
+		if (!has(Desc, '[[Get]]') && !has(Desc, '[[Set]]')) {
+			return false;
+		}
+
+		return true;
+	},
+
+	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.2
+	IsDataDescriptor: function IsDataDescriptor(Desc) {
+		if (typeof Desc === 'undefined') {
+			return false;
+		}
+
+		if (!this.IsPropertyDescriptor(Desc)) {
+			throw new TypeError('Desc must be a Property Descriptor');
+		}
+
+		if (!has(Desc, '[[Value]]') && !has(Desc, '[[Writable]]')) {
+			return false;
+		}
+
+		return true;
+	},
+
+	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.3
+	IsGenericDescriptor: function IsGenericDescriptor(Desc) {
+		if (typeof Desc === 'undefined') {
+			return false;
+		}
+
+		if (!this.IsPropertyDescriptor(Desc)) {
+			throw new TypeError('Desc must be a Property Descriptor');
+		}
+
+		if (!this.IsAccessorDescriptor(Desc) && !this.IsDataDescriptor(Desc)) {
+			return true;
+		}
+
+		return false;
+	},
+
+	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.4
+	FromPropertyDescriptor: function FromPropertyDescriptor(Desc) {
+		if (typeof Desc === 'undefined') {
+			return Desc;
+		}
+
+		if (!this.IsPropertyDescriptor(Desc)) {
+			throw new TypeError('Desc must be a Property Descriptor');
+		}
+
+		if (this.IsDataDescriptor(Desc)) {
+			return {
+				value: Desc['[[Value]]'],
+				writable: !!Desc['[[Writable]]'],
+				enumerable: !!Desc['[[Enumerable]]'],
+				configurable: !!Desc['[[Configurable]]']
+			};
+		} else if (this.IsAccessorDescriptor(Desc)) {
+			return {
+				get: Desc['[[Get]]'],
+				set: Desc['[[Set]]'],
+				enumerable: !!Desc['[[Enumerable]]'],
+				configurable: !!Desc['[[Configurable]]']
+			};
+		} else {
+			throw new TypeError('FromPropertyDescriptor must be called with a fully populated Property Descriptor');
+		}
+	},
+
+	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.5
+	ToPropertyDescriptor: function ToPropertyDescriptor(Obj) {
+		if (this.Type(Obj) !== 'Object') {
+			throw new TypeError('ToPropertyDescriptor requires an object');
+		}
+
+		var desc = {};
+		if (has(Obj, 'enumerable')) {
+			desc['[[Enumerable]]'] = this.ToBoolean(Obj.enumerable);
+		}
+		if (has(Obj, 'configurable')) {
+			desc['[[Configurable]]'] = this.ToBoolean(Obj.configurable);
+		}
+		if (has(Obj, 'value')) {
+			desc['[[Value]]'] = Obj.value;
+		}
+		if (has(Obj, 'writable')) {
+			desc['[[Writable]]'] = this.ToBoolean(Obj.writable);
+		}
+		if (has(Obj, 'get')) {
+			var getter = Obj.get;
+			if (typeof getter !== 'undefined' && !this.IsCallable(getter)) {
+				throw new TypeError('getter must be a function');
+			}
+			desc['[[Get]]'] = getter;
+		}
+		if (has(Obj, 'set')) {
+			var setter = Obj.set;
+			if (typeof setter !== 'undefined' && !this.IsCallable(setter)) {
+				throw new TypeError('setter must be a function');
+			}
+			desc['[[Set]]'] = setter;
+		}
+
+		if ((has(desc, '[[Get]]') || has(desc, '[[Set]]')) && (has(desc, '[[Value]]') || has(desc, '[[Writable]]'))) {
+			throw new TypeError('Invalid property descriptor. Cannot both specify accessors and a value or writable attribute');
+		}
+		return desc;
+	}
+};
+
+module.exports = ES5;
+
+},{"./helpers/isFinite":28,"./helpers/isNaN":29,"./helpers/mod":30,"./helpers/sign":31,"es-to-primitive/es5":32,"has":41,"is-callable":45}],28:[function(require,module,exports){
+var $isNaN = Number.isNaN || function (a) { return a !== a; };
+
+module.exports = Number.isFinite || function (x) { return typeof x === 'number' && !$isNaN(x) && x !== Infinity && x !== -Infinity; };
+
+},{}],29:[function(require,module,exports){
+module.exports = Number.isNaN || function isNaN(a) {
+	return a !== a;
+};
+
+},{}],30:[function(require,module,exports){
+module.exports = function mod(number, modulo) {
+	var remain = number % modulo;
+	return Math.floor(remain >= 0 ? remain : remain + modulo);
+};
+
+},{}],31:[function(require,module,exports){
+module.exports = function sign(number) {
+	return number >= 0 ? 1 : -1;
+};
+
+},{}],32:[function(require,module,exports){
+'use strict';
+
+var toStr = Object.prototype.toString;
+
+var isPrimitive = require('./helpers/isPrimitive');
+
+var isCallable = require('is-callable');
+
+// https://es5.github.io/#x8.12
+var ES5internalSlots = {
+	'[[DefaultValue]]': function (O, hint) {
+		var actualHint = hint || (toStr.call(O) === '[object Date]' ? String : Number);
+
+		if (actualHint === String || actualHint === Number) {
+			var methods = actualHint === String ? ['toString', 'valueOf'] : ['valueOf', 'toString'];
+			var value, i;
+			for (i = 0; i < methods.length; ++i) {
+				if (isCallable(O[methods[i]])) {
+					value = O[methods[i]]();
+					if (isPrimitive(value)) {
+						return value;
+					}
+				}
+			}
+			throw new TypeError('No default value');
+		}
+		throw new TypeError('invalid [[DefaultValue]] hint supplied');
+	}
+};
+
+// https://es5.github.io/#x9
+module.exports = function ToPrimitive(input, PreferredType) {
+	if (isPrimitive(input)) {
+		return input;
+	}
+	return ES5internalSlots['[[DefaultValue]]'](input, PreferredType);
+};
+
+},{"./helpers/isPrimitive":33,"is-callable":45}],33:[function(require,module,exports){
+module.exports = function isPrimitive(value) {
+	return value === null || (typeof value !== 'function' && typeof value !== 'object');
+};
+
+},{}],34:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2249,7 +5608,180 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],7:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
+function flatMerge(a,b){
+    if(!b || typeof b !== 'object'){
+        b = {};
+    }
+
+    if(!a || typeof a !== 'object'){
+        a = new b.constructor();
+    }
+
+    var result = new a.constructor(),
+        aKeys = Object.keys(a),
+        bKeys = Object.keys(b);
+
+    for(var i = 0; i < aKeys.length; i++){
+        result[aKeys[i]] = a[aKeys[i]];
+    }
+
+    for(var i = 0; i < bKeys.length; i++){
+        result[bKeys[i]] = b[bKeys[i]];
+    }
+
+    return result;
+}
+
+module.exports = flatMerge;
+},{}],36:[function(require,module,exports){
+var isFunction = require('is-function')
+
+module.exports = forEach
+
+var toString = Object.prototype.toString
+var hasOwnProperty = Object.prototype.hasOwnProperty
+
+function forEach(list, iterator, context) {
+    if (!isFunction(iterator)) {
+        throw new TypeError('iterator must be a function')
+    }
+
+    if (arguments.length < 3) {
+        context = this
+    }
+    
+    if (toString.call(list) === '[object Array]')
+        forEachArray(list, iterator, context)
+    else if (typeof list === 'string')
+        forEachString(list, iterator, context)
+    else
+        forEachObject(list, iterator, context)
+}
+
+function forEachArray(array, iterator, context) {
+    for (var i = 0, len = array.length; i < len; i++) {
+        if (hasOwnProperty.call(array, i)) {
+            iterator.call(context, array[i], i, array)
+        }
+    }
+}
+
+function forEachString(string, iterator, context) {
+    for (var i = 0, len = string.length; i < len; i++) {
+        // no such thing as a sparse string.
+        iterator.call(context, string.charAt(i), i, string)
+    }
+}
+
+function forEachObject(object, iterator, context) {
+    for (var k in object) {
+        if (hasOwnProperty.call(object, k)) {
+            iterator.call(context, object[k], k, object)
+        }
+    }
+}
+
+},{"is-function":46}],37:[function(require,module,exports){
+
+var hasOwn = Object.prototype.hasOwnProperty;
+var toString = Object.prototype.toString;
+
+module.exports = function forEach (obj, fn, ctx) {
+    if (toString.call(fn) !== '[object Function]') {
+        throw new TypeError('iterator must be a function');
+    }
+    var l = obj.length;
+    if (l === +l) {
+        for (var i = 0; i < l; i++) {
+            fn.call(ctx, obj[i], i, obj);
+        }
+    } else {
+        for (var k in obj) {
+            if (hasOwn.call(obj, k)) {
+                fn.call(ctx, obj[k], k, obj);
+            }
+        }
+    }
+};
+
+
+},{}],38:[function(require,module,exports){
+'use strict';
+
+/* eslint no-invalid-this: 1 */
+
+var ERROR_MESSAGE = 'Function.prototype.bind called on incompatible ';
+var slice = Array.prototype.slice;
+var toStr = Object.prototype.toString;
+var funcType = '[object Function]';
+
+module.exports = function bind(that) {
+    var target = this;
+    if (typeof target !== 'function' || toStr.call(target) !== funcType) {
+        throw new TypeError(ERROR_MESSAGE + target);
+    }
+    var args = slice.call(arguments, 1);
+
+    var bound;
+    var binder = function () {
+        if (this instanceof bound) {
+            var result = target.apply(
+                this,
+                args.concat(slice.call(arguments))
+            );
+            if (Object(result) === result) {
+                return result;
+            }
+            return this;
+        } else {
+            return target.apply(
+                that,
+                args.concat(slice.call(arguments))
+            );
+        }
+    };
+
+    var boundLength = Math.max(0, target.length - args.length);
+    var boundArgs = [];
+    for (var i = 0; i < boundLength; i++) {
+        boundArgs.push('$' + i);
+    }
+
+    bound = Function('binder', 'return function (' + boundArgs.join(',') + '){ return binder.apply(this,arguments); }')(binder);
+
+    if (target.prototype) {
+        var Empty = function Empty() {};
+        Empty.prototype = target.prototype;
+        bound.prototype = new Empty();
+        Empty.prototype = null;
+    }
+
+    return bound;
+};
+
+},{}],39:[function(require,module,exports){
+'use strict';
+
+var implementation = require('./implementation');
+
+module.exports = Function.prototype.bind || implementation;
+
+},{"./implementation":38}],40:[function(require,module,exports){
+var EventEmitter = require('events').EventEmitter,
+    functionEmitterPrototype = function(){};
+
+for(var key in EventEmitter.prototype){
+    functionEmitterPrototype[key] = EventEmitter.prototype[key];
+}
+
+module.exports = functionEmitterPrototype;
+},{"events":34}],41:[function(require,module,exports){
+var bind = require('function-bind');
+
+module.exports = bind.call(Function.call, Object.prototype.hasOwnProperty);
+
+},{"function-bind":39}],42:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -2335,7 +5867,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],8:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -2360,11 +5892,11 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],9:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * @author   Feross Aboukhadijeh <https://feross.org>
  * @license  MIT
  */
 
@@ -2383,14 +5915,788 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],10:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
+'use strict';
+
+var fnToStr = Function.prototype.toString;
+
+var constructorRegex = /^\s*class /;
+var isES6ClassFn = function isES6ClassFn(value) {
+	try {
+		var fnStr = fnToStr.call(value);
+		var singleStripped = fnStr.replace(/\/\/.*\n/g, '');
+		var multiStripped = singleStripped.replace(/\/\*[.\s\S]*\*\//g, '');
+		var spaceStripped = multiStripped.replace(/\n/mg, ' ').replace(/ {2}/g, ' ');
+		return constructorRegex.test(spaceStripped);
+	} catch (e) {
+		return false; // not a function
+	}
+};
+
+var tryFunctionObject = function tryFunctionObject(value) {
+	try {
+		if (isES6ClassFn(value)) { return false; }
+		fnToStr.call(value);
+		return true;
+	} catch (e) {
+		return false;
+	}
+};
+var toStr = Object.prototype.toString;
+var fnClass = '[object Function]';
+var genClass = '[object GeneratorFunction]';
+var hasToStringTag = typeof Symbol === 'function' && typeof Symbol.toStringTag === 'symbol';
+
+module.exports = function isCallable(value) {
+	if (!value) { return false; }
+	if (typeof value !== 'function' && typeof value !== 'object') { return false; }
+	if (hasToStringTag) { return tryFunctionObject(value); }
+	if (isES6ClassFn(value)) { return false; }
+	var strClass = toStr.call(value);
+	return strClass === fnClass || strClass === genClass;
+};
+
+},{}],46:[function(require,module,exports){
+module.exports = isFunction
+
+var toString = Object.prototype.toString
+
+function isFunction (fn) {
+  var string = toString.call(fn)
+  return string === '[object Function]' ||
+    (typeof fn === 'function' && string !== '[object RegExp]') ||
+    (typeof window !== 'undefined' &&
+     // IE8 and below
+     (fn === window.setTimeout ||
+      fn === window.alert ||
+      fn === window.confirm ||
+      fn === window.prompt))
+};
+
+},{}],47:[function(require,module,exports){
+module.exports = function(value){
+    return value && typeof value === 'object' || typeof value === 'function';
+};
+},{}],48:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],11:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
+"use strict";
+
+/* global module, define */
+
+function mapEach(map, operation){
+  var keys = map.keys();
+  var next;
+  while(!(next = keys.next()).done) {
+    operation(map.get(next.value), next.value, map);
+  }
+}
+
+var Multimap = (function() {
+  var mapCtor;
+  if (typeof Map !== 'undefined') {
+    mapCtor = Map;
+
+    if (!Map.prototype.keys) {
+      Map.prototype.keys = function() {
+        var keys = [];
+        this.forEach(function(item, key) {
+          keys.push(key);
+        });
+        return keys;
+      };
+    }
+  }
+
+  function Multimap(iterable) {
+    var self = this;
+
+    self._map = mapCtor;
+
+    if (Multimap.Map) {
+      self._map = Multimap.Map;
+    }
+
+    self._ = self._map ? new self._map() : {};
+
+    if (iterable) {
+      iterable.forEach(function(i) {
+        self.set(i[0], i[1]);
+      });
+    }
+  }
+
+  /**
+   * @param {Object} key
+   * @return {Array} An array of values, undefined if no such a key;
+   */
+  Multimap.prototype.get = function(key) {
+    return this._map ? this._.get(key) : this._[key];
+  };
+
+  /**
+   * @param {Object} key
+   * @param {Object} val...
+   */
+  Multimap.prototype.set = function(key, val) {
+    var args = Array.prototype.slice.call(arguments);
+
+    key = args.shift();
+
+    var entry = this.get(key);
+    if (!entry) {
+      entry = [];
+      if (this._map)
+        this._.set(key, entry);
+      else
+        this._[key] = entry;
+    }
+
+    Array.prototype.push.apply(entry, args);
+    return this;
+  };
+
+  /**
+   * @param {Object} key
+   * @param {Object=} val
+   * @return {boolean} true if any thing changed
+   */
+  Multimap.prototype.delete = function(key, val) {
+    if (!this.has(key))
+      return false;
+
+    if (arguments.length == 1) {
+      this._map ? (this._.delete(key)) : (delete this._[key]);
+      return true;
+    } else {
+      var entry = this.get(key);
+      var idx = entry.indexOf(val);
+      if (idx != -1) {
+        entry.splice(idx, 1);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  /**
+   * @param {Object} key
+   * @param {Object=} val
+   * @return {boolean} whether the map contains 'key' or 'key=>val' pair
+   */
+  Multimap.prototype.has = function(key, val) {
+    var hasKey = this._map ? this._.has(key) : this._.hasOwnProperty(key);
+
+    if (arguments.length == 1 || !hasKey)
+      return hasKey;
+
+    var entry = this.get(key) || [];
+    return entry.indexOf(val) != -1;
+  };
+
+
+  /**
+   * @return {Array} all the keys in the map
+   */
+  Multimap.prototype.keys = function() {
+    if (this._map)
+      return makeIterator(this._.keys());
+
+    return makeIterator(Object.keys(this._));
+  };
+
+  /**
+   * @return {Array} all the values in the map
+   */
+  Multimap.prototype.values = function() {
+    var vals = [];
+    this.forEachEntry(function(entry) {
+      Array.prototype.push.apply(vals, entry);
+    });
+
+    return makeIterator(vals);
+  };
+
+  /**
+   *
+   */
+  Multimap.prototype.forEachEntry = function(iter) {
+    mapEach(this, iter);
+  };
+
+  Multimap.prototype.forEach = function(iter) {
+    var self = this;
+    self.forEachEntry(function(entry, key) {
+      entry.forEach(function(item) {
+        iter(item, key, self);
+      });
+    });
+  };
+
+
+  Multimap.prototype.clear = function() {
+    if (this._map) {
+      this._.clear();
+    } else {
+      this._ = {};
+    }
+  };
+
+  Object.defineProperty(
+    Multimap.prototype,
+    "size", {
+      configurable: false,
+      enumerable: true,
+      get: function() {
+        var total = 0;
+
+        mapEach(this, function(value){
+          total += value.length;
+        });
+
+        return total;
+      }
+    });
+
+  var safariNext;
+
+  try{
+    safariNext = new Function('iterator', 'makeIterator', 'var keysArray = []; for(var key of iterator){keysArray.push(key);} return makeIterator(keysArray).next;');
+  }catch(error){
+    // for of not implemented;
+  }
+
+  function makeIterator(iterator){
+    if(Array.isArray(iterator)){
+      var nextIndex = 0;
+
+      return {
+        next: function(){
+          return nextIndex < iterator.length ?
+            {value: iterator[nextIndex++], done: false} :
+          {done: true};
+        }
+      };
+    }
+
+    // Only an issue in safari
+    if(!iterator.next && safariNext){
+      iterator.next = safariNext(iterator, makeIterator);
+    }
+
+    return iterator;
+  }
+
+  return Multimap;
+})();
+
+
+if(typeof exports === 'object' && module && module.exports)
+  module.exports = Multimap;
+else if(typeof define === 'function' && define.amd)
+  define(function() { return Multimap; });
+
+},{}],50:[function(require,module,exports){
+var supportedTypes = ['text', 'search', 'tel', 'url', 'password'];
+
+module.exports = function(element){
+    return !!(element.setSelectionRange && ~supportedTypes.indexOf(element.type));
+};
+
+},{}],51:[function(require,module,exports){
+/*
+object-assign
+(c) Sindre Sorhus
+@license MIT
+*/
+
+'use strict';
+/* eslint-disable no-unused-vars */
+var getOwnPropertySymbols = Object.getOwnPropertySymbols;
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+var propIsEnumerable = Object.prototype.propertyIsEnumerable;
+
+function toObject(val) {
+	if (val === null || val === undefined) {
+		throw new TypeError('Object.assign cannot be called with null or undefined');
+	}
+
+	return Object(val);
+}
+
+function shouldUseNative() {
+	try {
+		if (!Object.assign) {
+			return false;
+		}
+
+		// Detect buggy property enumeration order in older V8 versions.
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
+		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
+		test1[5] = 'de';
+		if (Object.getOwnPropertyNames(test1)[0] === '5') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test2 = {};
+		for (var i = 0; i < 10; i++) {
+			test2['_' + String.fromCharCode(i)] = i;
+		}
+		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
+			return test2[n];
+		});
+		if (order2.join('') !== '0123456789') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test3 = {};
+		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
+			test3[letter] = letter;
+		});
+		if (Object.keys(Object.assign({}, test3)).join('') !==
+				'abcdefghijklmnopqrst') {
+			return false;
+		}
+
+		return true;
+	} catch (err) {
+		// We don't expect any of the above to throw, but better to be safe.
+		return false;
+	}
+}
+
+module.exports = shouldUseNative() ? Object.assign : function (target, source) {
+	var from;
+	var to = toObject(target);
+	var symbols;
+
+	for (var s = 1; s < arguments.length; s++) {
+		from = Object(arguments[s]);
+
+		for (var key in from) {
+			if (hasOwnProperty.call(from, key)) {
+				to[key] = from[key];
+			}
+		}
+
+		if (getOwnPropertySymbols) {
+			symbols = getOwnPropertySymbols(from);
+			for (var i = 0; i < symbols.length; i++) {
+				if (propIsEnumerable.call(from, symbols[i])) {
+					to[symbols[i]] = from[symbols[i]];
+				}
+			}
+		}
+	}
+
+	return to;
+};
+
+},{}],52:[function(require,module,exports){
+var hasMap = typeof Map === 'function' && Map.prototype;
+var mapSizeDescriptor = Object.getOwnPropertyDescriptor && hasMap ? Object.getOwnPropertyDescriptor(Map.prototype, 'size') : null;
+var mapSize = hasMap && mapSizeDescriptor && typeof mapSizeDescriptor.get === 'function' ? mapSizeDescriptor.get : null;
+var mapForEach = hasMap && Map.prototype.forEach;
+var hasSet = typeof Set === 'function' && Set.prototype;
+var setSizeDescriptor = Object.getOwnPropertyDescriptor && hasSet ? Object.getOwnPropertyDescriptor(Set.prototype, 'size') : null;
+var setSize = hasSet && setSizeDescriptor && typeof setSizeDescriptor.get === 'function' ? setSizeDescriptor.get : null;
+var setForEach = hasSet && Set.prototype.forEach;
+var booleanValueOf = Boolean.prototype.valueOf;
+var objectToString = Object.prototype.toString;
+
+module.exports = function inspect_ (obj, opts, depth, seen) {
+    if (typeof obj === 'undefined') {
+        return 'undefined';
+    }
+    if (obj === null) {
+        return 'null';
+    }
+    if (typeof obj === 'boolean') {
+        return obj ? 'true' : 'false';
+    }
+    if (typeof obj === 'string') {
+        return inspectString(obj);
+    }
+    if (typeof obj === 'number') {
+      if (obj === 0) {
+        return Infinity / obj > 0 ? '0' : '-0';
+      }
+      return String(obj);
+    }
+
+    if (!opts) opts = {};
+
+    var maxDepth = typeof opts.depth === 'undefined' ? 5 : opts.depth;
+    if (typeof depth === 'undefined') depth = 0;
+    if (depth >= maxDepth && maxDepth > 0 && typeof obj === 'object') {
+        return '[Object]';
+    }
+
+    if (typeof seen === 'undefined') seen = [];
+    else if (indexOf(seen, obj) >= 0) {
+        return '[Circular]';
+    }
+
+    function inspect (value, from) {
+        if (from) {
+            seen = seen.slice();
+            seen.push(from);
+        }
+        return inspect_(value, opts, depth + 1, seen);
+    }
+
+    if (typeof obj === 'function') {
+        var name = nameOf(obj);
+        return '[Function' + (name ? ': ' + name : '') + ']';
+    }
+    if (isSymbol(obj)) {
+        var symString = Symbol.prototype.toString.call(obj);
+        return typeof obj === 'object' ? markBoxed(symString) : symString;
+    }
+    if (isElement(obj)) {
+        var s = '<' + String(obj.nodeName).toLowerCase();
+        var attrs = obj.attributes || [];
+        for (var i = 0; i < attrs.length; i++) {
+            s += ' ' + attrs[i].name + '="' + quote(attrs[i].value) + '"';
+        }
+        s += '>';
+        if (obj.childNodes && obj.childNodes.length) s += '...';
+        s += '</' + String(obj.nodeName).toLowerCase() + '>';
+        return s;
+    }
+    if (isArray(obj)) {
+        if (obj.length === 0) return '[]';
+        return '[ ' + arrObjKeys(obj, inspect).join(', ') + ' ]';
+    }
+    if (isError(obj)) {
+        var parts = arrObjKeys(obj, inspect);
+        if (parts.length === 0) return '[' + String(obj) + ']';
+        return '{ [' + String(obj) + '] ' + parts.join(', ') + ' }';
+    }
+    if (typeof obj === 'object' && typeof obj.inspect === 'function') {
+        return obj.inspect();
+    }
+    if (isMap(obj)) {
+        var parts = [];
+        mapForEach.call(obj, function (value, key) {
+            parts.push(inspect(key, obj) + ' => ' + inspect(value, obj));
+        });
+        return collectionOf('Map', mapSize.call(obj), parts);
+    }
+    if (isSet(obj)) {
+        var parts = [];
+        setForEach.call(obj, function (value ) {
+            parts.push(inspect(value, obj));
+        });
+        return collectionOf('Set', setSize.call(obj), parts);
+    }
+    if (isNumber(obj)) {
+        return markBoxed(Number(obj));
+    }
+    if (isBoolean(obj)) {
+        return markBoxed(booleanValueOf.call(obj));
+    }
+    if (isString(obj)) {
+        return markBoxed(inspect(String(obj)));
+    }
+    if (!isDate(obj) && !isRegExp(obj)) {
+        var xs = arrObjKeys(obj, inspect);
+        if (xs.length === 0) return '{}';
+        return '{ ' + xs.join(', ') + ' }';
+    }
+    return String(obj);
+};
+
+function quote (s) {
+    return String(s).replace(/"/g, '&quot;');
+}
+
+function isArray (obj) { return toStr(obj) === '[object Array]' }
+function isDate (obj) { return toStr(obj) === '[object Date]' }
+function isRegExp (obj) { return toStr(obj) === '[object RegExp]' }
+function isError (obj) { return toStr(obj) === '[object Error]' }
+function isSymbol (obj) { return toStr(obj) === '[object Symbol]' }
+function isString (obj) { return toStr(obj) === '[object String]' }
+function isNumber (obj) { return toStr(obj) === '[object Number]' }
+function isBoolean (obj) { return toStr(obj) === '[object Boolean]' }
+
+var hasOwn = Object.prototype.hasOwnProperty || function (key) { return key in this; };
+function has (obj, key) {
+    return hasOwn.call(obj, key);
+}
+
+function toStr (obj) {
+    return objectToString.call(obj);
+}
+
+function nameOf (f) {
+    if (f.name) return f.name;
+    var m = String(f).match(/^function\s*([\w$]+)/);
+    if (m) return m[1];
+}
+
+function indexOf (xs, x) {
+    if (xs.indexOf) return xs.indexOf(x);
+    for (var i = 0, l = xs.length; i < l; i++) {
+        if (xs[i] === x) return i;
+    }
+    return -1;
+}
+
+function isMap (x) {
+    if (!mapSize) {
+        return false;
+    }
+    try {
+        mapSize.call(x);
+        try {
+            setSize.call(x);
+        } catch (s) {
+            return true;
+        }
+        return x instanceof Map; // core-js workaround, pre-v2.5.0
+    } catch (e) {}
+    return false;
+}
+
+function isSet (x) {
+    if (!setSize) {
+        return false;
+    }
+    try {
+        setSize.call(x);
+        try {
+            mapSize.call(x);
+        } catch (m) {
+            return true;
+        }
+        return x instanceof Set; // core-js workaround, pre-v2.5.0
+    } catch (e) {}
+    return false;
+}
+
+function isElement (x) {
+    if (!x || typeof x !== 'object') return false;
+    if (typeof HTMLElement !== 'undefined' && x instanceof HTMLElement) {
+        return true;
+    }
+    return typeof x.nodeName === 'string'
+        && typeof x.getAttribute === 'function'
+    ;
+}
+
+function inspectString (str) {
+    var s = str.replace(/(['\\])/g, '\\$1').replace(/[\x00-\x1f]/g, lowbyte);
+    return "'" + s + "'";
+}
+
+function lowbyte (c) {
+    var n = c.charCodeAt(0);
+    var x = { 8: 'b', 9: 't', 10: 'n', 12: 'f', 13: 'r' }[n];
+    if (x) return '\\' + x;
+    return '\\x' + (n < 0x10 ? '0' : '') + n.toString(16);
+}
+
+function markBoxed (str) {
+    return 'Object(' + str + ')';
+}
+
+function collectionOf (type, size, entries) {
+    return type + ' (' + size + ') {' + entries.join(', ') + '}';
+}
+
+function arrObjKeys (obj, inspect) {
+    var isArr = isArray(obj);
+    var xs = [];
+    if (isArr) {
+        xs.length = obj.length;
+        for (var i = 0; i < obj.length; i++) {
+            xs[i] = has(obj, i) ? inspect(obj[i], obj) : '';
+        }
+    }
+    for (var key in obj) {
+        if (!has(obj, key)) continue;
+        if (isArr && String(Number(key)) === key && key < obj.length) continue;
+        if (/[^\w$]/.test(key)) {
+            xs.push(inspect(key, obj) + ': ' + inspect(obj[key], obj));
+        } else {
+            xs.push(key + ': ' + inspect(obj[key], obj));
+        }
+    }
+    return xs;
+}
+
+},{}],53:[function(require,module,exports){
+'use strict';
+
+// modified from https://github.com/es-shims/es5-shim
+var has = Object.prototype.hasOwnProperty;
+var toStr = Object.prototype.toString;
+var slice = Array.prototype.slice;
+var isArgs = require('./isArguments');
+var isEnumerable = Object.prototype.propertyIsEnumerable;
+var hasDontEnumBug = !isEnumerable.call({ toString: null }, 'toString');
+var hasProtoEnumBug = isEnumerable.call(function () {}, 'prototype');
+var dontEnums = [
+	'toString',
+	'toLocaleString',
+	'valueOf',
+	'hasOwnProperty',
+	'isPrototypeOf',
+	'propertyIsEnumerable',
+	'constructor'
+];
+var equalsConstructorPrototype = function (o) {
+	var ctor = o.constructor;
+	return ctor && ctor.prototype === o;
+};
+var excludedKeys = {
+	$console: true,
+	$external: true,
+	$frame: true,
+	$frameElement: true,
+	$frames: true,
+	$innerHeight: true,
+	$innerWidth: true,
+	$outerHeight: true,
+	$outerWidth: true,
+	$pageXOffset: true,
+	$pageYOffset: true,
+	$parent: true,
+	$scrollLeft: true,
+	$scrollTop: true,
+	$scrollX: true,
+	$scrollY: true,
+	$self: true,
+	$webkitIndexedDB: true,
+	$webkitStorageInfo: true,
+	$window: true
+};
+var hasAutomationEqualityBug = (function () {
+	/* global window */
+	if (typeof window === 'undefined') { return false; }
+	for (var k in window) {
+		try {
+			if (!excludedKeys['$' + k] && has.call(window, k) && window[k] !== null && typeof window[k] === 'object') {
+				try {
+					equalsConstructorPrototype(window[k]);
+				} catch (e) {
+					return true;
+				}
+			}
+		} catch (e) {
+			return true;
+		}
+	}
+	return false;
+}());
+var equalsConstructorPrototypeIfNotBuggy = function (o) {
+	/* global window */
+	if (typeof window === 'undefined' || !hasAutomationEqualityBug) {
+		return equalsConstructorPrototype(o);
+	}
+	try {
+		return equalsConstructorPrototype(o);
+	} catch (e) {
+		return false;
+	}
+};
+
+var keysShim = function keys(object) {
+	var isObject = object !== null && typeof object === 'object';
+	var isFunction = toStr.call(object) === '[object Function]';
+	var isArguments = isArgs(object);
+	var isString = isObject && toStr.call(object) === '[object String]';
+	var theKeys = [];
+
+	if (!isObject && !isFunction && !isArguments) {
+		throw new TypeError('Object.keys called on a non-object');
+	}
+
+	var skipProto = hasProtoEnumBug && isFunction;
+	if (isString && object.length > 0 && !has.call(object, 0)) {
+		for (var i = 0; i < object.length; ++i) {
+			theKeys.push(String(i));
+		}
+	}
+
+	if (isArguments && object.length > 0) {
+		for (var j = 0; j < object.length; ++j) {
+			theKeys.push(String(j));
+		}
+	} else {
+		for (var name in object) {
+			if (!(skipProto && name === 'prototype') && has.call(object, name)) {
+				theKeys.push(String(name));
+			}
+		}
+	}
+
+	if (hasDontEnumBug) {
+		var skipConstructor = equalsConstructorPrototypeIfNotBuggy(object);
+
+		for (var k = 0; k < dontEnums.length; ++k) {
+			if (!(skipConstructor && dontEnums[k] === 'constructor') && has.call(object, dontEnums[k])) {
+				theKeys.push(dontEnums[k]);
+			}
+		}
+	}
+	return theKeys;
+};
+
+keysShim.shim = function shimObjectKeys() {
+	if (Object.keys) {
+		var keysWorksWithArguments = (function () {
+			// Safari 5.0 bug
+			return (Object.keys(arguments) || '').length === 2;
+		}(1, 2));
+		if (!keysWorksWithArguments) {
+			var originalKeys = Object.keys;
+			Object.keys = function keys(object) {
+				if (isArgs(object)) {
+					return originalKeys(slice.call(object));
+				} else {
+					return originalKeys(object);
+				}
+			};
+		}
+	} else {
+		Object.keys = keysShim;
+	}
+	return Object.keys || keysShim;
+};
+
+module.exports = keysShim;
+
+},{"./isArguments":54}],54:[function(require,module,exports){
+'use strict';
+
+var toStr = Object.prototype.toString;
+
+module.exports = function isArguments(value) {
+	var str = toStr.call(value);
+	var isArgs = str === '[object Arguments]';
+	if (!isArgs) {
+		isArgs = str !== '[object Array]' &&
+			value !== null &&
+			typeof value === 'object' &&
+			typeof value.length === 'number' &&
+			value.length >= 0 &&
+			toStr.call(value.callee) === '[object Function]';
+	}
+	return isArgs;
+};
+
+},{}],55:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -2618,7 +6924,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":13}],12:[function(require,module,exports){
+},{"_process":57}],56:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -2665,7 +6971,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 }
 
 }).call(this,require('_process'))
-},{"_process":13}],13:[function(require,module,exports){
+},{"_process":57}],57:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -2851,10 +7157,10 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],14:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 module.exports = require('./lib/_stream_duplex.js');
 
-},{"./lib/_stream_duplex.js":15}],15:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":59}],59:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2979,7 +7285,7 @@ function forEach(xs, f) {
     f(xs[i], i);
   }
 }
-},{"./_stream_readable":17,"./_stream_writable":19,"core-util-is":5,"inherits":8,"process-nextick-args":12}],16:[function(require,module,exports){
+},{"./_stream_readable":61,"./_stream_writable":63,"core-util-is":17,"inherits":43,"process-nextick-args":56}],60:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3027,7 +7333,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":18,"core-util-is":5,"inherits":8}],17:[function(require,module,exports){
+},{"./_stream_transform":62,"core-util-is":17,"inherits":43}],61:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4037,7 +8343,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":15,"./internal/streams/BufferList":20,"./internal/streams/destroy":21,"./internal/streams/stream":22,"_process":13,"core-util-is":5,"events":6,"inherits":8,"isarray":10,"process-nextick-args":12,"safe-buffer":27,"string_decoder/":29,"util":3}],18:[function(require,module,exports){
+},{"./_stream_duplex":59,"./internal/streams/BufferList":64,"./internal/streams/destroy":65,"./internal/streams/stream":66,"_process":57,"core-util-is":17,"events":34,"inherits":43,"isarray":48,"process-nextick-args":56,"safe-buffer":72,"string_decoder/":82,"util":11}],62:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -4252,7 +8558,7 @@ function done(stream, er, data) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":15,"core-util-is":5,"inherits":8}],19:[function(require,module,exports){
+},{"./_stream_duplex":59,"core-util-is":17,"inherits":43}],63:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4919,7 +9225,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":15,"./internal/streams/destroy":21,"./internal/streams/stream":22,"_process":13,"core-util-is":5,"inherits":8,"process-nextick-args":12,"safe-buffer":27,"util-deprecate":30}],20:[function(require,module,exports){
+},{"./_stream_duplex":59,"./internal/streams/destroy":65,"./internal/streams/stream":66,"_process":57,"core-util-is":17,"inherits":43,"process-nextick-args":56,"safe-buffer":72,"util-deprecate":88}],64:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -4994,7 +9300,7 @@ module.exports = function () {
 
   return BufferList;
 }();
-},{"safe-buffer":27}],21:[function(require,module,exports){
+},{"safe-buffer":72}],65:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -5067,13 +9373,13 @@ module.exports = {
   destroy: destroy,
   undestroy: undestroy
 };
-},{"process-nextick-args":12}],22:[function(require,module,exports){
+},{"process-nextick-args":56}],66:[function(require,module,exports){
 module.exports = require('events').EventEmitter;
 
-},{"events":6}],23:[function(require,module,exports){
+},{"events":34}],67:[function(require,module,exports){
 module.exports = require('./readable').PassThrough
 
-},{"./readable":24}],24:[function(require,module,exports){
+},{"./readable":68}],68:[function(require,module,exports){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = exports;
 exports.Readable = exports;
@@ -5082,13 +9388,46 @@ exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":15,"./lib/_stream_passthrough.js":16,"./lib/_stream_readable.js":17,"./lib/_stream_transform.js":18,"./lib/_stream_writable.js":19}],25:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":59,"./lib/_stream_passthrough.js":60,"./lib/_stream_readable.js":61,"./lib/_stream_transform.js":62,"./lib/_stream_writable.js":63}],69:[function(require,module,exports){
 module.exports = require('./readable').Transform
 
-},{"./readable":24}],26:[function(require,module,exports){
+},{"./readable":68}],70:[function(require,module,exports){
 module.exports = require('./lib/_stream_writable.js');
 
-},{"./lib/_stream_writable.js":19}],27:[function(require,module,exports){
+},{"./lib/_stream_writable.js":63}],71:[function(require,module,exports){
+(function (process){
+var through = require('through');
+var nextTick = typeof setImmediate !== 'undefined'
+    ? setImmediate
+    : process.nextTick
+;
+
+module.exports = function (write, end) {
+    var tr = through(write, end);
+    tr.pause();
+    var resume = tr.resume;
+    var pause = tr.pause;
+    var paused = false;
+    
+    tr.pause = function () {
+        paused = true;
+        return pause.apply(this, arguments);
+    };
+    
+    tr.resume = function () {
+        paused = false;
+        return resume.apply(this, arguments);
+    };
+    
+    nextTick(function () {
+        if (!paused) tr.resume();
+    });
+    
+    return tr;
+};
+
+}).call(this,require('_process'))
+},{"_process":57,"through":87}],72:[function(require,module,exports){
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
 var Buffer = buffer.Buffer
@@ -5152,7 +9491,185 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":4}],28:[function(require,module,exports){
+},{"buffer":13}],73:[function(require,module,exports){
+module.exports = function isSame(a, b){
+    if(a === b){
+        return true;
+    }
+
+    if(
+        typeof a !== typeof b ||
+        typeof a === 'object' &&
+        !(a instanceof Date && b instanceof Date)
+    ){
+        return false;
+    }
+
+    return String(a) === String(b);
+};
+},{}],74:[function(require,module,exports){
+
+
+/*
+ * @version    0.1.1
+ * @date       2015-05-10
+ * @stability  2 - Unstable
+ * @author     Lauri Rooden <lauri@rooden.ee>
+ * @license    MIT License
+ */
+
+
+
+!function(exports) {
+	var undef
+	, selectorRe = /([.#:[])([-\w]+)(?:\((.+?)\)|([~^$*|]?)=(("|')(?:\\?.)*?\6|[-\w]+))?]?/g
+	, selectorLastRe = /([~\s>+]*)(?:("|')(?:\\?.)*?\2|\(.+?\)|[^\s+>])+$/
+	, selectorSplitRe = /\s*,\s*(?=(?:[^'"()]|"(?:\\?.)*?"|'(?:\\?.)*?'|\(.+?\))+$)/
+	, selectorCache = {}
+	, selectorMap = {
+		"any": "m(_,v)",
+		"empty": "!_.lastChild",
+		"enabled": "!m(_,':disabled')",
+		"first-child": "(a=_.parentNode)&&a.firstChild==_",
+		"first-of-type": "!p(_,_.tagName)",
+		"lang": "m(c(_,'[lang]'),'[lang|='+v+']')",
+		"last-child": "(a=_.parentNode)&&a.lastChild==_",
+		"last-of-type": "!n(_,_.tagName)",
+		"link": "m(_,'a[href]')",
+		"not": "!m(_,v)",
+		"nth-child": "(a=2,'odd'==v?b=1:'even'==v?b=0:a=1 in(v=v.split('n'))?(b=v[1],v[0]):(b=v[0],0),v=_.parentNode.childNodes,v=1+v.indexOf(_),0==a?v==b:('-'==a||0==(v-b)%a)&&(0<a||v<=b))",
+		"only-child": "(a=_.parentNode)&&a.firstChild==a.lastChild",
+		"only-of-type": "!p(_,_.tagName)&&!n(_,_.tagName)",
+		"optional": "!m(_,':required')",
+		"root": "(a=_.parentNode)&&!a.tagName",
+		".": "~_.className.split(/\\s+/).indexOf(a)",
+		"#": "_.id==a",
+		"^": "!a.indexOf(v)",
+		"|": "a.split('-')[0]==v",
+		"$": "a.slice(-v.length)==v",
+		"~": "~a.split(/\\s+/).indexOf(v)",
+		"*": "~a.indexOf(v)",
+		">>": "m(_.parentNode,v)",
+		"++": "m(_.previousSibling,v)",
+		"~~": "p(_,v)",
+		"": "c(_.parentNode,v)"
+	}
+
+	selectorMap["nth-last-child"] = selectorMap["nth-child"].replace("1+", "v.length-")
+
+	function selectorFn(str) {
+		// jshint evil:true
+		return selectorCache[str] ||
+		(selectorCache[str] = Function("m,c,n,p", "return function(_,v,a,b){return " +
+			str.split(selectorSplitRe).map(function(sel) {
+				var relation, from
+				, rules = ["_&&_.nodeType==1"]
+				, parentSel = sel.replace(selectorLastRe, function(_, _rel, a, start) {
+					from = start + _rel.length
+					relation = _rel.trim()
+					return ""
+				})
+				, tag = sel.slice(from).replace(selectorRe, function(_, op, key, subSel, fn, val, quotation) {
+					rules.push(
+						"((v='" +
+						(subSel || (quotation ? val.slice(1, -1) : val) || "").replace(/'/g, "\\'") +
+						"'),(a='" + key + "'),1)"
+						,
+						selectorMap[op == ":" ? key : op] ||
+						"(a=_.getAttribute(a))" +
+						(fn ? "&&" + selectorMap[fn] : val ? "==v" : "")
+					)
+					return ""
+				})
+
+				if (tag && tag != "*") rules[0] += "&&_.tagName=='" + tag.toUpperCase() + "'"
+				if (parentSel) rules.push("(v='" + parentSel + "')", selectorMap[relation + relation])
+				return rules.join("&&")
+			}).join("||") + "}"
+		)(matches, closest, next, prev))
+	}
+
+
+	function walk(next, el, sel, first, nextFn) {
+		var out = []
+		sel = selectorFn(sel)
+		for (; el; el = el[next] || nextFn && nextFn(el)) if (sel(el)) {
+			if (first) return el
+			out.push(el)
+		}
+		return first ? null : out
+	}
+
+	function find(node, sel, first) {
+		return walk("firstChild", node.firstChild, sel, first, function(el) {
+			var next = el.nextSibling
+			while (!next && ((el = el.parentNode) !== node)) next = el.nextSibling
+			return next
+		})
+	}
+
+	function matches(el, sel) {
+		return !!selectorFn(sel)(el)
+	}
+
+	function closest(el, sel) {
+		return walk("parentNode", el, sel, 1)
+	}
+
+	function next(el, sel) {
+		return walk("nextSibling", el.nextSibling, sel, 1)
+	}
+
+	function prev(el, sel) {
+		return walk("previousSibling", el.previousSibling, sel, 1)
+	}
+
+
+	exports.find = find
+	exports.fn = selectorFn
+	exports.matches = matches
+	exports.closest = closest
+	exports.next = next
+	exports.prev = prev
+	exports.selectorMap = selectorMap
+}(this)
+
+
+},{}],75:[function(require,module,exports){
+var naturalSelection = require('natural-selection');
+
+module.exports = function(element, value){
+    var canSet = naturalSelection(element) && element === document.activeElement;
+
+    if (canSet) {
+        var start = element.selectionStart,
+            end = element.selectionEnd;
+
+        element.value = value;
+        element.setSelectionRange(start, end);
+    } else {
+        element.value = value;
+    }
+};
+
+},{"natural-selection":50}],76:[function(require,module,exports){
+module.exports = Object.setPrototypeOf || ({__proto__:[]} instanceof Array ? setProtoOf : mixinProperties);
+
+function setProtoOf(obj, proto) {
+	obj.__proto__ = proto;
+	return obj;
+}
+
+function mixinProperties(obj, proto) {
+	for (var prop in proto) {
+		if (!obj.hasOwnProperty(prop)) {
+			obj[prop] = proto[prop];
+		}
+	}
+	return obj;
+}
+
+},{}],77:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -5281,7 +9798,68 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":6,"inherits":8,"readable-stream/duplex.js":14,"readable-stream/passthrough.js":23,"readable-stream/readable.js":24,"readable-stream/transform.js":25,"readable-stream/writable.js":26}],29:[function(require,module,exports){
+},{"events":34,"inherits":43,"readable-stream/duplex.js":58,"readable-stream/passthrough.js":67,"readable-stream/readable.js":68,"readable-stream/transform.js":69,"readable-stream/writable.js":70}],78:[function(require,module,exports){
+'use strict';
+
+var bind = require('function-bind');
+var ES = require('es-abstract/es5');
+var replace = bind.call(Function.call, String.prototype.replace);
+
+var leftWhitespace = /^[\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF]+/;
+var rightWhitespace = /[\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF]+$/;
+
+module.exports = function trim() {
+	var S = ES.ToString(ES.CheckObjectCoercible(this));
+	return replace(replace(S, leftWhitespace, ''), rightWhitespace, '');
+};
+
+},{"es-abstract/es5":27,"function-bind":39}],79:[function(require,module,exports){
+'use strict';
+
+var bind = require('function-bind');
+var define = require('define-properties');
+
+var implementation = require('./implementation');
+var getPolyfill = require('./polyfill');
+var shim = require('./shim');
+
+var boundTrim = bind.call(Function.call, getPolyfill());
+
+define(boundTrim, {
+	getPolyfill: getPolyfill,
+	implementation: implementation,
+	shim: shim
+});
+
+module.exports = boundTrim;
+
+},{"./implementation":78,"./polyfill":80,"./shim":81,"define-properties":23,"function-bind":39}],80:[function(require,module,exports){
+'use strict';
+
+var implementation = require('./implementation');
+
+var zeroWidthSpace = '\u200b';
+
+module.exports = function getPolyfill() {
+	if (String.prototype.trim && zeroWidthSpace.trim() === zeroWidthSpace) {
+		return String.prototype.trim;
+	}
+	return implementation;
+};
+
+},{"./implementation":78}],81:[function(require,module,exports){
+'use strict';
+
+var define = require('define-properties');
+var getPolyfill = require('./polyfill');
+
+module.exports = function shimStringTrim() {
+	var polyfill = getPolyfill();
+	define(String.prototype, { trim: polyfill }, { trim: function () { return String.prototype.trim !== polyfill; } });
+	return polyfill;
+};
+
+},{"./polyfill":80,"define-properties":23}],82:[function(require,module,exports){
 'use strict';
 
 var Buffer = require('safe-buffer').Buffer;
@@ -5554,4608 +10132,7 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":27}],30:[function(require,module,exports){
-(function (global){
-
-/**
- * Module exports.
- */
-
-module.exports = deprecate;
-
-/**
- * Mark that a method should not be used.
- * Returns a modified function which warns once by default.
- *
- * If `localStorage.noDeprecation = true` is set, then it is a no-op.
- *
- * If `localStorage.throwDeprecation = true` is set, then deprecated functions
- * will throw an Error when invoked.
- *
- * If `localStorage.traceDeprecation = true` is set, then deprecated functions
- * will invoke `console.trace()` instead of `console.error()`.
- *
- * @param {Function} fn - the function to deprecate
- * @param {String} msg - the string to print to the console when `fn` is invoked
- * @returns {Function} a new "deprecated" version of `fn`
- * @api public
- */
-
-function deprecate (fn, msg) {
-  if (config('noDeprecation')) {
-    return fn;
-  }
-
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (config('throwDeprecation')) {
-        throw new Error(msg);
-      } else if (config('traceDeprecation')) {
-        console.trace(msg);
-      } else {
-        console.warn(msg);
-      }
-      warned = true;
-    }
-    return fn.apply(this, arguments);
-  }
-
-  return deprecated;
-}
-
-/**
- * Checks `localStorage` for boolean values for the given `name`.
- *
- * @param {String} name
- * @returns {Boolean}
- * @api private
- */
-
-function config (name) {
-  // accessing global.localStorage can trigger a DOMException in sandboxed iframes
-  try {
-    if (!global.localStorage) return false;
-  } catch (_) {
-    return false;
-  }
-  var val = global.localStorage[name];
-  if (null == val) return false;
-  return String(val).toLowerCase() === 'true';
-}
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],31:[function(require,module,exports){
-var is = require('./is'),
-    GENERIC = '_generic',
-    EventEmitter = require('events').EventEmitter,
-    slice = Array.prototype.slice;
-
-function flatten(item){
-    return Array.isArray(item) ? item.reduce(function(result, element){
-        if(element == null){
-            return result;
-        }
-        return result.concat(flatten(element));
-    },[]) : item;
-}
-
-function attachProperties(object, firm){
-    for(var key in this._properties){
-        this._properties[key].attach(object, firm);
-    }
-}
-
-function onRender(){
-
-    // Ensure all bindings are somewhat attached just before rendering
-    this.attach(undefined, 0);
-
-    for(var key in this._properties){
-        this._properties[key].update();
-    }
-}
-
-function detachProperties(firm){
-    for(var key in this._properties){
-        this._properties[key].detach(firm);
-    }
-}
-
-function destroyProperties(){
-    for(var key in this._properties){
-        this._properties[key].destroy();
-    }
-}
-
-function clone(){
-    return this.fastn(this.component._type, this.component._settings, this.component._children.filter(function(child){
-            return !child._templated;
-        }).map(function(child){
-            return child.clone();
-        })
-    );
-}
-
-function getSetBinding(newBinding){
-    if(!arguments.length){
-        return this.binding;
-    }
-
-    if(!is.binding(newBinding)){
-        newBinding = this.fastn.binding(newBinding);
-    }
-
-    if(this.binding && this.binding !== newBinding){
-        this.binding.removeListener('change', this.emitAttach);
-        newBinding.attach(this.binding._model, this.binding._firm);
-    }
-
-    this.binding = newBinding;
-
-    this.binding.on('change', this.emitAttach);
-    this.binding.on('detach', this.emitDetach);
-
-    this.emitAttach();
-
-    return this.component;
-};
-
-function emitAttach(){
-    var newBound = this.binding();
-    if(newBound !== this.lastBound){
-        this.lastBound = newBound;
-        this.scope.attach(this.lastBound);
-        this.component.emit('attach', this.scope, 1);
-    }
-}
-
-function emitDetach(){
-    this.component.emit('detach', 1);
-}
-
-function getScope(){
-    return this.scope;
-}
-
-function destroy(){
-    if(this.destroyed){
-        return;
-    }
-    this.destroyed = true;
-
-    this.component
-        .removeAllListeners('render')
-        .removeAllListeners('attach');
-
-    this.component.emit('destroy');
-    this.component.element = null;
-    this.scope.destroy();
-    this.binding.destroy();
-
-    return this.component;
-}
-
-function attachComponent(object, firm){
-    this.binding.attach(object, firm);
-    return this.component;
-}
-
-function detachComponent(firm){
-    this.binding.detach(firm);
-    return this.component;
-}
-
-function isDestroyed(){
-    return this.destroyed;
-}
-
-function setProperty(key, property){
-
-    // Add a default property or use the one already there
-    if(!property){
-        property = this.component[key] || this.fastn.property();
-    }
-
-    this.component[key] = property;
-    this.component._properties[key] = property;
-
-    return this.component;
-}
-
-function bindInternalProperty(component, model, propertyName, propertyTransform){
-    if(!(propertyName in component)){
-        component.setProperty(propertyName);
-    }
-    component[propertyName].on('change', function(value){
-        model.set(propertyName, propertyTransform ? propertyTransform(value) : value);
-    });
-}
-
-function createInternalScope(data, propertyTransforms){
-    var componentScope = this;
-    var model = new componentScope.fastn.Model(data);
-
-    for(var key in data){
-        bindInternalProperty(componentScope.component, model, key, propertyTransforms[key]);
-    }
-
-    return {
-        binding: function(){
-            return componentScope.fastn.binding.apply(null, arguments).attach(model);
-        },
-        model: model
-    };
-}
-
-function extendComponent(type, settings, children){
-
-    if(type in this.types){
-        return this.component;
-    }
-
-    if(!(type in this.fastn.components)){
-
-        if(!(GENERIC in this.fastn.components)){
-            throw new Error('No component of type "' + type + '" is loaded');
-        }
-
-        this.fastn.components._generic(this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
-
-        this.types._generic = true;
-    }else{
-
-        this.fastn.components[type](this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
-    }
-
-    this.types[type] = true;
-
-    return this.component;
-};
-
-function isType(type){
-    return type in this.types;
-}
-
-function FastnComponent(fastn, type, settings, children){
-    var component = this;
-
-    var componentScope = {
-        types: {},
-        fastn: fastn,
-        component: component,
-        binding: fastn.binding('.'),
-        destroyed: false,
-        scope: new fastn.Model(false),
-        lastBound: null
-    };
-
-    componentScope.emitAttach = emitAttach.bind(componentScope);
-    componentScope.emitDetach = emitDetach.bind(componentScope);
-    componentScope.binding._default_binding = true;
-
-    component._type = type;
-    component._properties = {};
-    component._settings = settings || {};
-    component._children = children ? flatten(children) : [];
-
-    component.attach = attachComponent.bind(componentScope);
-    component.detach = detachComponent.bind(componentScope);
-    component.scope = getScope.bind(componentScope);
-    component.destroy = destroy.bind(componentScope);
-    component.destroyed = isDestroyed.bind(componentScope);
-    component.binding = getSetBinding.bind(componentScope);
-    component.setProperty = setProperty.bind(componentScope);
-    component.clone = clone.bind(componentScope);
-    component.children = slice.bind(component._children);
-    component.extend = extendComponent.bind(componentScope);
-    component.is = isType.bind(componentScope);
-
-    component.binding(componentScope.binding);
-
-    component.on('attach', attachProperties.bind(this));
-    component.on('render', onRender.bind(this));
-    component.on('detach', detachProperties.bind(this));
-    component.on('destroy', destroyProperties.bind(this));
-
-    if(fastn.debug){
-        component.on('render', function(){
-            if(component.element && typeof component.element === 'object'){
-                component.element._component = component;
-            }
-        });
-    }
-}
-FastnComponent.prototype = Object.create(EventEmitter.prototype);
-FastnComponent.prototype.constructor = FastnComponent;
-FastnComponent.prototype._fastn_component = true;
-
-module.exports = FastnComponent;
-},{"./is":38,"events":6}],32:[function(require,module,exports){
-var is = require('./is'),
-    firmer = require('./firmer'),
-    functionEmitter = require('function-emitter'),
-    setPrototypeOf = require('setprototypeof'),
-    same = require('same-value');
-
-function fuseBinding(){
-    var fastn = this,
-        args = Array.prototype.slice.call(arguments);
-
-    var bindings = args.slice(),
-        transform = bindings.pop(),
-        updateTransform,
-        resultBinding = createBinding.call(fastn, 'result'),
-        selfChanging;
-
-    resultBinding._arguments = args;
-
-    if(typeof bindings[bindings.length-1] === 'function' && !is.binding(bindings[bindings.length-1])){
-        updateTransform = transform;
-        transform = bindings.pop();
-    }
-
-    resultBinding._model.removeAllListeners();
-    resultBinding._set = function(value){
-        if(updateTransform){
-            selfChanging = true;
-            var newValue = updateTransform(value);
-            if(!same(newValue, bindings[0]())){
-                bindings[0](newValue);
-                resultBinding._change(newValue);
-            }
-            selfChanging = false;
-        }else{
-            resultBinding._change(value);
-        }
-    };
-
-    function change(){
-        if(selfChanging){
-            return;
-        }
-        resultBinding(transform.apply(null, bindings.map(function(binding){
-            return binding();
-        })));
-    }
-
-    bindings.forEach(function(binding, index){
-        if(!is.binding(binding)){
-            binding = createBinding.call(fastn, binding);
-            bindings.splice(index,1,binding);
-        }
-        binding.on('change', change);
-        resultBinding.on('detach', binding.detach);
-    });
-
-    var lastAttached;
-    resultBinding.on('attach', function(object){
-        selfChanging = true;
-        bindings.forEach(function(binding){
-            binding.attach(object, 1);
-        });
-        selfChanging = false;
-        if(lastAttached !== object){
-            change();
-        }
-        lastAttached = object;
-    });
-
-    return resultBinding;
-}
-
-function createValueBinding(fastn){
-    var valueBinding = createBinding.call(fastn, 'value');
-    valueBinding.attach = function(){return valueBinding;};
-    valueBinding.detach = function(){return valueBinding;};
-    return valueBinding;
-}
-
-function bindingTemplate(newValue){
-    if(!arguments.length){
-        return this.value;
-    }
-
-    if(this.binding._fastn_binding === '.'){
-        return;
-    }
-
-    this.binding._set(newValue);
-    return this.binding;
-}
-
-function createBinding(path, more){
-    var fastn = this;
-
-    if(more){ // used instead of arguments.length for performance
-        return fuseBinding.apply(fastn, arguments);
-    }
-
-    if(path == null){
-        return createValueBinding(fastn);
-    }
-
-    var bindingScope = {},
-        binding = bindingScope.binding = bindingTemplate.bind(bindingScope),
-        destroyed;
-
-    setPrototypeOf(binding, functionEmitter);
-    binding.setMaxListeners(10000);
-    binding._arguments = [path];
-    binding._model = new fastn.Model(false);
-    binding._fastn_binding = path;
-    binding._firm = -Infinity;
-
-    function modelAttachHandler(data){
-        binding._model.attach(data);
-        binding._change(binding._model.get(path));
-        binding.emit('attach', data, 1);
-    }
-
-    function modelDetachHandler(){
-        binding._model.detach();
-    }
-
-    binding.attach = function(object, firm){
-
-        // If the binding is being asked to attach loosly to an object,
-        // but it has already been defined as being firmly attached, do not attach.
-        if(firmer(binding, firm)){
-            return binding;
-        }
-
-        binding._firm = firm;
-
-        var isModel = fastn.isModel(object);
-
-        if(isModel && bindingScope.attachedModel === object){
-            return binding;
-        }
-
-        if(bindingScope.attachedModel){
-            bindingScope.attachedModel.removeListener('attach', modelAttachHandler);
-            bindingScope.attachedModel.removeListener('detach', modelDetachHandler);
-            bindingScope.attachedModel = null;
-        }
-
-        if(isModel){
-            bindingScope.attachedModel = object;
-            bindingScope.attachedModel.on('attach', modelAttachHandler);
-            bindingScope.attachedModel.on('detach', modelDetachHandler);
-            object = object._model;
-        }
-
-        if(!(object instanceof Object)){
-            object = {};
-        }
-
-        if(binding._model._model === object){
-            return binding;
-        }
-
-        modelAttachHandler(object);
-
-        return binding;
-    };
-
-    binding.detach = function(firm){
-        if(firmer(binding, firm)){
-            return binding;
-        }
-
-        bindingScope.value = undefined;
-        if(binding._model.isAttached()){
-            binding._model.detach();
-        }
-        binding.emit('detach', 1);
-        return binding;
-    };
-    binding._set = function(newValue){
-        if(same(binding._model.get(path), newValue)){
-            return;
-        }
-        if(!binding._model.isAttached()){
-            binding._model.attach(binding._model.get('.'));
-        }
-        binding._model.set(path, newValue);
-    };
-    binding._change = function(newValue){
-        bindingScope.value = newValue;
-        binding.emit('change', binding());
-    };
-    binding.clone = function(keepAttachment){
-        var newBinding = createBinding.apply(fastn, binding._arguments);
-
-        if(keepAttachment){
-            newBinding.attach(bindingScope.attachedModel || binding._model._model, binding._firm);
-        }
-
-        return newBinding;
-    };
-    binding.destroy = function(soft){
-        if(destroyed){
-            return;
-        }
-        if(soft && binding.listeners('change').length){
-            return;
-        }
-        destroyed = true;
-        binding.emit('destroy');
-        binding.detach();
-        binding._model.destroy();
-    };
-
-    binding.destroyed = function(){
-        return destroyed;
-    };
-
-    if(path !== '.'){
-        binding._model.on(path, binding._change);
-    }
-
-    return binding;
-}
-
-function from(valueOrBinding){
-    if(is.binding(valueOrBinding)){
-        return valueOrBinding;
-    }
-
-    var result = this();
-    result(valueOrBinding)
-
-    return result;
-}
-
-module.exports = function(fastn){
-    var binding = createBinding.bind(fastn);
-    binding.from = from.bind(binding);
-    return binding;
-};
-},{"./firmer":35,"./is":38,"function-emitter":64,"same-value":77,"setprototypeof":80}],33:[function(require,module,exports){
-function insertChild(fastn, container, child, index){
-    if(child == null || child === false){
-        return;
-    }
-
-    var currentIndex = container._children.indexOf(child),
-        newComponent = fastn.toComponent(child);
-
-    if(newComponent !== child && ~currentIndex){
-        container._children.splice(currentIndex, 1, newComponent);
-    }
-
-    if(!~currentIndex || newComponent !== child){
-        newComponent.attach(container.scope(), 1);
-    }
-
-    if(currentIndex !== index){
-        if(~currentIndex){
-            container._children.splice(currentIndex, 1);
-        }
-        container._children.splice(index, 0, newComponent);
-    }
-
-    if(container.element){
-        if(!newComponent.element){
-            newComponent.render();
-        }
-        container._insert(newComponent.element, index);
-        newComponent.emit('insert', container);
-        container.emit('childInsert', newComponent);
-    }
-}
-
-function getContainerElement(){
-    return this.containerElement || this.element;
-}
-
-function insert(child, index){
-    var childComponent = child,
-        container = this.container,
-        fastn = this.fastn;
-
-    if(index && typeof index === 'object'){
-        childComponent = Array.prototype.slice.call(arguments);
-    }
-
-    if(isNaN(index)){
-        index = container._children.length;
-    }
-
-    if(Array.isArray(childComponent)){
-        for (var i = 0; i < childComponent.length; i++) {
-            container.insert(childComponent[i], i + index);
-        }
-    }else{
-        insertChild(fastn, container, childComponent, index);
-    }
-
-    return container;
-}
-
-module.exports = function(fastn, component, type, settings, children){
-    component.insert = insert.bind({
-        container: component,
-        fastn: fastn
-    });
-
-    component._insert = function(element, index){
-        var containerElement = component.getContainerElement();
-        if(!containerElement){
-            return;
-        }
-
-        if(containerElement.childNodes[index] === element){
-            return;
-        }
-
-        containerElement.insertBefore(element, containerElement.childNodes[index]);
-    };
-
-    component.remove = function(childComponent){
-        var index = component._children.indexOf(childComponent);
-        if(~index){
-            component._children.splice(index,1);
-        }
-
-        childComponent.detach(1);
-
-        if(childComponent.element){
-            component._remove(childComponent.element);
-            childComponent.emit('remove', component);
-        }
-        component.emit('childRemove', childComponent);
-    };
-
-    component._remove = function(element){
-        var containerElement = component.getContainerElement();
-
-        if(!element || !containerElement || element.parentNode !== containerElement){
-            return;
-        }
-
-        containerElement.removeChild(element);
-    };
-
-    component.empty = function(){
-        while(component._children.length){
-            component.remove(component._children.pop());
-        }
-    };
-
-    component.replaceChild = function(oldChild, newChild){
-        var index = component._children.indexOf(oldChild);
-
-        if(!~index){
-            return;
-        }
-
-        component.remove(oldChild);
-        component.insert(newChild, index);
-    };
-
-    component.getContainerElement = getContainerElement.bind(component);
-
-    component.on('render', component.insert.bind(null, component._children, 0));
-
-    component.on('attach', function(model, firm){
-        for(var i = 0; i < component._children.length; i++){
-            if(fastn.isComponent(component._children[i])){
-                component._children[i].attach(model, firm);
-            }
-        }
-    });
-
-    component.on('destroy', function(data, firm){
-        for(var i = 0; i < component._children.length; i++){
-            if(fastn.isComponent(component._children[i])){
-                component._children[i].destroy(firm);
-            }
-        }
-    });
-
-    return component;
-};
-},{}],34:[function(require,module,exports){
-var setify = require('setify'),
-    classist = require('classist');
-
-function updateTextProperty(generic, element, value){
-    if(arguments.length === 2){
-        return element.textContent;
-    }
-    element.textContent = (value == null ? '' : value);
-}
-
-module.exports = {
-    class: function(generic, element, value){
-        if(!generic._classist){
-            generic._classist = classist(element);
-        }
-
-        if(arguments.length < 3){
-            return generic._classist();
-        }
-
-        generic._classist(value);
-    },
-    display: function(generic, element, value){
-        if(arguments.length === 2){
-            return element.style.display !== 'none';
-        }
-        element.style.display = value ? null : 'none';
-    },
-    disabled: function(generic, element, value){
-        if(arguments.length === 2){
-            return element.hasAttribute('disabled');
-        }
-        if(value){
-            element.setAttribute('disabled', 'disabled');
-        }else{
-            element.removeAttribute('disabled');
-        }
-    },
-    textContent: updateTextProperty,
-    innerText: updateTextProperty,
-    innerHTML: function(generic, element, value){
-        if(arguments.length === 2){
-            return element.innerHTML;
-        }
-        element.innerHTML = (value == null ? '' : value);
-    },
-    value: function(generic, element, value){
-        var inputType = element.type;
-
-        if(element.nodeName === 'INPUT' && inputType === 'date'){
-            if(arguments.length === 2){
-                return element.value ? new Date(element.value.replace(/-/g,'/').replace('T',' ')) : null;
-            }
-
-            value = value != null ? new Date(value) : null;
-
-            if(!value || isNaN(value)){
-                element.value = null;
-            }else{
-                element.value = [
-                    value.getFullYear(),
-                    ('0' + (value.getMonth() + 1)).slice(-2),
-                    ('0' + value.getDate()).slice(-2)
-                ].join('-');
-            }
-            return;
-        }
-
-        if(arguments.length === 2){
-            return element.value;
-        }
-        if(value === undefined){
-            value = null;
-        }
-
-        if(element.nodeName === 'PROGRESS'){
-            value = parseFloat(value) || 0;
-        }
-
-        setify(element, value);
-    },
-    max: function(generic, element, value) {
-        if(arguments.length === 2){
-            return element.value;
-        }
-
-        if(element.nodeName === 'PROGRESS'){
-            value = parseFloat(value) || 0;
-        }
-
-        element.max = value;
-    },
-    style: function(generic, element, value){
-        if(arguments.length === 2){
-            return element.style;
-        }
-
-        for(var key in value){
-            element.style[key] = value[key];
-        }
-    },
-    type: function(generic, element, value){
-        if(arguments.length === 2){
-            return element.type;
-        }
-        element.setAttribute('type', value);
-    }
-};
-},{"classist":40,"setify":79}],35:[function(require,module,exports){
-// Is the entity firmer than the new firmness
-module.exports = function(entity, firm){
-    if(firm != null && (entity._firm === undefined || firm < entity._firm)){
-        return true;
-    }
-};
-},{}],36:[function(require,module,exports){
-var containerComponent = require('./containerComponent'),
-    schedule = require('./schedule'),
-    fancyProps = require('./fancyProps'),
-    matchDomHandlerName = /^((?:el\.)?)([^. ]+)(?:\.(capture))?$/,
-    GENERIC = '_generic';
-
-function createProperties(fastn, component, settings){
-    for(var key in settings){
-        var setting = settings[key];
-
-        if(typeof setting === 'function' && !fastn.isProperty(setting) && !fastn.isBinding(setting)){
-            continue;
-        }
-
-        component.addDomProperty(key);
-    }
-}
-
-function trackKeyEvents(component, element, event){
-    if('_lastStates' in component && 'charCode' in event){
-        component._lastStates.unshift(element.value);
-        component._lastStates.pop();
-    }
-}
-
-function addDomHandler(component, element, handlerName, eventName, capture){
-    var eventParts = handlerName.split('.');
-
-    if(eventParts[0] === 'on'){
-        eventParts.shift();
-    }
-
-    var handler = function(event){
-            trackKeyEvents(component, element, event);
-            component.emit(handlerName, event, component.scope());
-        };
-
-    element.addEventListener(eventName, handler, capture);
-
-    component.on('destroy', function(){
-        element.removeEventListener(eventName, handler, capture);
-    });
-}
-
-function addDomHandlers(component, element, eventNames){
-    var events = eventNames.split(' ');
-
-    for(var i = 0; i < events.length; i++){
-        var eventName = events[i],
-            match = eventName.match(matchDomHandlerName);
-
-        if(!match){
-            continue;
-        }
-
-        if(match[1] || 'on' + match[2] in element){
-            addDomHandler(component, element, eventNames, match[2], match[3]);
-        }
-    }
-}
-
-function addAutoHandler(component, element, key, settings){
-    if(!settings[key]){
-        return;
-    }
-
-    var autoEvent = settings[key].split(':'),
-        eventName = key.slice(2);
-
-    delete settings[key];
-
-    var handler = function(event){
-        var fancyProp = fancyProps[autoEvent[1]],
-            value = fancyProp ? fancyProp(component, element) : element[autoEvent[1]];
-
-        trackKeyEvents(component, element, event);
-
-        component[autoEvent[0]](value);
-    };
-
-    element.addEventListener(eventName, handler);
-
-    component.on('destroy', function(){
-        element.removeEventListener(eventName, handler);
-    });
-}
-
-function addDomProperty(fastn, key, property){
-    var component = this,
-        timeout;
-
-    property = property || component[key] || fastn.property();
-    component.setProperty(key, property);
-
-    function update(){
-
-        var element = component.getPropertyElement(key),
-            value = property();
-
-        if(!element || component.destroyed()){
-            return;
-        }
-
-        if(
-            key === 'value' &&
-            component._lastStates &&
-            ~component._lastStates.indexOf(value)
-        ){
-            clearTimeout(timeout);
-            timeout = setTimeout(update, 50);
-            return;
-        }
-
-        var isProperty = key in element,
-            fancyProp = fancyProps[key],
-            previous = fancyProp ? fancyProp(component, element) : isProperty ? element[key] : element.getAttribute(key);
-
-        if(!fancyProp && !isProperty && value == null){
-            value = '';
-        }
-
-        if(value !== previous){
-            if(fancyProp){
-                fancyProp(component, element, value);
-                return;
-            }
-
-            if(isProperty){
-                element[key] = value;
-                return;
-            }
-
-            if(typeof value !== 'function' && typeof value !== 'object'){
-                element.setAttribute(key, value);
-            }
-        }
-    }
-
-    property.updater(update);
-}
-
-function onRender(){
-    var component = this,
-        element;
-
-    for(var key in component._settings){
-        element = component.getEventElement(key);
-        if(key.slice(0,2) === 'on' && key in element){
-            addAutoHandler(component, element, key, component._settings);
-        }
-    }
-
-    for(var eventKey in component._events){
-        element = component.getEventElement(key);
-        addDomHandlers(component, element, eventKey);
-    }
-}
-
-function render(){
-    this.element = this.createElement(this._settings.tagName || this._tagName);
-
-    if('value' in this.element){
-        this._lastStates = new Array(2);
-    }
-
-    this.emit('render');
-
-    return this;
-};
-
-function genericComponent(fastn, component, type, settings, children){
-    if(component.is(type)){
-        return component;
-    }
-
-    if(type === GENERIC){
-        component._tagName = component._tagName || 'div';
-    }else{
-        component._tagName = type;
-    }
-
-    if(component.is(GENERIC)){
-        return component;
-    }
-
-    component.extend('_container', settings, children);
-
-    component.addDomProperty = addDomProperty.bind(component, fastn);
-    component.getEventElement = component.getContainerElement;
-    component.getPropertyElement = component.getContainerElement;
-    component.updateProperty = genericComponent.updateProperty;
-    component.createElement = genericComponent.createElement;
-
-    createProperties(fastn, component, settings);
-
-    component.render = render.bind(component);
-
-    component.on('render', onRender);
-
-    return component;
-}
-
-genericComponent.updateProperty = function(component, property, update){
-    if(typeof document !== 'undefined' && document.contains(component.element)){
-        schedule(property, update);
-    }else{
-        update();
-    }
-};
-
-genericComponent.createElement = function(tagName){
-    if(tagName instanceof Node){
-        return tagName;
-    }
-    return document.createElement(tagName);
-};
-
-module.exports = genericComponent;
-},{"./containerComponent":33,"./fancyProps":34,"./schedule":92}],37:[function(require,module,exports){
-var createProperty = require('./property'),
-    createBinding = require('./binding'),
-    BaseComponent = require('./baseComponent'),
-    crel = require('crel'),
-    Enti = require('enti'),
-    objectAssign = require('object-assign'),
-    is = require('./is');
-
-function inflateProperties(component, settings){
-    for(var key in settings){
-        var setting = settings[key],
-            property = component[key];
-
-        if(is.property(settings[key])){
-
-            if(is.property(property)){
-                property.destroy();
-            }
-
-            setting.addTo(component, key);
-
-        }else if(is.property(property)){
-
-            if(is.binding(setting)){
-                property.binding(setting);
-            }else{
-                property(setting);
-            }
-
-            property.addTo(component, key);
-        }
-    }
-}
-
-function validateExpectedComponents(components, componentName, expectedComponents){
-    expectedComponents = expectedComponents.filter(function(componentName){
-        return !(componentName in components);
-    });
-
-    if(expectedComponents.length){
-        console.warn([
-            'fastn("' + componentName + '") uses some components that have not been registered with fastn',
-            'Expected conponent constructors: ' + expectedComponents.join(', ')
-        ].join('\n\n'));
-    }
-}
-
-module.exports = function(components, debug){
-
-    if(!components || typeof components !== 'object'){
-        throw new Error('fastn must be initialised with a components object');
-    }
-
-    components._container = components._container || require('./containerComponent');
-
-    function fastn(type){
-
-        var args = [];
-        for(var i = 0; i < arguments.length; i++){
-            args[i] = arguments[i];
-        }
-
-        var settings = args[1],
-            childrenIndex = 2,
-            settingsChild = fastn.toComponent(args[1]);
-
-        if(Array.isArray(args[1]) || settingsChild || !args[1]){
-            args[1] = settingsChild || args[1];
-            childrenIndex--;
-            settings = null;
-        }
-
-        settings = objectAssign({}, settings || {});
-
-        var types = typeof type === 'string' ? type.split(':') : Array.isArray(type) ? type : [type],
-            baseType,
-            children = args.slice(childrenIndex),
-            component = fastn.base(type, settings, children);
-
-        while(baseType = types.shift()){
-            component.extend(baseType, settings, children);
-        }
-
-        component._properties = {};
-
-        inflateProperties(component, settings);
-
-        return component;
-    }
-
-    fastn.toComponent = function(component){
-        if(component == null){
-            return;
-        }
-        if(is.component(component)){
-            return component;
-        }
-        if(typeof component !== 'object' || component instanceof Date){
-            return fastn('text', {auto: true}, component);
-        }
-        if(crel.isElement(component)){
-            return fastn(component);
-        }
-        if(crel.isNode(component)){
-            return fastn('text', {auto: true}, component.textContent);
-        }
-    };
-
-    fastn.debug = debug;
-    fastn.property = createProperty.bind(fastn);
-    fastn.binding = createBinding(fastn);
-    fastn.isComponent = is.component;
-    fastn.isBinding = is.binding;
-    fastn.isDefaultBinding = is.defaultBinding;
-    fastn.isBindingObject = is.bindingObject;
-    fastn.isProperty = is.property;
-    fastn.components = components;
-    fastn.Model = Enti;
-    fastn.isModel = Enti.isEnti.bind(Enti);
-
-    fastn.base = function(type, settings, children){
-        return new BaseComponent(fastn, type, settings, children);
-    };
-
-    for(var key in components){
-        var componentConstructor = components[key];
-
-        if(componentConstructor.expectedComponents){
-            validateExpectedComponents(components, key, componentConstructor.expectedComponents);
-        }
-    }
-
-    return fastn;
-};
-},{"./baseComponent":31,"./binding":32,"./containerComponent":33,"./is":38,"./property":91,"crel":43,"enti":51,"object-assign":72}],38:[function(require,module,exports){
-var FUNCTION = 'function',
-    OBJECT = 'object',
-    FASTNBINDING = '_fastn_binding',
-    FASTNPROPERTY = '_fastn_property',
-    FASTNCOMPONENT = '_fastn_component',
-    DEFAULTBINDING = '_default_binding';
-
-function isComponent(thing){
-    return thing && typeof thing === OBJECT && FASTNCOMPONENT in thing;
-}
-
-function isBindingObject(thing){
-    return thing && typeof thing === OBJECT && FASTNBINDING in thing;
-}
-
-function isBinding(thing){
-    return typeof thing === FUNCTION && FASTNBINDING in thing;
-}
-
-function isProperty(thing){
-    return typeof thing === FUNCTION && FASTNPROPERTY in thing;
-}
-
-function isDefaultBinding(thing){
-    return typeof thing === FUNCTION && FASTNBINDING in thing && DEFAULTBINDING in thing;
-}
-
-module.exports = {
-    component: isComponent,
-    bindingObject: isBindingObject,
-    binding: isBinding,
-    defaultBinding: isDefaultBinding,
-    property: isProperty
-};
-},{}],39:[function(require,module,exports){
-var MultiMap = require('multimap'),
-    merge = require('flat-merge');
-
-MultiMap.Map = Map;
-
-function each(value, fn){
-    if(!value || typeof value !== 'object'){
-        return;
-    }
-
-    if(Array.isArray(value)){
-        for(var i = 0; i < value.length; i++){
-            fn(value[i], i)
-        }
-    }else{
-        for(var key in value){
-            fn(value[key], key);
-        }
-    }
-}
-
-function keyFor(object, value){
-    if(!object || typeof object !== 'object'){
-        return false;
-    }
-
-    if(Array.isArray(object)){
-        var index = object.indexOf(value);
-        return index >=0 ? index : false;
-    }
-
-    for(var key in object){
-        if(object[key] === value){
-            return key;
-        }
-    }
-
-    return false;
-}
-
-module.exports = function(fastn, component, type, settings, children){
-
-    if(fastn.components._generic){
-        component.extend('_generic', settings, children);
-    }else{
-        component.extend('_container', settings, children);
-    }
-
-    if(!('template' in settings)){
-        console.warn('No "template" function was set for this templater component');
-    }
-
-    var itemsMap = new MultiMap(),
-        dataMap = new WeakMap(),
-        lastTemplate,
-        existingItem = {};
-
-    function updateItems(){
-        var value = component.items(),
-            template = component.template(),
-            emptyTemplate = component.emptyTemplate(),
-            newTemplate = lastTemplate !== template;
-
-        var currentItems = merge(template ? value : []);
-
-        itemsMap.forEach(function(childComponent, item){
-            var currentKey = keyFor(currentItems, item);
-
-            if(!newTemplate && currentKey !== false){
-                currentItems[currentKey] = [existingItem, item, childComponent];
-            }else{
-                removeComponent(childComponent);
-                itemsMap.delete(item);
-            }
-        });
-
-        var index = 0;
-
-        function updateItem(item, key){
-            var child,
-                existing;
-
-            while(index < component._children.length && !component._children[index]._templated){
-                index++;
-            }
-
-            if(Array.isArray(item) && item[0] === existingItem){
-                existing = true;
-                child = item[2];
-                item = item[1];
-            }
-
-            var childModel;
-
-            if(!existing){
-                childModel = new fastn.Model({
-                    item: item,
-                    key: key
-                });
-
-                child = fastn.toComponent(template(childModel, component.scope()));
-                if(!child){
-                    child = fastn('template');
-                }
-                child._listItem = item;
-                child._templated = true;
-
-                dataMap.set(child, childModel);
-                itemsMap.set(item, child);
-            }else{
-                childModel = dataMap.get(child);
-                childModel.set('key', key);
-            }
-
-            if(fastn.isComponent(child) && component._settings.attachTemplates !== false){
-                child.attach(childModel, 2);
-            }
-
-            component.insert(child, index);
-            index++;
-        }
-
-        each(currentItems, updateItem);
-
-        lastTemplate = template;
-
-        if(index === 0 && emptyTemplate){
-            var child = fastn.toComponent(emptyTemplate(component.scope()));
-            if(!child){
-                child = fastn('template');
-            }
-            child._templated = true;
-
-            itemsMap.set({}, child);
-
-            component.insert(child);
-        }
-    }
-
-    function removeComponent(childComponent){
-        component.remove(childComponent);
-        childComponent.destroy();
-    }
-
-    component.setProperty('items',
-        fastn.property([], settings.itemChanges || 'type keys shallowStructure')
-            .on('change', updateItems)
-    );
-
-    component.setProperty('template',
-        fastn.property().on('change', updateItems)
-    );
-
-    component.setProperty('emptyTemplate',
-        fastn.property().on('change', updateItems)
-    );
-
-    return component;
-};
-},{"flat-merge":59,"multimap":70}],40:[function(require,module,exports){
-module.exports = function(element){
-    var lastClasses = [];
-
-    return function(classes){
-
-        if(!arguments.length){
-            return lastClasses.join(' ');
-        }
-
-        function cleanClassName(result, className){
-            if(typeof className === 'string' && className.match(/\s/)){
-                className = className.split(' ');
-            }
-
-            if(Array.isArray(className)){
-                return result.concat(className.reduce(cleanClassName, []));
-            }
-
-            if(className != null && className !== '' && typeof className !== 'boolean'){
-                result.push(String(className).trim());
-            }
-
-            return result;
-        }
-
-        var newClasses = cleanClassName([], classes),
-            currentClasses = element.className ? element.className.split(' ') : [];
-
-        lastClasses.map(function(className){
-            if(!className){
-                return;
-            }
-
-            var index = currentClasses.indexOf(className);
-
-            if(~index){
-                currentClasses.splice(index, 1);
-            }
-        });
-
-        currentClasses = currentClasses.concat(newClasses);
-        lastClasses = newClasses;
-
-        element.className = currentClasses.join(' ');
-    };
-};
-
-},{}],41:[function(require,module,exports){
-(function (Buffer){
-var clone = (function() {
-'use strict';
-
-/**
- * Clones (copies) an Object using deep copying.
- *
- * This function supports circular references by default, but if you are certain
- * there are no circular references in your object, you can save some CPU time
- * by calling clone(obj, false).
- *
- * Caution: if `circular` is false and `parent` contains circular references,
- * your program may enter an infinite loop and crash.
- *
- * @param `parent` - the object to be cloned
- * @param `circular` - set to true if the object to be cloned may contain
- *    circular references. (optional - true by default)
- * @param `depth` - set to a number if the object is only to be cloned to
- *    a particular depth. (optional - defaults to Infinity)
- * @param `prototype` - sets the prototype to be used when cloning an object.
- *    (optional - defaults to parent prototype).
-*/
-function clone(parent, circular, depth, prototype) {
-  var filter;
-  if (typeof circular === 'object') {
-    depth = circular.depth;
-    prototype = circular.prototype;
-    filter = circular.filter;
-    circular = circular.circular
-  }
-  // maintain two arrays for circular references, where corresponding parents
-  // and children have the same index
-  var allParents = [];
-  var allChildren = [];
-
-  var useBuffer = typeof Buffer != 'undefined';
-
-  if (typeof circular == 'undefined')
-    circular = true;
-
-  if (typeof depth == 'undefined')
-    depth = Infinity;
-
-  // recurse this function so we don't reset allParents and allChildren
-  function _clone(parent, depth) {
-    // cloning null always returns null
-    if (parent === null)
-      return null;
-
-    if (depth == 0)
-      return parent;
-
-    var child;
-    var proto;
-    if (typeof parent != 'object') {
-      return parent;
-    }
-
-    if (clone.__isArray(parent)) {
-      child = [];
-    } else if (clone.__isRegExp(parent)) {
-      child = new RegExp(parent.source, __getRegExpFlags(parent));
-      if (parent.lastIndex) child.lastIndex = parent.lastIndex;
-    } else if (clone.__isDate(parent)) {
-      child = new Date(parent.getTime());
-    } else if (useBuffer && Buffer.isBuffer(parent)) {
-      child = new Buffer(parent.length);
-      parent.copy(child);
-      return child;
-    } else {
-      if (typeof prototype == 'undefined') {
-        proto = Object.getPrototypeOf(parent);
-        child = Object.create(proto);
-      }
-      else {
-        child = Object.create(prototype);
-        proto = prototype;
-      }
-    }
-
-    if (circular) {
-      var index = allParents.indexOf(parent);
-
-      if (index != -1) {
-        return allChildren[index];
-      }
-      allParents.push(parent);
-      allChildren.push(child);
-    }
-
-    for (var i in parent) {
-      var attrs;
-      if (proto) {
-        attrs = Object.getOwnPropertyDescriptor(proto, i);
-      }
-
-      if (attrs && attrs.set == null) {
-        continue;
-      }
-      child[i] = _clone(parent[i], depth - 1);
-    }
-
-    return child;
-  }
-
-  return _clone(parent, depth);
-}
-
-/**
- * Simple flat clone using prototype, accepts only objects, usefull for property
- * override on FLAT configuration object (no nested props).
- *
- * USE WITH CAUTION! This may not behave as you wish if you do not know how this
- * works.
- */
-clone.clonePrototype = function clonePrototype(parent) {
-  if (parent === null)
-    return null;
-
-  var c = function () {};
-  c.prototype = parent;
-  return new c();
-};
-
-// private utility functions
-
-function __objToStr(o) {
-  return Object.prototype.toString.call(o);
-};
-clone.__objToStr = __objToStr;
-
-function __isDate(o) {
-  return typeof o === 'object' && __objToStr(o) === '[object Date]';
-};
-clone.__isDate = __isDate;
-
-function __isArray(o) {
-  return typeof o === 'object' && __objToStr(o) === '[object Array]';
-};
-clone.__isArray = __isArray;
-
-function __isRegExp(o) {
-  return typeof o === 'object' && __objToStr(o) === '[object RegExp]';
-};
-clone.__isRegExp = __isRegExp;
-
-function __getRegExpFlags(re) {
-  var flags = '';
-  if (re.global) flags += 'g';
-  if (re.ignoreCase) flags += 'i';
-  if (re.multiline) flags += 'm';
-  return flags;
-};
-clone.__getRegExpFlags = __getRegExpFlags;
-
-return clone;
-})();
-
-if (typeof module === 'object' && module.exports) {
-  module.exports = clone;
-}
-
-}).call(this,require("buffer").Buffer)
-},{"buffer":4}],42:[function(require,module,exports){
-var methods = [],
-    originals = {};
-
-for(var key in console){
-    methods.push(key);
-    originals[key] = console[key];
-}
-
-module.exports = function(callback) {
-    var results = {};
-    methods.forEach(function(key){
-        console[key] = function(){
-            results[key] = results[key] || [];
-            results[key] = results[key].concat(Array.prototype.slice.call(arguments));
-            originals[key].apply(console, arguments);
-        };
-    });
-    callback(function(){
-        methods.forEach(function(key){
-            console[key] = originals[key];
-        });
-        return results;
-    });
-}
-},{}],43:[function(require,module,exports){
-//Copyright (C) 2012 Kory Nunn
-
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-/*
-
-    This code is not formatted for readability, but rather run-speed and to assist compilers.
-
-    However, the code's intention should be transparent.
-
-    *** IE SUPPORT ***
-
-    If you require this library to work in IE7, add the following after declaring crel.
-
-    var testDiv = document.createElement('div'),
-        testLabel = document.createElement('label');
-
-    testDiv.setAttribute('class', 'a');
-    testDiv['className'] !== 'a' ? crel.attrMap['class'] = 'className':undefined;
-    testDiv.setAttribute('name','a');
-    testDiv['name'] !== 'a' ? crel.attrMap['name'] = function(element, value){
-        element.id = value;
-    }:undefined;
-
-
-    testLabel.setAttribute('for', 'a');
-    testLabel['htmlFor'] !== 'a' ? crel.attrMap['for'] = 'htmlFor':undefined;
-
-
-
-*/
-
-(function (root, factory) {
-    if (typeof exports === 'object') {
-        module.exports = factory();
-    } else if (typeof define === 'function' && define.amd) {
-        define(factory);
-    } else {
-        root.crel = factory();
-    }
-}(this, function () {
-    var fn = 'function',
-        obj = 'object',
-        nodeType = 'nodeType',
-        textContent = 'textContent',
-        setAttribute = 'setAttribute',
-        attrMapString = 'attrMap',
-        isNodeString = 'isNode',
-        isElementString = 'isElement',
-        d = typeof document === obj ? document : {},
-        isType = function(a, type){
-            return typeof a === type;
-        },
-        isNode = typeof Node === fn ? function (object) {
-            return object instanceof Node;
-        } :
-        // in IE <= 8 Node is an object, obviously..
-        function(object){
-            return object &&
-                isType(object, obj) &&
-                (nodeType in object) &&
-                isType(object.ownerDocument,obj);
-        },
-        isElement = function (object) {
-            return crel[isNodeString](object) && object[nodeType] === 1;
-        },
-        isArray = function(a){
-            return a instanceof Array;
-        },
-        appendChild = function(element, child) {
-            if (isArray(child)) {
-                child.map(function(subChild){
-                    appendChild(element, subChild);
-                });
-                return;
-            }
-            if(!crel[isNodeString](child)){
-                child = d.createTextNode(child);
-            }
-            element.appendChild(child);
-        };
-
-
-    function crel(){
-        var args = arguments, //Note: assigned to a variable to assist compilers. Saves about 40 bytes in closure compiler. Has negligable effect on performance.
-            element = args[0],
-            child,
-            settings = args[1],
-            childIndex = 2,
-            argumentsLength = args.length,
-            attributeMap = crel[attrMapString];
-
-        element = crel[isElementString](element) ? element : d.createElement(element);
-        // shortcut
-        if(argumentsLength === 1){
-            return element;
-        }
-
-        if(!isType(settings,obj) || crel[isNodeString](settings) || isArray(settings)) {
-            --childIndex;
-            settings = null;
-        }
-
-        // shortcut if there is only one child that is a string
-        if((argumentsLength - childIndex) === 1 && isType(args[childIndex], 'string') && element[textContent] !== undefined){
-            element[textContent] = args[childIndex];
-        }else{
-            for(; childIndex < argumentsLength; ++childIndex){
-                child = args[childIndex];
-
-                if(child == null){
-                    continue;
-                }
-
-                if (isArray(child)) {
-                  for (var i=0; i < child.length; ++i) {
-                    appendChild(element, child[i]);
-                  }
-                } else {
-                  appendChild(element, child);
-                }
-            }
-        }
-
-        for(var key in settings){
-            if(!attributeMap[key]){
-                if(isType(settings[key],fn)){
-                    element[key] = settings[key];
-                }else{
-                    element[setAttribute](key, settings[key]);
-                }
-            }else{
-                var attr = attributeMap[key];
-                if(typeof attr === fn){
-                    attr(element, settings[key]);
-                }else{
-                    element[setAttribute](attr, settings[key]);
-                }
-            }
-        }
-
-        return element;
-    }
-
-    // Used for mapping one kind of attribute to the supported version of that in bad browsers.
-    crel[attrMapString] = {};
-
-    crel[isElementString] = isElement;
-
-    crel[isNodeString] = isNode;
-
-    if(typeof Proxy !== 'undefined'){
-        crel.proxy = new Proxy(crel, {
-            get: function(target, key){
-                !(key in crel) && (crel[key] = crel.bind(null, key));
-                return crel[key];
-            }
-        });
-    }
-
-    return crel;
-}));
-
-},{}],44:[function(require,module,exports){
-function compare(a, b, visited){
-    var aType = typeof a;
-
-    if(aType !== typeof b){
-        return false;
-    }
-
-    if(a == null || b == null || !(aType === 'object' || aType === 'function')){
-        if(aType === 'number' && isNaN(a) && isNaN(b)){
-            return true;
-        }
-
-        return a === b;
-    }
-
-    if(Array.isArray(a) !== Array.isArray(b)){
-        return false;
-    }
-
-    var aKeys = Object.keys(a),
-        bKeys = Object.keys(b);
-
-    if(aKeys.length !== bKeys.length){
-        return false;
-    }
-
-    var equal = true;
-
-    if(!visited){
-        visited = new Set();
-    }
-
-    aKeys.forEach(function(key){
-        if(!(key in b)){
-            equal = false;
-            return;
-        }
-        if(a[key] && a[key] instanceof Object){
-            if(visited.has(a[key])){
-                return;
-            }
-            visited.add(a[key]);
-        }
-        if(!compare(a[key], b[key], visited)){
-            equal = false;
-            return;
-        }
-    });
-
-    return equal;
-};
-
-module.exports = function(a, b){
-    return compare(a, b);
-}
-},{}],45:[function(require,module,exports){
-var pSlice = Array.prototype.slice;
-var objectKeys = require('./lib/keys.js');
-var isArguments = require('./lib/is_arguments.js');
-
-var deepEqual = module.exports = function (actual, expected, opts) {
-  if (!opts) opts = {};
-  // 7.1. All identical values are equivalent, as determined by ===.
-  if (actual === expected) {
-    return true;
-
-  } else if (actual instanceof Date && expected instanceof Date) {
-    return actual.getTime() === expected.getTime();
-
-  // 7.3. Other pairs that do not both pass typeof value == 'object',
-  // equivalence is determined by ==.
-  } else if (!actual || !expected || typeof actual != 'object' && typeof expected != 'object') {
-    return opts.strict ? actual === expected : actual == expected;
-
-  // 7.4. For all other Object pairs, including Array objects, equivalence is
-  // determined by having the same number of owned properties (as verified
-  // with Object.prototype.hasOwnProperty.call), the same set of keys
-  // (although not necessarily the same order), equivalent values for every
-  // corresponding key, and an identical 'prototype' property. Note: this
-  // accounts for both named and indexed properties on Arrays.
-  } else {
-    return objEquiv(actual, expected, opts);
-  }
-}
-
-function isUndefinedOrNull(value) {
-  return value === null || value === undefined;
-}
-
-function isBuffer (x) {
-  if (!x || typeof x !== 'object' || typeof x.length !== 'number') return false;
-  if (typeof x.copy !== 'function' || typeof x.slice !== 'function') {
-    return false;
-  }
-  if (x.length > 0 && typeof x[0] !== 'number') return false;
-  return true;
-}
-
-function objEquiv(a, b, opts) {
-  var i, key;
-  if (isUndefinedOrNull(a) || isUndefinedOrNull(b))
-    return false;
-  // an identical 'prototype' property.
-  if (a.prototype !== b.prototype) return false;
-  //~~~I've managed to break Object.keys through screwy arguments passing.
-  //   Converting to array solves the problem.
-  if (isArguments(a)) {
-    if (!isArguments(b)) {
-      return false;
-    }
-    a = pSlice.call(a);
-    b = pSlice.call(b);
-    return deepEqual(a, b, opts);
-  }
-  if (isBuffer(a)) {
-    if (!isBuffer(b)) {
-      return false;
-    }
-    if (a.length !== b.length) return false;
-    for (i = 0; i < a.length; i++) {
-      if (a[i] !== b[i]) return false;
-    }
-    return true;
-  }
-  try {
-    var ka = objectKeys(a),
-        kb = objectKeys(b);
-  } catch (e) {//happens when one is a string literal and the other isn't
-    return false;
-  }
-  // having the same number of owned properties (keys incorporates
-  // hasOwnProperty)
-  if (ka.length != kb.length)
-    return false;
-  //the same set of keys (although not necessarily the same order),
-  ka.sort();
-  kb.sort();
-  //~~~cheap key test
-  for (i = ka.length - 1; i >= 0; i--) {
-    if (ka[i] != kb[i])
-      return false;
-  }
-  //equivalent values for every corresponding key, and
-  //~~~possibly expensive deep test
-  for (i = ka.length - 1; i >= 0; i--) {
-    key = ka[i];
-    if (!deepEqual(a[key], b[key], opts)) return false;
-  }
-  return typeof a === typeof b;
-}
-
-},{"./lib/is_arguments.js":46,"./lib/keys.js":47}],46:[function(require,module,exports){
-var supportsArgumentsClass = (function(){
-  return Object.prototype.toString.call(arguments)
-})() == '[object Arguments]';
-
-exports = module.exports = supportsArgumentsClass ? supported : unsupported;
-
-exports.supported = supported;
-function supported(object) {
-  return Object.prototype.toString.call(object) == '[object Arguments]';
-};
-
-exports.unsupported = unsupported;
-function unsupported(object){
-  return object &&
-    typeof object == 'object' &&
-    typeof object.length == 'number' &&
-    Object.prototype.hasOwnProperty.call(object, 'callee') &&
-    !Object.prototype.propertyIsEnumerable.call(object, 'callee') ||
-    false;
-};
-
-},{}],47:[function(require,module,exports){
-exports = module.exports = typeof Object.keys === 'function'
-  ? Object.keys : shim;
-
-exports.shim = shim;
-function shim (obj) {
-  var keys = [];
-  for (var key in obj) keys.push(key);
-  return keys;
-}
-
-},{}],48:[function(require,module,exports){
-'use strict';
-
-var keys = require('object-keys');
-var foreach = require('foreach');
-var hasSymbols = typeof Symbol === 'function' && typeof Symbol() === 'symbol';
-
-var toStr = Object.prototype.toString;
-
-var isFunction = function (fn) {
-	return typeof fn === 'function' && toStr.call(fn) === '[object Function]';
-};
-
-var arePropertyDescriptorsSupported = function () {
-	var obj = {};
-	try {
-		Object.defineProperty(obj, 'x', { enumerable: false, value: obj });
-        /* eslint-disable no-unused-vars, no-restricted-syntax */
-        for (var _ in obj) { return false; }
-        /* eslint-enable no-unused-vars, no-restricted-syntax */
-		return obj.x === obj;
-	} catch (e) { /* this is IE 8. */
-		return false;
-	}
-};
-var supportsDescriptors = Object.defineProperty && arePropertyDescriptorsSupported();
-
-var defineProperty = function (object, name, value, predicate) {
-	if (name in object && (!isFunction(predicate) || !predicate())) {
-		return;
-	}
-	if (supportsDescriptors) {
-		Object.defineProperty(object, name, {
-			configurable: true,
-			enumerable: false,
-			value: value,
-			writable: true
-		});
-	} else {
-		object[name] = value;
-	}
-};
-
-var defineProperties = function (object, map) {
-	var predicates = arguments.length > 2 ? arguments[2] : {};
-	var props = keys(map);
-	if (hasSymbols) {
-		props = props.concat(Object.getOwnPropertySymbols(map));
-	}
-	foreach(props, function (name) {
-		defineProperty(object, name, map[name], predicates[name]);
-	});
-};
-
-defineProperties.supportsDescriptors = !!supportsDescriptors;
-
-module.exports = defineProperties;
-
-},{"foreach":61,"object-keys":74}],49:[function(require,module,exports){
-module.exports = function () {
-    for (var i = 0; i < arguments.length; i++) {
-        if (arguments[i] !== undefined) return arguments[i];
-    }
-};
-
-},{}],50:[function(require,module,exports){
-
-
-/**
- * @version    0.5.1
- * @date       2016-07-26
- * @stability  2 - Unstable
- * @author     Lauri Rooden <lauri@rooden.ee>
- * @license    MIT License
- */
-
-
-// Void elements: http://www.w3.org/html/wg/drafts/html/master/syntax.html#void-elements
-var voidElements = {
-	AREA:1, BASE:1, BR:1, COL:1, EMBED:1, HR:1, IMG:1, INPUT:1,
-	KEYGEN:1, LINK:1, MENUITEM:1, META:1, PARAM:1, SOURCE:1, TRACK:1, WBR:1
-}
-, hasOwn = Object.prototype.hasOwnProperty
-, selector = require("selector-lite")
-, elementGetters = {
-	getElementById: function(id) {
-		return selector.find(this, "#" + id, 1)
-	},
-	getElementsByTagName: function(tag) {
-		return selector.find(this, tag)
-	},
-	getElementsByClassName: function(sel) {
-		return selector.find(this, "." + sel.replace(/\s+/g, "."))
-	},
-	querySelector: function(sel) {
-		return selector.find(this, sel, 1)
-	},
-	querySelectorAll: function(sel) {
-		return selector.find(this, sel)
-	}
-}
-, Node = {
-	ELEMENT_NODE:                1,
-	TEXT_NODE:                   3,
-	PROCESSING_INSTRUCTION_NODE: 7,
-	COMMENT_NODE:                8,
-	DOCUMENT_NODE:               9,
-	DOCUMENT_TYPE_NODE:         10,
-	DOCUMENT_FRAGMENT_NODE:     11,
-	nodeName:        null,
-	parentNode:      null,
-	ownerDocument:   null,
-	childNodes:      null,
-	get nodeValue() {
-		return this.nodeType === 3 || this.nodeType === 8 ? this.data : null
-	},
-	set nodeValue(text) {
-		return this.nodeType === 3 || this.nodeType === 8 ? (this.data = text) : null
-	},
-	get textContent() {
-		return this.hasChildNodes() ? this.childNodes.map(function(child) {
-			return child[ child.nodeType == 3 ? "data" : "textContent" ]
-		}).join("") : this.nodeType === 3 ? this.data : ""
-	},
-	set textContent(text) {
-		if (this.nodeType === 3) return (this.data = text)
-		for (var node = this; node.firstChild;) node.removeChild(node.firstChild)
-		node.appendChild(node.ownerDocument.createTextNode(text))
-	},
-	get firstChild() {
-		return this.childNodes && this.childNodes[0] || null
-	},
-	get lastChild() {
-		return this.childNodes && this.childNodes[ this.childNodes.length - 1 ] || null
-	},
-	get previousSibling() {
-		return getSibling(this, -1)
-	},
-	get nextSibling() {
-		return getSibling(this, 1)
-	},
-	// innerHTML and outerHTML should be extensions to the Element interface
-	get innerHTML() {
-		return Node.toString.call(this)
-	},
-	set innerHTML(html) {
-		var match, child
-		, node = this
-		, doc = node.ownerDocument || node
-		, tagRe = /<(!--([\s\S]*?)--|!\[[\s\S]*?\]|[?!][\s\S]*?)>|<(\/?)([^ \/>]+)([^>]*?)(\/?)>|[^<]+/mg
-		, attrRe = /([^= ]+)\s*=\s*(?:("|')((?:\\?.)*?)\2|(\S+))/g
-
-		for (; node.firstChild; ) node.removeChild(node.firstChild)
-
-		for (; (match = tagRe.exec(html)); ) {
-			if (match[3]) {
-				node = node.parentNode
-			} else if (match[4]) {
-				child = doc.createElement(match[4])
-				if (match[5]) {
-					match[5].replace(attrRe, setAttr)
-				}
-				node.appendChild(child)
-				if (!voidElements[child.tagName] && !match[6]) node = child
-			} else if (match[2]) {
-				node.appendChild(doc.createComment(htmlUnescape(match[2])))
-			} else if (match[1]) {
-				node.appendChild(doc.createDocumentType(match[1]))
-			} else {
-				node.appendChild(doc.createTextNode(htmlUnescape(match[0])))
-			}
-		}
-
-		return html
-
-		function setAttr(_, name, q, a, b) {
-			child.setAttribute(name, htmlUnescape(a || b || ""))
-		}
-	},
-	get outerHTML() {
-		return this.toString()
-	},
-	set outerHTML(html) {
-		var frag = this.ownerDocument.createDocumentFragment()
-		frag.innerHTML = html
-		this.parentNode.replaceChild(frag, this)
-		return html
-	},
-	get htmlFor() {
-		return this["for"]
-	},
-	set htmlFor(value) {
-		this["for"] = value
-	},
-	get className() {
-		return this["class"] || ""
-	},
-	set className(value) {
-		this["class"] = value
-	},
-	get style() {
-		return this.styleMap || (this.styleMap = new StyleMap())
-	},
-	set style(value) {
-		this.styleMap = new StyleMap(value)
-	},
-	hasChildNodes: function() {
-		return this.childNodes && this.childNodes.length > 0
-	},
-	appendChild: function(el) {
-		return this.insertBefore(el)
-	},
-	insertBefore: function(el, ref) {
-		var node = this
-		, childs = node.childNodes
-
-		if (el.nodeType == 11) {
-			while (el.firstChild) node.insertBefore(el.firstChild, ref)
-		} else {
-			if (el.parentNode) el.parentNode.removeChild(el)
-			el.parentNode = node
-
-			// If ref is null, insert el at the end of the list of children.
-			childs.splice(ref ? childs.indexOf(ref) : childs.length, 0, el)
-			// TODO:2015-07-24:lauri:update document.body and document.documentElement
-		}
-		return el
-	},
-	removeChild: function(el) {
-		var node = this
-		, index = node.childNodes.indexOf(el)
-		if (index == -1) throw new Error("NOT_FOUND_ERR")
-
-		node.childNodes.splice(index, 1)
-		el.parentNode = null
-		return el
-	},
-	replaceChild: function(el, ref) {
-		this.insertBefore(el, ref)
-		return this.removeChild(ref)
-	},
-	cloneNode: function(deep) {
-		var key
-		, node = this
-		, clone = new node.constructor(node.tagName || node.data)
-		clone.ownerDocument = node.ownerDocument
-
-		if (node.hasAttribute) {
-			for (key in node) if (node.hasAttribute(key)) clone[key] = node[key].valueOf()
-		}
-
-		if (deep && node.hasChildNodes()) {
-			node.childNodes.forEach(function(child) {
-				clone.appendChild(child.cloneNode(deep))
-			})
-		}
-		return clone
-	},
-	toString: function() {
-		return this.hasChildNodes() ? this.childNodes.reduce(function(memo, node) {
-			return memo + node
-		}, "") : ""
-	}
-}
-
-
-
-function extendNode(obj, extras) {
-	obj.prototype = Object.create(Node)
-	for (var descriptor, key, i = 1; (extras = arguments[i++]); ) {
-		for (key in extras) {
-			descriptor = Object.getOwnPropertyDescriptor(extras, key)
-			Object.defineProperty(obj.prototype, key, descriptor)
-		}
-	}
-	obj.prototype.constructor = obj
-}
-
-function camelCase(str) {
-	return str.replace(/[ _-]+([a-z])/g, function(_, a) { return a.toUpperCase() })
-}
-
-function hyphenCase(str) {
-	return str.replace(/[A-Z]/g, "-$&").toLowerCase()
-}
-
-function htmlEscape(str) {
-	return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-}
-
-function htmlUnescape(str) {
-	return str.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&amp;/g, "&")
-}
-
-function StyleMap(style) {
-	var styleMap = this
-	if (style) style.split(/\s*;\s*/g).map(function(val) {
-		val = val.split(/\s*:\s*/)
-		if(val[1]) styleMap[val[0] == "float" ? "cssFloat" : camelCase(val[0])] = val[1]
-	})
-}
-
-StyleMap.prototype.valueOf = function() {
-	var styleMap = this
-	return Object.keys(styleMap).map(function(key) {
-		return (key == "cssFloat" ? "float: " : hyphenCase(key) + ": ") + styleMap[key]
-	}).join("; ")
-}
-
-function getSibling(node, step) {
-	var silbings = node.parentNode && node.parentNode.childNodes
-	, index = silbings && silbings.indexOf(node)
-
-	return silbings && index > -1 && silbings[ index + step ] || null
-}
-
-
-
-function DocumentFragment() {
-	this.childNodes = []
-}
-
-extendNode(DocumentFragment, {
-	nodeType: 11,
-	nodeName: "#document-fragment"
-})
-
-function Attr(node, name) {
-	this.ownerElement = node
-	this.name = name.toLowerCase()
-}
-
-Attr.prototype = {
-	get value() { return this.ownerElement.getAttribute(this.name) },
-	set value(val) { this.ownerElement.setAttribute(this.name, val) },
-	toString: function() {
-		return this.name + "=\"" + htmlEscape(this.value) + "\""
-	}
-}
-
-function escapeAttributeName(name) {
-	name = name.toLowerCase()
-	if (name === "constructor" || name === "attributes") return name.toUpperCase()
-	return name
-}
-
-function HTMLElement(tag) {
-	var element = this
-	element.nodeName = element.tagName = tag.toUpperCase()
-	element.localName = tag.toLowerCase()
-	element.childNodes = []
-}
-
-extendNode(HTMLElement, elementGetters, {
-	get attributes() {
-		var key
-		, attrs = []
-		, element = this
-		for (key in element) if (key === escapeAttributeName(key) && element.hasAttribute(key))
-			attrs.push(new Attr(element, escapeAttributeName(key)))
-		return attrs
-	},
-	matches: function(sel) {
-		return selector.matches(this, sel)
-	},
-	closest: function(sel) {
-		return selector.closest(this, sel)
-	},
-	namespaceURI: "http://www.w3.org/1999/xhtml",
-	nodeType: 1,
-	localName: null,
-	tagName: null,
-	styleMap: null,
-	hasAttribute: function(name) {
-		name = escapeAttributeName(name)
-		return name != "style" ? hasOwn.call(this, name) :
-		!!(this.styleMap && Object.keys(this.styleMap).length)
-	},
-	getAttribute: function(name) {
-		name = escapeAttributeName(name)
-		return this.hasAttribute(name) ? "" + this[name] : null
-	},
-	setAttribute: function(name, value) {
-		this[escapeAttributeName(name)] = "" + value
-	},
-	removeAttribute: function(name) {
-		name = escapeAttributeName(name)
-		this[name] = ""
-		delete this[name]
-	},
-	toString: function() {
-		var attrs = this.attributes.join(" ")
-		return "<" + this.localName + (attrs ? " " + attrs : "") + ">" +
-		(voidElements[this.tagName] ? "" : this.innerHTML + "</" + this.localName + ">")
-	}
-})
-
-function ElementNS(namespace, tag) {
-	var element = this
-	element.namespaceURI = namespace
-	element.nodeName = element.tagName = element.localName = tag
-	element.childNodes = []
-}
-
-ElementNS.prototype = HTMLElement.prototype
-
-function Text(data) {
-	this.data = data
-}
-
-extendNode(Text, {
-	nodeType: 3,
-	nodeName: "#text",
-	toString: function() {
-		return htmlEscape("" + this.data)
-	}
-})
-
-function Comment(data) {
-	this.data = data
-}
-
-extendNode(Comment, {
-	nodeType: 8,
-	nodeName: "#comment",
-	toString: function() {
-		return "<!--" + this.data + "-->"
-	}
-})
-
-function DocumentType(data) {
-	this.data = data
-}
-
-extendNode(DocumentType, {
-	nodeType: 10,
-	toString: function() {
-		return "<" + this.data + ">"
-		// var node = document.doctype
-		// return "<!DOCTYPE " + node.name +
-		// 	(node.publicId ? ' PUBLIC "' + node.publicId + '"' : '') +
-		// 	(!node.publicId && node.systemId ? ' SYSTEM' : '') +
-		// 	(node.systemId ? ' "' + node.systemId + '"' : '') + '>'
-	}
-})
-
-function Document() {
-	this.childNodes = []
-	this.documentElement = this.createElement("html")
-	this.appendChild(this.documentElement)
-	this.body = this.createElement("body")
-	this.documentElement.appendChild(this.body)
-}
-
-function own(Element) {
-	return function($1, $2) {
-		var node = new Element($1, $2)
-		node.ownerDocument = this
-		return node
-	}
-}
-
-extendNode(Document, elementGetters, {
-	nodeType: 9,
-	nodeName: "#document",
-	createElement: own(HTMLElement),
-	createElementNS: own(ElementNS),
-	createTextNode: own(Text),
-	createComment: own(Comment),
-	createDocumentType: own(DocumentType), //Should be document.implementation.createDocumentType(name, publicId, systemId)
-	createDocumentFragment: own(DocumentFragment)
-})
-
-module.exports = {
-	document: new Document(),
-	StyleMap: StyleMap,
-	Node: Node,
-	HTMLElement: HTMLElement,
-	Document: Document
-}
-
-
-},{"selector-lite":78}],51:[function(require,module,exports){
-(function (global){
-var EventEmitter = require('events').EventEmitter,
-    isInstance = require('is-instance');
-
-function toArray(items){
-    return Array.prototype.slice.call(items);
-}
-
-var deepRegex = /[|.]/i;
-
-function matchDeep(path){
-    return (path + '').match(deepRegex);
-}
-
-function isWildcardPath(path){
-    var stringPath = (path + '');
-    return ~stringPath.indexOf('*');
-}
-
-function getTargetKey(path){
-    var stringPath = (path + '');
-    return stringPath.split('|').shift();
-}
-
-var eventSystemVersion = 1,
-    globalKey = '_entiEventState' + eventSystemVersion
-    globalState = global[globalKey] = global[globalKey] || {
-        instances: []
-    };
-
-var modifiedEnties = globalState.modifiedEnties = globalState.modifiedEnties || new Set(),
-    trackedObjects = globalState.trackedObjects = globalState.trackedObjects || new WeakMap();
-
-function leftAndRest(path){
-    var stringPath = (path + '');
-
-    // Special case when you want to filter on self (.)
-    if(stringPath.slice(0,2) === '.|'){
-        return ['.', stringPath.slice(2)];
-    }
-
-    var match = matchDeep(stringPath);
-    if(match){
-        return [stringPath.slice(0, match.index), stringPath.slice(match.index+1)];
-    }
-    return stringPath;
-}
-
-function isWildcardKey(key){
-    return key.charAt(0) === '*';
-}
-
-function isFeralcardKey(key){
-    return key === '**';
-}
-
-function addHandler(object, key, handler, eventName){
-    var trackedKeys = trackedObjects.get(object);
-
-    if(trackedKeys == null){
-        trackedKeys = {};
-        trackedObjects.set(object, trackedKeys);
-    }
-
-    var handlers = trackedKeys[key];
-
-    if(!handlers){
-        handlers = new Map();
-        trackedKeys[key] = handlers;
-    }
-
-    if(handlers.has(eventName)){
-        handlers.get(eventName).add(handler);
-        return;
-    }
-
-    var handlerSet = new Set();
-    handlerSet.add(handler);
-    handlers.set(eventName, handlerSet);
-}
-
-function removeHandler(object, key, handler, eventName){
-    var trackedKeys = trackedObjects.get(object);
-
-    if(trackedKeys == null){
-        return;
-    }
-
-    var handlers = trackedKeys[key];
-
-    if(!handlers){
-        return;
-    }
-
-    var handlerSet = handlers.get(eventName);
-
-    if(!handlerSet){
-        return
-    }
-
-    handlerSet.delete(handler);
-}
-
-function trackObjects(eventName, tracked, handler, object, key, path){
-    if(!object || typeof object !== 'object'){
-        return;
-    }
-
-    var target = object[key];
-
-    if(target && typeof target === 'object' && tracked.has(target)){
-        return;
-    }
-
-    trackObject(eventName, tracked, handler, object, key, path);
-}
-
-function trackKeys(eventName, tracked, handler, target, root, rest){
-    var keys = Object.keys(target);
-    for(var i = 0; i < keys.length; i++){
-        if(isFeralcardKey(root)){
-            trackObjects(eventName, tracked, handler, target, keys[i], '**' + (rest ? '.' : '') + (rest || ''));
-        }else{
-            trackObjects(eventName, tracked, handler, target, keys[i], rest);
-        }
-    }
-}
-
-function trackObject(eventName, tracked, handler, object, key, path){
-    var eventKey = key === '**' ? '*' : key,
-        target = object[key],
-        targetIsObject = target && typeof target === 'object';
-
-    var handle = function(value, event, emitKey){
-        if(eventKey !== '*' && typeof object[eventKey] === 'object' && object[eventKey] !== target){
-            if(targetIsObject){
-                tracked.delete(target);
-            }
-            removeHandler(object, eventKey, handle, eventName);
-            trackObjects(eventName, tracked, handler, object, key, path);
-            return;
-        }
-
-        if(eventKey === '*'){
-            trackKeys(eventName, tracked, handler, object, key, path);
-        }
-
-        if(!tracked.has(object)){
-            return;
-        }
-
-        if(key !== '**' || !path){
-            handler(value, event, emitKey);
-        }
-    };
-
-    addHandler(object, eventKey, handle, eventName);
-
-    if(!targetIsObject){
-        return;
-    }
-
-    tracked.add(target);
-
-    if(!path){
-        return;
-    }
-
-    var rootAndRest = leftAndRest(path),
-        root,
-        rest;
-
-    if(!Array.isArray(rootAndRest)){
-        root = rootAndRest;
-    }else{
-        root = rootAndRest[0];
-        rest = rootAndRest[1];
-
-        // If the root is '.', watch for events on *
-        if(root === '.'){
-            root = '*';
-        }
-    }
-
-    if(targetIsObject && isWildcardKey(root)){
-        trackKeys(eventName, tracked, handler, target, root, rest);
-    }
-
-    trackObjects(eventName, tracked, handler, target, root, rest);
-}
-
-var trackedEvents = new WeakMap();
-function createHandler(enti, trackedObjectPaths, eventName){
-    var oldModel = enti._model;
-    return function(event, emitKey){
-        var trackedPaths = trackedObjectPaths[eventName];
-        trackedPaths && trackedPaths.entis.forEach(function(enti){
-            if(enti._emittedEvents[eventName] === emitKey){
-                return;
-            }
-
-            if(enti._model !== oldModel){
-                trackedPaths.entis.delete(enti);
-                if(trackedPaths.entis.size === 0){
-                    delete trackedObjectPaths[eventName];
-                    if(!Object.keys(trackedObjectPaths).length){
-                        trackedEvents.delete(oldModel);
-                    }
-                }
-                return;
-            }
-
-            enti._emittedEvents[eventName] = emitKey;
-
-            var targetKey = getTargetKey(eventName),
-                value = isWildcardPath(targetKey) ? undefined : enti.get(targetKey);
-
-            enti.emit(eventName, value, event);
-        });
-    };
-}
-
-function trackPath(enti, eventName){
-    var object = enti._model,
-        trackedObjectPaths = trackedEvents.get(object);
-
-    if(!trackedObjectPaths){
-        trackedObjectPaths = {};
-        trackedEvents.set(object, trackedObjectPaths);
-    }
-
-    var trackedPaths = trackedObjectPaths[eventName];
-
-    if(!trackedPaths){
-        trackedPaths = {
-            entis: new Set(),
-            trackedObjects: new WeakSet()
-        };
-        trackedObjectPaths[eventName] = trackedPaths;
-    }else if(trackedPaths.entis.has(enti)){
-        return;
-    }
-
-    trackedPaths.entis.add(enti);
-
-    var handler = createHandler(enti, trackedObjectPaths, eventName);
-
-    trackObjects(eventName, trackedPaths.trackedObjects, handler, {model:object}, 'model', eventName);
-}
-
-function trackPaths(enti){
-    if(!enti._events || !enti._model){
-        return;
-    }
-
-    for(var key in enti._events){
-        trackPath(enti, key);
-    }
-    modifiedEnties.delete(enti);
-}
-
-function emitEvent(object, key, value, emitKey){
-
-    modifiedEnties.forEach(trackPaths);
-
-    var trackedKeys = trackedObjects.get(object);
-
-    if(!trackedKeys){
-        return;
-    }
-
-    var event = {
-        value: value,
-        key: key,
-        object: object
-    };
-
-    function emitForKey(handlers){
-        handlers.forEach(function(handler){
-            handler(event, emitKey);
-        });
-    }
-
-    if(trackedKeys[key]){
-        trackedKeys[key].forEach(emitForKey);
-    }
-
-    if(trackedKeys['*']){
-        trackedKeys['*'].forEach(emitForKey);
-    }
-}
-
-function emit(events){
-    var emitKey = {};
-    events.forEach(function(event){
-        emitEvent(event[0], event[1], event[2], emitKey);
-    });
-}
-
-function Enti(model){
-    var detached = model === false;
-
-    if(!model || (typeof model !== 'object' && typeof model !== 'function')){
-        model = {};
-    }
-
-    this._emittedEvents = {};
-    if(detached){
-        this._model = {};
-    }else{
-        this.attach(model);
-    }
-
-    this.on('newListener', function(){
-        modifiedEnties.add(this);
-    });
-}
-Enti.emit = function(model, key, value){
-    if(!(typeof model === 'object' || typeof model === 'function')){
-        return;
-    }
-
-    emit([[model, key, value]]);
-};
-Enti.get = function(model, key){
-    if(!model || typeof model !== 'object'){
-        return;
-    }
-
-    key = getTargetKey(key);
-
-    if(key === '.'){
-        return model;
-    }
-
-
-    var path = leftAndRest(key);
-    if(Array.isArray(path)){
-        return Enti.get(model[path[0]], path[1]);
-    }
-
-    return model[key];
-};
-Enti.set = function(model, key, value){
-    if(!model || typeof model !== 'object'){
-        return;
-    }
-
-    key = getTargetKey(key);
-
-    var path = leftAndRest(key);
-    if(Array.isArray(path)){
-        return Enti.set(model[path[0]], path[1], value);
-    }
-
-    var original = model[key];
-
-    if(typeof value !== 'object' && value === original){
-        return;
-    }
-
-    var keysChanged = !(key in model);
-
-    model[key] = value;
-
-    var events = [[model, key, value]];
-
-    if(keysChanged){
-        if(Array.isArray(model)){
-            events.push([model, 'length', model.length]);
-        }
-    }
-
-    emit(events);
-};
-Enti.push = function(model, key, value){
-    if(!model || typeof model !== 'object'){
-        return;
-    }
-
-    var target;
-    if(arguments.length < 3){
-        value = key;
-        key = '.';
-        target = model;
-    }else{
-        var path = leftAndRest(key);
-        if(Array.isArray(path)){
-            return Enti.push(model[path[0]], path[1], value);
-        }
-
-        target = model[key];
-    }
-
-    if(!Array.isArray(target)){
-        throw 'The target is not an array.';
-    }
-
-    target.push(value);
-
-    var events = [
-        [target, target.length-1, value],
-        [target, 'length', target.length]
-    ];
-
-    emit(events);
-};
-Enti.insert = function(model, key, value, index){
-    if(!model || typeof model !== 'object'){
-        return;
-    }
-
-
-    var target;
-    if(arguments.length < 4){
-        index = value;
-        value = key;
-        key = '.';
-        target = model;
-    }else{
-        var path = leftAndRest(key);
-        if(Array.isArray(path)){
-            return Enti.insert(model[path[0]], path[1], value, index);
-        }
-
-        target = model[key];
-    }
-
-    if(!Array.isArray(target)){
-        throw 'The target is not an array.';
-    }
-
-    target.splice(index, 0, value);
-
-    var events = [
-        [target, index, value],
-        [target, 'length', target.length]
-    ];
-
-    emit(events);
-};
-Enti.remove = function(model, key, subKey){
-    if(!model || typeof model !== 'object'){
-        return;
-    }
-
-    var path = leftAndRest(key);
-    if(Array.isArray(path)){
-        return Enti.remove(model[path[0]], path[1], subKey);
-    }
-
-    // Remove a key off of an object at 'key'
-    if(subKey != null){
-        Enti.remove(model[key], subKey);
-        return;
-    }
-
-    if(key === '.'){
-        throw '. (self) is not a valid key to remove';
-    }
-
-    var events = [];
-
-    if(Array.isArray(model)){
-        model.splice(key, 1);
-        events.push([model, 'length', model.length]);
-    }else{
-        delete model[key];
-        events.push([model, key]);
-    }
-
-    emit(events);
-};
-Enti.move = function(model, key, index){
-    if(!model || typeof model !== 'object'){
-        return;
-    }
-
-    var path = leftAndRest(key);
-    if(Array.isArray(path)){
-        return Enti.move(model[path[0]], path[1], index);
-    }
-
-    if(key === index){
-        return;
-    }
-
-    if(!Array.isArray(model)){
-        throw 'The model is not an array.';
-    }
-
-    var item = model[key];
-
-    model.splice(key, 1);
-
-    model.splice(index - (index > key ? 0 : 1), 0, item);
-
-    emit([[model, index, item]]);
-};
-Enti.update = function(model, key, value){
-    if(!model || typeof model !== 'object'){
-        return;
-    }
-
-    var target,
-        isArray = Array.isArray(value);
-
-    if(arguments.length < 3){
-        value = key;
-        key = '.';
-        target = model;
-    }else{
-        var path = leftAndRest(key);
-        if(Array.isArray(path)){
-            return Enti.update(model[path[0]], path[1], value);
-        }
-
-        target = model[key];
-
-        if(target == null){
-            model[key] = isArray ? [] : {};
-        }
-    }
-
-    if(typeof value !== 'object'){
-        throw 'The value is not an object.';
-    }
-
-    if(typeof target !== 'object'){
-        throw 'The target is not an object.';
-    }
-
-    var events = [],
-        updatedObjects = new WeakSet();
-
-    function updateTarget(target, value){
-        for(var key in value){
-            var currentValue = target[key];
-            if(currentValue instanceof Object && !updatedObjects.has(currentValue) && !(currentValue instanceof Date)){
-                updatedObjects.add(currentValue);
-                updateTarget(currentValue, value[key]);
-                continue;
-            }
-            target[key] = value[key];
-            events.push([target, key, value[key]]);
-        }
-
-        if(Array.isArray(target)){
-            events.push([target, 'length', target.length]);
-        }
-    }
-
-    updateTarget(target, value);
-
-    emit(events);
-};
-Enti.prototype = Object.create(EventEmitter.prototype);
-Enti.prototype._maxListeners = 100;
-Enti.prototype.constructor = Enti;
-Enti.prototype.attach = function(model){
-    if(this._model !== model){
-        this.detach();
-    }
-
-    if(model && !isInstance(model)){
-        throw 'Entis may only be attached to an object, or null/undefined';
-    }
-
-    modifiedEnties.add(this);
-    this._attached = true;
-    this._model = model;
-    this.emit('attach', model);
-};
-Enti.prototype.detach = function(){
-    modifiedEnties.delete(this);
-
-    this._emittedEvents = {};
-    this._model = {};
-    this._attached = false;
-    this.emit('detach');
-};
-Enti.prototype.destroy = function(){
-    this.detach();
-    this._events = null;
-    this.emit('destroy');
-};
-Enti.prototype.get = function(key){
-    return Enti.get(this._model, key);
-};
-
-Enti.prototype.set = function(key, value){
-    return Enti.set(this._model, key, value);
-};
-
-Enti.prototype.push = function(key, value){
-    return Enti.push.apply(null, [this._model].concat(toArray(arguments)));
-};
-
-Enti.prototype.insert = function(key, value, index){
-    return Enti.insert.apply(null, [this._model].concat(toArray(arguments)));
-};
-
-Enti.prototype.remove = function(key, subKey){
-    return Enti.remove.apply(null, [this._model].concat(toArray(arguments)));
-};
-
-Enti.prototype.move = function(key, index){
-    return Enti.move.apply(null, [this._model].concat(toArray(arguments)));
-};
-
-Enti.prototype.update = function(key, index){
-    return Enti.update.apply(null, [this._model].concat(toArray(arguments)));
-};
-Enti.prototype.isAttached = function(){
-    return this._attached;
-};
-Enti.prototype.attachedCount = function(){
-    return modifiedEnties.size;
-};
-
-Enti.isEnti = function(target){
-    return target && !!~globalState.instances.indexOf(target.constructor);
-};
-
-Enti.store = function(target, key, value){
-    if(arguments.length < 2){
-        return Enti.get(target, key);
-    }
-
-    Enti.set(target, key, value);
-};
-
-globalState.instances.push(Enti);
-
-module.exports = Enti;
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"events":6,"is-instance":69}],52:[function(require,module,exports){
-'use strict';
-
-var $isNaN = require('./helpers/isNaN');
-var $isFinite = require('./helpers/isFinite');
-
-var sign = require('./helpers/sign');
-var mod = require('./helpers/mod');
-
-var IsCallable = require('is-callable');
-var toPrimitive = require('es-to-primitive/es5');
-
-var has = require('has');
-
-// https://es5.github.io/#x9
-var ES5 = {
-	ToPrimitive: toPrimitive,
-
-	ToBoolean: function ToBoolean(value) {
-		return !!value;
-	},
-	ToNumber: function ToNumber(value) {
-		return Number(value);
-	},
-	ToInteger: function ToInteger(value) {
-		var number = this.ToNumber(value);
-		if ($isNaN(number)) { return 0; }
-		if (number === 0 || !$isFinite(number)) { return number; }
-		return sign(number) * Math.floor(Math.abs(number));
-	},
-	ToInt32: function ToInt32(x) {
-		return this.ToNumber(x) >> 0;
-	},
-	ToUint32: function ToUint32(x) {
-		return this.ToNumber(x) >>> 0;
-	},
-	ToUint16: function ToUint16(value) {
-		var number = this.ToNumber(value);
-		if ($isNaN(number) || number === 0 || !$isFinite(number)) { return 0; }
-		var posInt = sign(number) * Math.floor(Math.abs(number));
-		return mod(posInt, 0x10000);
-	},
-	ToString: function ToString(value) {
-		return String(value);
-	},
-	ToObject: function ToObject(value) {
-		this.CheckObjectCoercible(value);
-		return Object(value);
-	},
-	CheckObjectCoercible: function CheckObjectCoercible(value, optMessage) {
-		/* jshint eqnull:true */
-		if (value == null) {
-			throw new TypeError(optMessage || 'Cannot call method on ' + value);
-		}
-		return value;
-	},
-	IsCallable: IsCallable,
-	SameValue: function SameValue(x, y) {
-		if (x === y) { // 0 === -0, but they are not identical.
-			if (x === 0) { return 1 / x === 1 / y; }
-			return true;
-		}
-		return $isNaN(x) && $isNaN(y);
-	},
-
-	// http://www.ecma-international.org/ecma-262/5.1/#sec-8
-	Type: function Type(x) {
-		if (x === null) {
-			return 'Null';
-		}
-		if (typeof x === 'undefined') {
-			return 'Undefined';
-		}
-		if (typeof x === 'function' || typeof x === 'object') {
-			return 'Object';
-		}
-		if (typeof x === 'number') {
-			return 'Number';
-		}
-		if (typeof x === 'boolean') {
-			return 'Boolean';
-		}
-		if (typeof x === 'string') {
-			return 'String';
-		}
-	},
-
-	// http://ecma-international.org/ecma-262/6.0/#sec-property-descriptor-specification-type
-	IsPropertyDescriptor: function IsPropertyDescriptor(Desc) {
-		if (this.Type(Desc) !== 'Object') {
-			return false;
-		}
-		var allowed = {
-			'[[Configurable]]': true,
-			'[[Enumerable]]': true,
-			'[[Get]]': true,
-			'[[Set]]': true,
-			'[[Value]]': true,
-			'[[Writable]]': true
-		};
-		// jscs:disable
-		for (var key in Desc) { // eslint-disable-line
-			if (has(Desc, key) && !allowed[key]) {
-				return false;
-			}
-		}
-		// jscs:enable
-		var isData = has(Desc, '[[Value]]');
-		var IsAccessor = has(Desc, '[[Get]]') || has(Desc, '[[Set]]');
-		if (isData && IsAccessor) {
-			throw new TypeError('Property Descriptors may not be both accessor and data descriptors');
-		}
-		return true;
-	},
-
-	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.1
-	IsAccessorDescriptor: function IsAccessorDescriptor(Desc) {
-		if (typeof Desc === 'undefined') {
-			return false;
-		}
-
-		if (!this.IsPropertyDescriptor(Desc)) {
-			throw new TypeError('Desc must be a Property Descriptor');
-		}
-
-		if (!has(Desc, '[[Get]]') && !has(Desc, '[[Set]]')) {
-			return false;
-		}
-
-		return true;
-	},
-
-	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.2
-	IsDataDescriptor: function IsDataDescriptor(Desc) {
-		if (typeof Desc === 'undefined') {
-			return false;
-		}
-
-		if (!this.IsPropertyDescriptor(Desc)) {
-			throw new TypeError('Desc must be a Property Descriptor');
-		}
-
-		if (!has(Desc, '[[Value]]') && !has(Desc, '[[Writable]]')) {
-			return false;
-		}
-
-		return true;
-	},
-
-	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.3
-	IsGenericDescriptor: function IsGenericDescriptor(Desc) {
-		if (typeof Desc === 'undefined') {
-			return false;
-		}
-
-		if (!this.IsPropertyDescriptor(Desc)) {
-			throw new TypeError('Desc must be a Property Descriptor');
-		}
-
-		if (!this.IsAccessorDescriptor(Desc) && !this.IsDataDescriptor(Desc)) {
-			return true;
-		}
-
-		return false;
-	},
-
-	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.4
-	FromPropertyDescriptor: function FromPropertyDescriptor(Desc) {
-		if (typeof Desc === 'undefined') {
-			return Desc;
-		}
-
-		if (!this.IsPropertyDescriptor(Desc)) {
-			throw new TypeError('Desc must be a Property Descriptor');
-		}
-
-		if (this.IsDataDescriptor(Desc)) {
-			return {
-				value: Desc['[[Value]]'],
-				writable: !!Desc['[[Writable]]'],
-				enumerable: !!Desc['[[Enumerable]]'],
-				configurable: !!Desc['[[Configurable]]']
-			};
-		} else if (this.IsAccessorDescriptor(Desc)) {
-			return {
-				get: Desc['[[Get]]'],
-				set: Desc['[[Set]]'],
-				enumerable: !!Desc['[[Enumerable]]'],
-				configurable: !!Desc['[[Configurable]]']
-			};
-		} else {
-			throw new TypeError('FromPropertyDescriptor must be called with a fully populated Property Descriptor');
-		}
-	},
-
-	// http://ecma-international.org/ecma-262/5.1/#sec-8.10.5
-	ToPropertyDescriptor: function ToPropertyDescriptor(Obj) {
-		if (this.Type(Obj) !== 'Object') {
-			throw new TypeError('ToPropertyDescriptor requires an object');
-		}
-
-		var desc = {};
-		if (has(Obj, 'enumerable')) {
-			desc['[[Enumerable]]'] = this.ToBoolean(Obj.enumerable);
-		}
-		if (has(Obj, 'configurable')) {
-			desc['[[Configurable]]'] = this.ToBoolean(Obj.configurable);
-		}
-		if (has(Obj, 'value')) {
-			desc['[[Value]]'] = Obj.value;
-		}
-		if (has(Obj, 'writable')) {
-			desc['[[Writable]]'] = this.ToBoolean(Obj.writable);
-		}
-		if (has(Obj, 'get')) {
-			var getter = Obj.get;
-			if (typeof getter !== 'undefined' && !this.IsCallable(getter)) {
-				throw new TypeError('getter must be a function');
-			}
-			desc['[[Get]]'] = getter;
-		}
-		if (has(Obj, 'set')) {
-			var setter = Obj.set;
-			if (typeof setter !== 'undefined' && !this.IsCallable(setter)) {
-				throw new TypeError('setter must be a function');
-			}
-			desc['[[Set]]'] = setter;
-		}
-
-		if ((has(desc, '[[Get]]') || has(desc, '[[Set]]')) && (has(desc, '[[Value]]') || has(desc, '[[Writable]]'))) {
-			throw new TypeError('Invalid property descriptor. Cannot both specify accessors and a value or writable attribute');
-		}
-		return desc;
-	}
-};
-
-module.exports = ES5;
-
-},{"./helpers/isFinite":53,"./helpers/isNaN":54,"./helpers/mod":55,"./helpers/sign":56,"es-to-primitive/es5":57,"has":65,"is-callable":67}],53:[function(require,module,exports){
-var $isNaN = Number.isNaN || function (a) { return a !== a; };
-
-module.exports = Number.isFinite || function (x) { return typeof x === 'number' && !$isNaN(x) && x !== Infinity && x !== -Infinity; };
-
-},{}],54:[function(require,module,exports){
-module.exports = Number.isNaN || function isNaN(a) {
-	return a !== a;
-};
-
-},{}],55:[function(require,module,exports){
-module.exports = function mod(number, modulo) {
-	var remain = number % modulo;
-	return Math.floor(remain >= 0 ? remain : remain + modulo);
-};
-
-},{}],56:[function(require,module,exports){
-module.exports = function sign(number) {
-	return number >= 0 ? 1 : -1;
-};
-
-},{}],57:[function(require,module,exports){
-'use strict';
-
-var toStr = Object.prototype.toString;
-
-var isPrimitive = require('./helpers/isPrimitive');
-
-var isCallable = require('is-callable');
-
-// https://es5.github.io/#x8.12
-var ES5internalSlots = {
-	'[[DefaultValue]]': function (O, hint) {
-		var actualHint = hint || (toStr.call(O) === '[object Date]' ? String : Number);
-
-		if (actualHint === String || actualHint === Number) {
-			var methods = actualHint === String ? ['toString', 'valueOf'] : ['valueOf', 'toString'];
-			var value, i;
-			for (i = 0; i < methods.length; ++i) {
-				if (isCallable(O[methods[i]])) {
-					value = O[methods[i]]();
-					if (isPrimitive(value)) {
-						return value;
-					}
-				}
-			}
-			throw new TypeError('No default value');
-		}
-		throw new TypeError('invalid [[DefaultValue]] hint supplied');
-	}
-};
-
-// https://es5.github.io/#x9
-module.exports = function ToPrimitive(input, PreferredType) {
-	if (isPrimitive(input)) {
-		return input;
-	}
-	return ES5internalSlots['[[DefaultValue]]'](input, PreferredType);
-};
-
-},{"./helpers/isPrimitive":58,"is-callable":67}],58:[function(require,module,exports){
-module.exports = function isPrimitive(value) {
-	return value === null || (typeof value !== 'function' && typeof value !== 'object');
-};
-
-},{}],59:[function(require,module,exports){
-function flatMerge(a,b){
-    if(!b || typeof b !== 'object'){
-        b = {};
-    }
-
-    if(!a || typeof a !== 'object'){
-        a = new b.constructor();
-    }
-
-    var result = new a.constructor(),
-        aKeys = Object.keys(a),
-        bKeys = Object.keys(b);
-
-    for(var i = 0; i < aKeys.length; i++){
-        result[aKeys[i]] = a[aKeys[i]];
-    }
-
-    for(var i = 0; i < bKeys.length; i++){
-        result[bKeys[i]] = b[bKeys[i]];
-    }
-
-    return result;
-}
-
-module.exports = flatMerge;
-},{}],60:[function(require,module,exports){
-var isFunction = require('is-function')
-
-module.exports = forEach
-
-var toString = Object.prototype.toString
-var hasOwnProperty = Object.prototype.hasOwnProperty
-
-function forEach(list, iterator, context) {
-    if (!isFunction(iterator)) {
-        throw new TypeError('iterator must be a function')
-    }
-
-    if (arguments.length < 3) {
-        context = this
-    }
-    
-    if (toString.call(list) === '[object Array]')
-        forEachArray(list, iterator, context)
-    else if (typeof list === 'string')
-        forEachString(list, iterator, context)
-    else
-        forEachObject(list, iterator, context)
-}
-
-function forEachArray(array, iterator, context) {
-    for (var i = 0, len = array.length; i < len; i++) {
-        if (hasOwnProperty.call(array, i)) {
-            iterator.call(context, array[i], i, array)
-        }
-    }
-}
-
-function forEachString(string, iterator, context) {
-    for (var i = 0, len = string.length; i < len; i++) {
-        // no such thing as a sparse string.
-        iterator.call(context, string.charAt(i), i, string)
-    }
-}
-
-function forEachObject(object, iterator, context) {
-    for (var k in object) {
-        if (hasOwnProperty.call(object, k)) {
-            iterator.call(context, object[k], k, object)
-        }
-    }
-}
-
-},{"is-function":68}],61:[function(require,module,exports){
-
-var hasOwn = Object.prototype.hasOwnProperty;
-var toString = Object.prototype.toString;
-
-module.exports = function forEach (obj, fn, ctx) {
-    if (toString.call(fn) !== '[object Function]') {
-        throw new TypeError('iterator must be a function');
-    }
-    var l = obj.length;
-    if (l === +l) {
-        for (var i = 0; i < l; i++) {
-            fn.call(ctx, obj[i], i, obj);
-        }
-    } else {
-        for (var k in obj) {
-            if (hasOwn.call(obj, k)) {
-                fn.call(ctx, obj[k], k, obj);
-            }
-        }
-    }
-};
-
-
-},{}],62:[function(require,module,exports){
-'use strict';
-
-/* eslint no-invalid-this: 1 */
-
-var ERROR_MESSAGE = 'Function.prototype.bind called on incompatible ';
-var slice = Array.prototype.slice;
-var toStr = Object.prototype.toString;
-var funcType = '[object Function]';
-
-module.exports = function bind(that) {
-    var target = this;
-    if (typeof target !== 'function' || toStr.call(target) !== funcType) {
-        throw new TypeError(ERROR_MESSAGE + target);
-    }
-    var args = slice.call(arguments, 1);
-
-    var bound;
-    var binder = function () {
-        if (this instanceof bound) {
-            var result = target.apply(
-                this,
-                args.concat(slice.call(arguments))
-            );
-            if (Object(result) === result) {
-                return result;
-            }
-            return this;
-        } else {
-            return target.apply(
-                that,
-                args.concat(slice.call(arguments))
-            );
-        }
-    };
-
-    var boundLength = Math.max(0, target.length - args.length);
-    var boundArgs = [];
-    for (var i = 0; i < boundLength; i++) {
-        boundArgs.push('$' + i);
-    }
-
-    bound = Function('binder', 'return function (' + boundArgs.join(',') + '){ return binder.apply(this,arguments); }')(binder);
-
-    if (target.prototype) {
-        var Empty = function Empty() {};
-        Empty.prototype = target.prototype;
-        bound.prototype = new Empty();
-        Empty.prototype = null;
-    }
-
-    return bound;
-};
-
-},{}],63:[function(require,module,exports){
-'use strict';
-
-var implementation = require('./implementation');
-
-module.exports = Function.prototype.bind || implementation;
-
-},{"./implementation":62}],64:[function(require,module,exports){
-var EventEmitter = require('events').EventEmitter,
-    functionEmitterPrototype = function(){};
-
-for(var key in EventEmitter.prototype){
-    functionEmitterPrototype[key] = EventEmitter.prototype[key];
-}
-
-module.exports = functionEmitterPrototype;
-},{"events":6}],65:[function(require,module,exports){
-var bind = require('function-bind');
-
-module.exports = bind.call(Function.call, Object.prototype.hasOwnProperty);
-
-},{"function-bind":63}],66:[function(require,module,exports){
-arguments[4][8][0].apply(exports,arguments)
-},{"dup":8}],67:[function(require,module,exports){
-'use strict';
-
-var fnToStr = Function.prototype.toString;
-
-var constructorRegex = /^\s*class /;
-var isES6ClassFn = function isES6ClassFn(value) {
-	try {
-		var fnStr = fnToStr.call(value);
-		var singleStripped = fnStr.replace(/\/\/.*\n/g, '');
-		var multiStripped = singleStripped.replace(/\/\*[.\s\S]*\*\//g, '');
-		var spaceStripped = multiStripped.replace(/\n/mg, ' ').replace(/ {2}/g, ' ');
-		return constructorRegex.test(spaceStripped);
-	} catch (e) {
-		return false; // not a function
-	}
-};
-
-var tryFunctionObject = function tryFunctionObject(value) {
-	try {
-		if (isES6ClassFn(value)) { return false; }
-		fnToStr.call(value);
-		return true;
-	} catch (e) {
-		return false;
-	}
-};
-var toStr = Object.prototype.toString;
-var fnClass = '[object Function]';
-var genClass = '[object GeneratorFunction]';
-var hasToStringTag = typeof Symbol === 'function' && typeof Symbol.toStringTag === 'symbol';
-
-module.exports = function isCallable(value) {
-	if (!value) { return false; }
-	if (typeof value !== 'function' && typeof value !== 'object') { return false; }
-	if (hasToStringTag) { return tryFunctionObject(value); }
-	if (isES6ClassFn(value)) { return false; }
-	var strClass = toStr.call(value);
-	return strClass === fnClass || strClass === genClass;
-};
-
-},{}],68:[function(require,module,exports){
-module.exports = isFunction
-
-var toString = Object.prototype.toString
-
-function isFunction (fn) {
-  var string = toString.call(fn)
-  return string === '[object Function]' ||
-    (typeof fn === 'function' && string !== '[object RegExp]') ||
-    (typeof window !== 'undefined' &&
-     // IE8 and below
-     (fn === window.setTimeout ||
-      fn === window.alert ||
-      fn === window.confirm ||
-      fn === window.prompt))
-};
-
-},{}],69:[function(require,module,exports){
-module.exports = function(value){
-    return value && typeof value === 'object' || typeof value === 'function';
-};
-},{}],70:[function(require,module,exports){
-"use strict";
-
-/* global module, define */
-
-function mapEach(map, operation){
-  var keys = map.keys();
-  var next;
-  while(!(next = keys.next()).done) {
-    operation(map.get(next.value), next.value, map);
-  }
-}
-
-var Multimap = (function() {
-  var mapCtor;
-  if (typeof Map !== 'undefined') {
-    mapCtor = Map;
-
-    if (!Map.prototype.keys) {
-      Map.prototype.keys = function() {
-        var keys = [];
-        this.forEach(function(item, key) {
-          keys.push(key);
-        });
-        return keys;
-      };
-    }
-  }
-
-  function Multimap(iterable) {
-    var self = this;
-
-    self._map = mapCtor;
-
-    if (Multimap.Map) {
-      self._map = Multimap.Map;
-    }
-
-    self._ = self._map ? new self._map() : {};
-
-    if (iterable) {
-      iterable.forEach(function(i) {
-        self.set(i[0], i[1]);
-      });
-    }
-  }
-
-  /**
-   * @param {Object} key
-   * @return {Array} An array of values, undefined if no such a key;
-   */
-  Multimap.prototype.get = function(key) {
-    return this._map ? this._.get(key) : this._[key];
-  };
-
-  /**
-   * @param {Object} key
-   * @param {Object} val...
-   */
-  Multimap.prototype.set = function(key, val) {
-    var args = Array.prototype.slice.call(arguments);
-
-    key = args.shift();
-
-    var entry = this.get(key);
-    if (!entry) {
-      entry = [];
-      if (this._map)
-        this._.set(key, entry);
-      else
-        this._[key] = entry;
-    }
-
-    Array.prototype.push.apply(entry, args);
-    return this;
-  };
-
-  /**
-   * @param {Object} key
-   * @param {Object=} val
-   * @return {boolean} true if any thing changed
-   */
-  Multimap.prototype.delete = function(key, val) {
-    if (!this.has(key))
-      return false;
-
-    if (arguments.length == 1) {
-      this._map ? (this._.delete(key)) : (delete this._[key]);
-      return true;
-    } else {
-      var entry = this.get(key);
-      var idx = entry.indexOf(val);
-      if (idx != -1) {
-        entry.splice(idx, 1);
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  /**
-   * @param {Object} key
-   * @param {Object=} val
-   * @return {boolean} whether the map contains 'key' or 'key=>val' pair
-   */
-  Multimap.prototype.has = function(key, val) {
-    var hasKey = this._map ? this._.has(key) : this._.hasOwnProperty(key);
-
-    if (arguments.length == 1 || !hasKey)
-      return hasKey;
-
-    var entry = this.get(key) || [];
-    return entry.indexOf(val) != -1;
-  };
-
-
-  /**
-   * @return {Array} all the keys in the map
-   */
-  Multimap.prototype.keys = function() {
-    if (this._map)
-      return makeIterator(this._.keys());
-
-    return makeIterator(Object.keys(this._));
-  };
-
-  /**
-   * @return {Array} all the values in the map
-   */
-  Multimap.prototype.values = function() {
-    var vals = [];
-    this.forEachEntry(function(entry) {
-      Array.prototype.push.apply(vals, entry);
-    });
-
-    return makeIterator(vals);
-  };
-
-  /**
-   *
-   */
-  Multimap.prototype.forEachEntry = function(iter) {
-    mapEach(this, iter);
-  };
-
-  Multimap.prototype.forEach = function(iter) {
-    var self = this;
-    self.forEachEntry(function(entry, key) {
-      entry.forEach(function(item) {
-        iter(item, key, self);
-      });
-    });
-  };
-
-
-  Multimap.prototype.clear = function() {
-    if (this._map) {
-      this._.clear();
-    } else {
-      this._ = {};
-    }
-  };
-
-  Object.defineProperty(
-    Multimap.prototype,
-    "size", {
-      configurable: false,
-      enumerable: true,
-      get: function() {
-        var total = 0;
-
-        mapEach(this, function(value){
-          total += value.length;
-        });
-
-        return total;
-      }
-    });
-
-  var safariNext;
-
-  try{
-    safariNext = new Function('iterator', 'makeIterator', 'var keysArray = []; for(var key of iterator){keysArray.push(key);} return makeIterator(keysArray).next;');
-  }catch(error){
-    // for of not implemented;
-  }
-
-  function makeIterator(iterator){
-    if(Array.isArray(iterator)){
-      var nextIndex = 0;
-
-      return {
-        next: function(){
-          return nextIndex < iterator.length ?
-            {value: iterator[nextIndex++], done: false} :
-          {done: true};
-        }
-      };
-    }
-
-    // Only an issue in safari
-    if(!iterator.next && safariNext){
-      iterator.next = safariNext(iterator, makeIterator);
-    }
-
-    return iterator;
-  }
-
-  return Multimap;
-})();
-
-
-if(typeof exports === 'object' && module && module.exports)
-  module.exports = Multimap;
-else if(typeof define === 'function' && define.amd)
-  define(function() { return Multimap; });
-
-},{}],71:[function(require,module,exports){
-var supportedTypes = ['text', 'search', 'tel', 'url', 'password'];
-
-module.exports = function(element){
-    return !!(element.setSelectionRange && ~supportedTypes.indexOf(element.type));
-};
-
-},{}],72:[function(require,module,exports){
-/*
-object-assign
-(c) Sindre Sorhus
-@license MIT
-*/
-
-'use strict';
-/* eslint-disable no-unused-vars */
-var getOwnPropertySymbols = Object.getOwnPropertySymbols;
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-var propIsEnumerable = Object.prototype.propertyIsEnumerable;
-
-function toObject(val) {
-	if (val === null || val === undefined) {
-		throw new TypeError('Object.assign cannot be called with null or undefined');
-	}
-
-	return Object(val);
-}
-
-function shouldUseNative() {
-	try {
-		if (!Object.assign) {
-			return false;
-		}
-
-		// Detect buggy property enumeration order in older V8 versions.
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
-		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
-		test1[5] = 'de';
-		if (Object.getOwnPropertyNames(test1)[0] === '5') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test2 = {};
-		for (var i = 0; i < 10; i++) {
-			test2['_' + String.fromCharCode(i)] = i;
-		}
-		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
-			return test2[n];
-		});
-		if (order2.join('') !== '0123456789') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test3 = {};
-		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
-			test3[letter] = letter;
-		});
-		if (Object.keys(Object.assign({}, test3)).join('') !==
-				'abcdefghijklmnopqrst') {
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		// We don't expect any of the above to throw, but better to be safe.
-		return false;
-	}
-}
-
-module.exports = shouldUseNative() ? Object.assign : function (target, source) {
-	var from;
-	var to = toObject(target);
-	var symbols;
-
-	for (var s = 1; s < arguments.length; s++) {
-		from = Object(arguments[s]);
-
-		for (var key in from) {
-			if (hasOwnProperty.call(from, key)) {
-				to[key] = from[key];
-			}
-		}
-
-		if (getOwnPropertySymbols) {
-			symbols = getOwnPropertySymbols(from);
-			for (var i = 0; i < symbols.length; i++) {
-				if (propIsEnumerable.call(from, symbols[i])) {
-					to[symbols[i]] = from[symbols[i]];
-				}
-			}
-		}
-	}
-
-	return to;
-};
-
-},{}],73:[function(require,module,exports){
-var hasMap = typeof Map === 'function' && Map.prototype;
-var mapSizeDescriptor = Object.getOwnPropertyDescriptor && hasMap ? Object.getOwnPropertyDescriptor(Map.prototype, 'size') : null;
-var mapSize = hasMap && mapSizeDescriptor && typeof mapSizeDescriptor.get === 'function' ? mapSizeDescriptor.get : null;
-var mapForEach = hasMap && Map.prototype.forEach;
-var hasSet = typeof Set === 'function' && Set.prototype;
-var setSizeDescriptor = Object.getOwnPropertyDescriptor && hasSet ? Object.getOwnPropertyDescriptor(Set.prototype, 'size') : null;
-var setSize = hasSet && setSizeDescriptor && typeof setSizeDescriptor.get === 'function' ? setSizeDescriptor.get : null;
-var setForEach = hasSet && Set.prototype.forEach;
-var booleanValueOf = Boolean.prototype.valueOf;
-var objectToString = Object.prototype.toString;
-
-module.exports = function inspect_ (obj, opts, depth, seen) {
-    if (typeof obj === 'undefined') {
-        return 'undefined';
-    }
-    if (obj === null) {
-        return 'null';
-    }
-    if (typeof obj === 'boolean') {
-        return obj ? 'true' : 'false';
-    }
-    if (typeof obj === 'string') {
-        return inspectString(obj);
-    }
-    if (typeof obj === 'number') {
-      if (obj === 0) {
-        return Infinity / obj > 0 ? '0' : '-0';
-      }
-      return String(obj);
-    }
-
-    if (!opts) opts = {};
-
-    var maxDepth = typeof opts.depth === 'undefined' ? 5 : opts.depth;
-    if (typeof depth === 'undefined') depth = 0;
-    if (depth >= maxDepth && maxDepth > 0 && typeof obj === 'object') {
-        return '[Object]';
-    }
-
-    if (typeof seen === 'undefined') seen = [];
-    else if (indexOf(seen, obj) >= 0) {
-        return '[Circular]';
-    }
-
-    function inspect (value, from) {
-        if (from) {
-            seen = seen.slice();
-            seen.push(from);
-        }
-        return inspect_(value, opts, depth + 1, seen);
-    }
-
-    if (typeof obj === 'function') {
-        var name = nameOf(obj);
-        return '[Function' + (name ? ': ' + name : '') + ']';
-    }
-    if (isSymbol(obj)) {
-        var symString = Symbol.prototype.toString.call(obj);
-        return typeof obj === 'object' ? markBoxed(symString) : symString;
-    }
-    if (isElement(obj)) {
-        var s = '<' + String(obj.nodeName).toLowerCase();
-        var attrs = obj.attributes || [];
-        for (var i = 0; i < attrs.length; i++) {
-            s += ' ' + attrs[i].name + '="' + quote(attrs[i].value) + '"';
-        }
-        s += '>';
-        if (obj.childNodes && obj.childNodes.length) s += '...';
-        s += '</' + String(obj.nodeName).toLowerCase() + '>';
-        return s;
-    }
-    if (isArray(obj)) {
-        if (obj.length === 0) return '[]';
-        return '[ ' + arrObjKeys(obj, inspect).join(', ') + ' ]';
-    }
-    if (isError(obj)) {
-        var parts = arrObjKeys(obj, inspect);
-        if (parts.length === 0) return '[' + String(obj) + ']';
-        return '{ [' + String(obj) + '] ' + parts.join(', ') + ' }';
-    }
-    if (typeof obj === 'object' && typeof obj.inspect === 'function') {
-        return obj.inspect();
-    }
-    if (isMap(obj)) {
-        var parts = [];
-        mapForEach.call(obj, function (value, key) {
-            parts.push(inspect(key, obj) + ' => ' + inspect(value, obj));
-        });
-        return collectionOf('Map', mapSize.call(obj), parts);
-    }
-    if (isSet(obj)) {
-        var parts = [];
-        setForEach.call(obj, function (value ) {
-            parts.push(inspect(value, obj));
-        });
-        return collectionOf('Set', setSize.call(obj), parts);
-    }
-    if (isNumber(obj)) {
-        return markBoxed(Number(obj));
-    }
-    if (isBoolean(obj)) {
-        return markBoxed(booleanValueOf.call(obj));
-    }
-    if (isString(obj)) {
-        return markBoxed(inspect(String(obj)));
-    }
-    if (!isDate(obj) && !isRegExp(obj)) {
-        var xs = arrObjKeys(obj, inspect);
-        if (xs.length === 0) return '{}';
-        return '{ ' + xs.join(', ') + ' }';
-    }
-    return String(obj);
-};
-
-function quote (s) {
-    return String(s).replace(/"/g, '&quot;');
-}
-
-function isArray (obj) { return toStr(obj) === '[object Array]' }
-function isDate (obj) { return toStr(obj) === '[object Date]' }
-function isRegExp (obj) { return toStr(obj) === '[object RegExp]' }
-function isError (obj) { return toStr(obj) === '[object Error]' }
-function isSymbol (obj) { return toStr(obj) === '[object Symbol]' }
-function isString (obj) { return toStr(obj) === '[object String]' }
-function isNumber (obj) { return toStr(obj) === '[object Number]' }
-function isBoolean (obj) { return toStr(obj) === '[object Boolean]' }
-
-var hasOwn = Object.prototype.hasOwnProperty || function (key) { return key in this; };
-function has (obj, key) {
-    return hasOwn.call(obj, key);
-}
-
-function toStr (obj) {
-    return objectToString.call(obj);
-}
-
-function nameOf (f) {
-    if (f.name) return f.name;
-    var m = String(f).match(/^function\s*([\w$]+)/);
-    if (m) return m[1];
-}
-
-function indexOf (xs, x) {
-    if (xs.indexOf) return xs.indexOf(x);
-    for (var i = 0, l = xs.length; i < l; i++) {
-        if (xs[i] === x) return i;
-    }
-    return -1;
-}
-
-function isMap (x) {
-    if (!mapSize) {
-        return false;
-    }
-    try {
-        mapSize.call(x);
-        try {
-            setSize.call(x);
-        } catch (s) {
-            return true;
-        }
-        return x instanceof Map; // core-js workaround, pre-v2.5.0
-    } catch (e) {}
-    return false;
-}
-
-function isSet (x) {
-    if (!setSize) {
-        return false;
-    }
-    try {
-        setSize.call(x);
-        try {
-            mapSize.call(x);
-        } catch (m) {
-            return true;
-        }
-        return x instanceof Set; // core-js workaround, pre-v2.5.0
-    } catch (e) {}
-    return false;
-}
-
-function isElement (x) {
-    if (!x || typeof x !== 'object') return false;
-    if (typeof HTMLElement !== 'undefined' && x instanceof HTMLElement) {
-        return true;
-    }
-    return typeof x.nodeName === 'string'
-        && typeof x.getAttribute === 'function'
-    ;
-}
-
-function inspectString (str) {
-    var s = str.replace(/(['\\])/g, '\\$1').replace(/[\x00-\x1f]/g, lowbyte);
-    return "'" + s + "'";
-}
-
-function lowbyte (c) {
-    var n = c.charCodeAt(0);
-    var x = { 8: 'b', 9: 't', 10: 'n', 12: 'f', 13: 'r' }[n];
-    if (x) return '\\' + x;
-    return '\\x' + (n < 0x10 ? '0' : '') + n.toString(16);
-}
-
-function markBoxed (str) {
-    return 'Object(' + str + ')';
-}
-
-function collectionOf (type, size, entries) {
-    return type + ' (' + size + ') {' + entries.join(', ') + '}';
-}
-
-function arrObjKeys (obj, inspect) {
-    var isArr = isArray(obj);
-    var xs = [];
-    if (isArr) {
-        xs.length = obj.length;
-        for (var i = 0; i < obj.length; i++) {
-            xs[i] = has(obj, i) ? inspect(obj[i], obj) : '';
-        }
-    }
-    for (var key in obj) {
-        if (!has(obj, key)) continue;
-        if (isArr && String(Number(key)) === key && key < obj.length) continue;
-        if (/[^\w$]/.test(key)) {
-            xs.push(inspect(key, obj) + ': ' + inspect(obj[key], obj));
-        } else {
-            xs.push(key + ': ' + inspect(obj[key], obj));
-        }
-    }
-    return xs;
-}
-
-},{}],74:[function(require,module,exports){
-'use strict';
-
-// modified from https://github.com/es-shims/es5-shim
-var has = Object.prototype.hasOwnProperty;
-var toStr = Object.prototype.toString;
-var slice = Array.prototype.slice;
-var isArgs = require('./isArguments');
-var isEnumerable = Object.prototype.propertyIsEnumerable;
-var hasDontEnumBug = !isEnumerable.call({ toString: null }, 'toString');
-var hasProtoEnumBug = isEnumerable.call(function () {}, 'prototype');
-var dontEnums = [
-	'toString',
-	'toLocaleString',
-	'valueOf',
-	'hasOwnProperty',
-	'isPrototypeOf',
-	'propertyIsEnumerable',
-	'constructor'
-];
-var equalsConstructorPrototype = function (o) {
-	var ctor = o.constructor;
-	return ctor && ctor.prototype === o;
-};
-var excludedKeys = {
-	$console: true,
-	$external: true,
-	$frame: true,
-	$frameElement: true,
-	$frames: true,
-	$innerHeight: true,
-	$innerWidth: true,
-	$outerHeight: true,
-	$outerWidth: true,
-	$pageXOffset: true,
-	$pageYOffset: true,
-	$parent: true,
-	$scrollLeft: true,
-	$scrollTop: true,
-	$scrollX: true,
-	$scrollY: true,
-	$self: true,
-	$webkitIndexedDB: true,
-	$webkitStorageInfo: true,
-	$window: true
-};
-var hasAutomationEqualityBug = (function () {
-	/* global window */
-	if (typeof window === 'undefined') { return false; }
-	for (var k in window) {
-		try {
-			if (!excludedKeys['$' + k] && has.call(window, k) && window[k] !== null && typeof window[k] === 'object') {
-				try {
-					equalsConstructorPrototype(window[k]);
-				} catch (e) {
-					return true;
-				}
-			}
-		} catch (e) {
-			return true;
-		}
-	}
-	return false;
-}());
-var equalsConstructorPrototypeIfNotBuggy = function (o) {
-	/* global window */
-	if (typeof window === 'undefined' || !hasAutomationEqualityBug) {
-		return equalsConstructorPrototype(o);
-	}
-	try {
-		return equalsConstructorPrototype(o);
-	} catch (e) {
-		return false;
-	}
-};
-
-var keysShim = function keys(object) {
-	var isObject = object !== null && typeof object === 'object';
-	var isFunction = toStr.call(object) === '[object Function]';
-	var isArguments = isArgs(object);
-	var isString = isObject && toStr.call(object) === '[object String]';
-	var theKeys = [];
-
-	if (!isObject && !isFunction && !isArguments) {
-		throw new TypeError('Object.keys called on a non-object');
-	}
-
-	var skipProto = hasProtoEnumBug && isFunction;
-	if (isString && object.length > 0 && !has.call(object, 0)) {
-		for (var i = 0; i < object.length; ++i) {
-			theKeys.push(String(i));
-		}
-	}
-
-	if (isArguments && object.length > 0) {
-		for (var j = 0; j < object.length; ++j) {
-			theKeys.push(String(j));
-		}
-	} else {
-		for (var name in object) {
-			if (!(skipProto && name === 'prototype') && has.call(object, name)) {
-				theKeys.push(String(name));
-			}
-		}
-	}
-
-	if (hasDontEnumBug) {
-		var skipConstructor = equalsConstructorPrototypeIfNotBuggy(object);
-
-		for (var k = 0; k < dontEnums.length; ++k) {
-			if (!(skipConstructor && dontEnums[k] === 'constructor') && has.call(object, dontEnums[k])) {
-				theKeys.push(dontEnums[k]);
-			}
-		}
-	}
-	return theKeys;
-};
-
-keysShim.shim = function shimObjectKeys() {
-	if (Object.keys) {
-		var keysWorksWithArguments = (function () {
-			// Safari 5.0 bug
-			return (Object.keys(arguments) || '').length === 2;
-		}(1, 2));
-		if (!keysWorksWithArguments) {
-			var originalKeys = Object.keys;
-			Object.keys = function keys(object) {
-				if (isArgs(object)) {
-					return originalKeys(slice.call(object));
-				} else {
-					return originalKeys(object);
-				}
-			};
-		}
-	} else {
-		Object.keys = keysShim;
-	}
-	return Object.keys || keysShim;
-};
-
-module.exports = keysShim;
-
-},{"./isArguments":75}],75:[function(require,module,exports){
-'use strict';
-
-var toStr = Object.prototype.toString;
-
-module.exports = function isArguments(value) {
-	var str = toStr.call(value);
-	var isArgs = str === '[object Arguments]';
-	if (!isArgs) {
-		isArgs = str !== '[object Array]' &&
-			value !== null &&
-			typeof value === 'object' &&
-			typeof value.length === 'number' &&
-			value.length >= 0 &&
-			toStr.call(value.callee) === '[object Function]';
-	}
-	return isArgs;
-};
-
-},{}],76:[function(require,module,exports){
-(function (process){
-var through = require('through');
-var nextTick = typeof setImmediate !== 'undefined'
-    ? setImmediate
-    : process.nextTick
-;
-
-module.exports = function (write, end) {
-    var tr = through(write, end);
-    tr.pause();
-    var resume = tr.resume;
-    var pause = tr.pause;
-    var paused = false;
-    
-    tr.pause = function () {
-        paused = true;
-        return pause.apply(this, arguments);
-    };
-    
-    tr.resume = function () {
-        paused = false;
-        return resume.apply(this, arguments);
-    };
-    
-    nextTick(function () {
-        if (!paused) tr.resume();
-    });
-    
-    return tr;
-};
-
-}).call(this,require('_process'))
-},{"_process":13,"through":89}],77:[function(require,module,exports){
-module.exports = function isSame(a, b){
-    if(a === b){
-        return true;
-    }
-
-    if(
-        typeof a !== typeof b ||
-        typeof a === 'object' &&
-        !(a instanceof Date && b instanceof Date)
-    ){
-        return false;
-    }
-
-    return String(a) === String(b);
-};
-},{}],78:[function(require,module,exports){
-
-
-/*
- * @version    0.1.1
- * @date       2015-05-10
- * @stability  2 - Unstable
- * @author     Lauri Rooden <lauri@rooden.ee>
- * @license    MIT License
- */
-
-
-
-!function(exports) {
-	var undef
-	, selectorRe = /([.#:[])([-\w]+)(?:\((.+?)\)|([~^$*|]?)=(("|')(?:\\?.)*?\6|[-\w]+))?]?/g
-	, selectorLastRe = /([~\s>+]*)(?:("|')(?:\\?.)*?\2|\(.+?\)|[^\s+>])+$/
-	, selectorSplitRe = /\s*,\s*(?=(?:[^'"()]|"(?:\\?.)*?"|'(?:\\?.)*?'|\(.+?\))+$)/
-	, selectorCache = {}
-	, selectorMap = {
-		"any": "m(_,v)",
-		"empty": "!_.lastChild",
-		"enabled": "!m(_,':disabled')",
-		"first-child": "(a=_.parentNode)&&a.firstChild==_",
-		"first-of-type": "!p(_,_.tagName)",
-		"lang": "m(c(_,'[lang]'),'[lang|='+v+']')",
-		"last-child": "(a=_.parentNode)&&a.lastChild==_",
-		"last-of-type": "!n(_,_.tagName)",
-		"link": "m(_,'a[href]')",
-		"not": "!m(_,v)",
-		"nth-child": "(a=2,'odd'==v?b=1:'even'==v?b=0:a=1 in(v=v.split('n'))?(b=v[1],v[0]):(b=v[0],0),v=_.parentNode.childNodes,v=1+v.indexOf(_),0==a?v==b:('-'==a||0==(v-b)%a)&&(0<a||v<=b))",
-		"only-child": "(a=_.parentNode)&&a.firstChild==a.lastChild",
-		"only-of-type": "!p(_,_.tagName)&&!n(_,_.tagName)",
-		"optional": "!m(_,':required')",
-		"root": "(a=_.parentNode)&&!a.tagName",
-		".": "~_.className.split(/\\s+/).indexOf(a)",
-		"#": "_.id==a",
-		"^": "!a.indexOf(v)",
-		"|": "a.split('-')[0]==v",
-		"$": "a.slice(-v.length)==v",
-		"~": "~a.split(/\\s+/).indexOf(v)",
-		"*": "~a.indexOf(v)",
-		">>": "m(_.parentNode,v)",
-		"++": "m(_.previousSibling,v)",
-		"~~": "p(_,v)",
-		"": "c(_.parentNode,v)"
-	}
-
-	selectorMap["nth-last-child"] = selectorMap["nth-child"].replace("1+", "v.length-")
-
-	function selectorFn(str) {
-		// jshint evil:true
-		return selectorCache[str] ||
-		(selectorCache[str] = Function("m,c,n,p", "return function(_,v,a,b){return " +
-			str.split(selectorSplitRe).map(function(sel) {
-				var relation, from
-				, rules = ["_&&_.nodeType==1"]
-				, parentSel = sel.replace(selectorLastRe, function(_, _rel, a, start) {
-					from = start + _rel.length
-					relation = _rel.trim()
-					return ""
-				})
-				, tag = sel.slice(from).replace(selectorRe, function(_, op, key, subSel, fn, val, quotation) {
-					rules.push(
-						"((v='" +
-						(subSel || (quotation ? val.slice(1, -1) : val) || "").replace(/'/g, "\\'") +
-						"'),(a='" + key + "'),1)"
-						,
-						selectorMap[op == ":" ? key : op] ||
-						"(a=_.getAttribute(a))" +
-						(fn ? "&&" + selectorMap[fn] : val ? "==v" : "")
-					)
-					return ""
-				})
-
-				if (tag && tag != "*") rules[0] += "&&_.tagName=='" + tag.toUpperCase() + "'"
-				if (parentSel) rules.push("(v='" + parentSel + "')", selectorMap[relation + relation])
-				return rules.join("&&")
-			}).join("||") + "}"
-		)(matches, closest, next, prev))
-	}
-
-
-	function walk(next, el, sel, first, nextFn) {
-		var out = []
-		sel = selectorFn(sel)
-		for (; el; el = el[next] || nextFn && nextFn(el)) if (sel(el)) {
-			if (first) return el
-			out.push(el)
-		}
-		return first ? null : out
-	}
-
-	function find(node, sel, first) {
-		return walk("firstChild", node.firstChild, sel, first, function(el) {
-			var next = el.nextSibling
-			while (!next && ((el = el.parentNode) !== node)) next = el.nextSibling
-			return next
-		})
-	}
-
-	function matches(el, sel) {
-		return !!selectorFn(sel)(el)
-	}
-
-	function closest(el, sel) {
-		return walk("parentNode", el, sel, 1)
-	}
-
-	function next(el, sel) {
-		return walk("nextSibling", el.nextSibling, sel, 1)
-	}
-
-	function prev(el, sel) {
-		return walk("previousSibling", el.previousSibling, sel, 1)
-	}
-
-
-	exports.find = find
-	exports.fn = selectorFn
-	exports.matches = matches
-	exports.closest = closest
-	exports.next = next
-	exports.prev = prev
-	exports.selectorMap = selectorMap
-}(this)
-
-
-},{}],79:[function(require,module,exports){
-var naturalSelection = require('natural-selection');
-
-module.exports = function(element, value){
-    var canSet = naturalSelection(element) && element === document.activeElement;
-
-    if (canSet) {
-        var start = element.selectionStart,
-            end = element.selectionEnd;
-
-        element.value = value;
-        element.setSelectionRange(start, end);
-    } else {
-        element.value = value;
-    }
-};
-
-},{"natural-selection":71}],80:[function(require,module,exports){
-module.exports = Object.setPrototypeOf || ({__proto__:[]} instanceof Array ? setProtoOf : mixinProperties);
-
-function setProtoOf(obj, proto) {
-	obj.__proto__ = proto;
-	return obj;
-}
-
-function mixinProperties(obj, proto) {
-	for (var prop in proto) {
-		if (!obj.hasOwnProperty(prop)) {
-			obj[prop] = proto[prop];
-		}
-	}
-	return obj;
-}
-
-},{}],81:[function(require,module,exports){
-'use strict';
-
-var bind = require('function-bind');
-var ES = require('es-abstract/es5');
-var replace = bind.call(Function.call, String.prototype.replace);
-
-var leftWhitespace = /^[\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF]+/;
-var rightWhitespace = /[\x09\x0A\x0B\x0C\x0D\x20\xA0\u1680\u180E\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF]+$/;
-
-module.exports = function trim() {
-	var S = ES.ToString(ES.CheckObjectCoercible(this));
-	return replace(replace(S, leftWhitespace, ''), rightWhitespace, '');
-};
-
-},{"es-abstract/es5":52,"function-bind":63}],82:[function(require,module,exports){
-'use strict';
-
-var bind = require('function-bind');
-var define = require('define-properties');
-
-var implementation = require('./implementation');
-var getPolyfill = require('./polyfill');
-var shim = require('./shim');
-
-var boundTrim = bind.call(Function.call, getPolyfill());
-
-define(boundTrim, {
-	getPolyfill: getPolyfill,
-	implementation: implementation,
-	shim: shim
-});
-
-module.exports = boundTrim;
-
-},{"./implementation":81,"./polyfill":83,"./shim":84,"define-properties":48,"function-bind":63}],83:[function(require,module,exports){
-'use strict';
-
-var implementation = require('./implementation');
-
-var zeroWidthSpace = '\u200b';
-
-module.exports = function getPolyfill() {
-	if (String.prototype.trim && zeroWidthSpace.trim() === zeroWidthSpace) {
-		return String.prototype.trim;
-	}
-	return implementation;
-};
-
-},{"./implementation":81}],84:[function(require,module,exports){
-'use strict';
-
-var define = require('define-properties');
-var getPolyfill = require('./polyfill');
-
-module.exports = function shimStringTrim() {
-	var polyfill = getPolyfill();
-	define(String.prototype, { trim: polyfill }, { trim: function () { return String.prototype.trim !== polyfill; } });
-	return polyfill;
-};
-
-},{"./polyfill":83,"define-properties":48}],85:[function(require,module,exports){
+},{"safe-buffer":72}],83:[function(require,module,exports){
 (function (process){
 var defined = require('defined');
 var createDefaultStream = require('./lib/default_stream');
@@ -10310,7 +10287,7 @@ function createHarness (conf_) {
 }
 
 }).call(this,require('_process'))
-},{"./lib/default_stream":86,"./lib/results":87,"./lib/test":88,"_process":13,"defined":49,"through":89}],86:[function(require,module,exports){
+},{"./lib/default_stream":84,"./lib/results":85,"./lib/test":86,"_process":57,"defined":24,"through":87}],84:[function(require,module,exports){
 (function (process){
 var through = require('through');
 var fs = require('fs');
@@ -10344,7 +10321,7 @@ module.exports = function () {
 };
 
 }).call(this,require('_process'))
-},{"_process":13,"fs":1,"through":89}],87:[function(require,module,exports){
+},{"_process":57,"fs":12,"through":87}],85:[function(require,module,exports){
 (function (process){
 var defined = require('defined');
 var EventEmitter = require('events').EventEmitter;
@@ -10539,7 +10516,7 @@ function invalidYaml (str) {
 }
 
 }).call(this,require('_process'))
-},{"_process":13,"defined":49,"events":6,"function-bind":63,"has":65,"inherits":66,"object-inspect":73,"resumer":76,"through":89}],88:[function(require,module,exports){
+},{"_process":57,"defined":24,"events":34,"function-bind":39,"has":41,"inherits":43,"object-inspect":52,"resumer":71,"through":87}],86:[function(require,module,exports){
 (function (process,__dirname){
 var deepEqual = require('deep-equal');
 var defined = require('defined');
@@ -11046,7 +11023,7 @@ Test.skip = function (name_, _opts, _cb) {
 
 
 }).call(this,require('_process'),"/node_modules/tape/lib")
-},{"_process":13,"deep-equal":45,"defined":49,"events":6,"for-each":60,"function-bind":63,"has":65,"inherits":66,"path":11,"string.prototype.trim":82}],89:[function(require,module,exports){
+},{"_process":57,"deep-equal":20,"defined":24,"events":34,"for-each":36,"function-bind":39,"has":41,"inherits":43,"path":55,"string.prototype.trim":79}],87:[function(require,module,exports){
 (function (process){
 var Stream = require('stream')
 
@@ -11158,7 +11135,78 @@ function through (write, end, opts) {
 
 
 }).call(this,require('_process'))
-},{"_process":13,"stream":28}],90:[function(require,module,exports){
+},{"_process":57,"stream":77}],88:[function(require,module,exports){
+(function (global){
+
+/**
+ * Module exports.
+ */
+
+module.exports = deprecate;
+
+/**
+ * Mark that a method should not be used.
+ * Returns a modified function which warns once by default.
+ *
+ * If `localStorage.noDeprecation = true` is set, then it is a no-op.
+ *
+ * If `localStorage.throwDeprecation = true` is set, then deprecated functions
+ * will throw an Error when invoked.
+ *
+ * If `localStorage.traceDeprecation = true` is set, then deprecated functions
+ * will invoke `console.trace()` instead of `console.error()`.
+ *
+ * @param {Function} fn - the function to deprecate
+ * @param {String} msg - the string to print to the console when `fn` is invoked
+ * @returns {Function} a new "deprecated" version of `fn`
+ * @api public
+ */
+
+function deprecate (fn, msg) {
+  if (config('noDeprecation')) {
+    return fn;
+  }
+
+  var warned = false;
+  function deprecated() {
+    if (!warned) {
+      if (config('throwDeprecation')) {
+        throw new Error(msg);
+      } else if (config('traceDeprecation')) {
+        console.trace(msg);
+      } else {
+        console.warn(msg);
+      }
+      warned = true;
+    }
+    return fn.apply(this, arguments);
+  }
+
+  return deprecated;
+}
+
+/**
+ * Checks `localStorage` for boolean values for the given `name`.
+ *
+ * @param {String} name
+ * @returns {Boolean}
+ * @api private
+ */
+
+function config (name) {
+  // accessing global.localStorage can trigger a DOMException in sandboxed iframes
+  try {
+    if (!global.localStorage) return false;
+  } catch (_) {
+    return false;
+  }
+  var val = global.localStorage[name];
+  if (null == val) return false;
+  return String(val).toLowerCase() === 'true';
+}
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],89:[function(require,module,exports){
 var clone = require('clone'),
     deepEqual = require('cyclic-deep-equal');
 
@@ -11245,7 +11293,7 @@ WhatChanged.prototype.update = function(value){
 };
 
 module.exports = WhatChanged;
-},{"clone":41,"cyclic-deep-equal":44}],91:[function(require,module,exports){
+},{"clone":15,"cyclic-deep-equal":19}],90:[function(require,module,exports){
 var WhatChanged = require('what-changed'),
     same = require('same-value'),
     firmer = require('./firmer'),
@@ -11452,7 +11500,7 @@ function createProperty(currentValue, changes, updater){
 };
 
 module.exports = createProperty;
-},{"./firmer":35,"function-emitter":64,"same-value":77,"setprototypeof":80,"what-changed":90}],92:[function(require,module,exports){
+},{"./firmer":5,"function-emitter":40,"same-value":73,"setprototypeof":76,"what-changed":89}],91:[function(require,module,exports){
 var todo = [],
     todoKeys = [],
     scheduled,
@@ -11488,7 +11536,7 @@ function schedule(key, fn){
 }
 
 module.exports = schedule;
-},{}],93:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 module.exports = function(fastn, component, type, settings, children){
     var itemModel = new fastn.Model({});
 
@@ -11581,7 +11629,7 @@ module.exports = function(fastn, component, type, settings, children){
 
     return component;
 };
-},{}],94:[function(require,module,exports){
+},{}],93:[function(require,module,exports){
 var test = require('tape'),
     Enti = require('enti'),
     createFastn = require('./createFastn');
@@ -11703,7 +11751,7 @@ test('firmest attach', function(t){
     t.notEqual(parent.scope().get('.'), child.scope().get('.'));
 });
 
-},{"./createFastn":99,"enti":51,"tape":85}],95:[function(require,module,exports){
+},{"./createFastn":98,"enti":26,"tape":83}],94:[function(require,module,exports){
 var test = require('tape'),
     createBinding = require('../index')({}).binding,
     Enti = require('enti');
@@ -12157,7 +12205,7 @@ test('from', function(t){
     t.equal(from2(), 5);
 
 });
-},{"../index":37,"enti":51,"tape":85}],96:[function(require,module,exports){
+},{"../index":7,"enti":26,"tape":83}],95:[function(require,module,exports){
 var test = require('tape'),
     Enti = require('enti'),
     createFastn = require('./createFastn');
@@ -12292,7 +12340,7 @@ test('cannot double-extend component', function(t){
     t.ok(component.is('foo'), 'componant is foo');
     t.ok(component.is('bar'), 'componant is bar');
 });
-},{"./createFastn":99,"enti":51,"tape":85}],97:[function(require,module,exports){
+},{"./createFastn":98,"enti":26,"tape":83}],96:[function(require,module,exports){
 module.exports = function(components){
     if(!components){
         components = {};
@@ -12322,7 +12370,7 @@ module.exports = function(components){
 
     return components;
 };
-},{"../genericComponent":36,"../listComponent":39,"../templaterComponent":93,"../textComponent":111}],98:[function(require,module,exports){
+},{"../genericComponent":6,"../listComponent":9,"../templaterComponent":92,"../textComponent":110}],97:[function(require,module,exports){
 var test = require('tape'),
     createFastn = require('./createFastn');
 
@@ -12529,13 +12577,13 @@ test('insert mixed array', function(t){
     t.equal(container.children().length, 3, 'Only values added');
 
 });
-},{"./createFastn":99,"tape":85}],99:[function(require,module,exports){
+},{"./createFastn":98,"tape":83}],98:[function(require,module,exports){
 var merge = require('flat-merge');
 
 module.exports = function createFastn(components){
     return require('../')(require('./components')(components));
 };
-},{"../":37,"./components":97,"flat-merge":59}],100:[function(require,module,exports){
+},{"../":7,"./components":96,"flat-merge":35}],99:[function(require,module,exports){
 var test = require('tape'),
     EventEmitter = require('events'),
     createFastn = require('../index');
@@ -12707,7 +12755,7 @@ test('binding with custom model', function(t){
 
     t.equal(binding(), undefined);
 });
-},{"../index":37,"events":6,"tape":85}],101:[function(require,module,exports){
+},{"../index":7,"events":34,"tape":83}],100:[function(require,module,exports){
 (function (global){
 module.exports = function(){
     var domLite = require('dom-lite'),
@@ -12762,7 +12810,7 @@ module.exports = function(){
     global.document = document;
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./eventNames":102,"dom-lite":50}],102:[function(require,module,exports){
+},{"./eventNames":101,"dom-lite":25}],101:[function(require,module,exports){
 module.exports = [
   "onblur",
   "onerror",
@@ -12848,7 +12896,7 @@ module.exports = [
   "onwebkitfullscreenchange",
   "onwebkitfullscreenerror"
 ];
-},{}],103:[function(require,module,exports){
+},{}],102:[function(require,module,exports){
 var test = require('tape'),
     crel = require('crel'),
     fancyProps = require('../fancyProps');
@@ -12906,7 +12954,7 @@ test('class 2', function(t){
     t.equal(fancyProps.class(component, span), 'bar');
     t.equal(span.className, 'majigger whatsits bar');
 });
-},{"../fancyProps":34,"crel":43,"tape":85}],104:[function(require,module,exports){
+},{"../fancyProps":4,"crel":18,"tape":83}],103:[function(require,module,exports){
 var test = require('tape'),
     firmer = require('../firmer');
 
@@ -12950,7 +12998,7 @@ test('attach() (undefined) firmness', function(t){
     t.ok(firmer(entitiy, 1));
     t.ok(firmer(entitiy, Infinity));
 });
-},{"../firmer":35,"tape":85}],105:[function(require,module,exports){
+},{"../firmer":5,"tape":83}],104:[function(require,module,exports){
 var test = require('tape'),
     crel = require('crel'),
     createFastn = require('./createFastn');
@@ -13198,7 +13246,7 @@ test('override type', function(t){
     thing.destroy();
 
 });
-},{"./createFastn":99,"crel":43,"tape":85}],106:[function(require,module,exports){
+},{"./createFastn":98,"crel":18,"tape":83}],105:[function(require,module,exports){
 function run(){
     document.body.innerHTML = '';
 
@@ -13222,7 +13270,7 @@ if(typeof document !== 'undefined'){
     require('./document')();
     run();
 }
-},{"./attach.js":94,"./binding.js":95,"./component.js":96,"./container.js":98,"./customModel.js":100,"./document":101,"./fancyProps.js":103,"./firmer.js":104,"./generic.js":105,"./list.js":107,"./property.js":108,"./templater.js":109,"./text.js":110}],107:[function(require,module,exports){
+},{"./attach.js":93,"./binding.js":94,"./component.js":95,"./container.js":97,"./customModel.js":99,"./document":100,"./fancyProps.js":102,"./firmer.js":103,"./generic.js":104,"./list.js":106,"./property.js":107,"./templater.js":108,"./text.js":109}],106:[function(require,module,exports){
 var test = require('tape'),
     consoleWatch = require('console-watch'),
     Enti = require('enti'),
@@ -13648,7 +13696,49 @@ test('warns on no template', function(t){
     });
 
 });
-},{"./createFastn":99,"console-watch":42,"enti":51,"tape":85}],108:[function(require,module,exports){
+
+test('Lazy item templating', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn();
+
+    var items = [];
+
+    while(items.length < 100){
+        items.push(items.length);
+    }
+
+    var list = fastn('list', {
+        insertionFrameTime: 50,
+        items: items,
+        template: function(model){
+            if(model.get('item') < 10){
+                var start = new Date();
+                while(Date.now() - start < 10){}
+            }
+            return fastn.binding('item');
+        }
+    });
+
+    list.render();
+
+    document.body.appendChild(list.element);
+
+    var expectedEventualText = items.join('');
+
+    t.equal(expectedEventualText.indexOf(document.body.textContent), 0);
+    t.notEqual(document.body.textContent, expectedEventualText, 0);
+
+    setTimeout(function(){
+
+        t.equal(document.body.textContent, expectedEventualText, 0);
+
+        list.element.remove();
+        list.destroy();
+    }, 100);
+});
+},{"./createFastn":98,"console-watch":16,"enti":26,"tape":83}],107:[function(require,module,exports){
 var test = require('tape'),
     fastn = require('../index')({}),
     createBinding = fastn.binding,
@@ -13790,7 +13880,7 @@ test('cyclic value with structure changes', function(t){
 
     model.set('self', model.get('.'));
 });
-},{"../index":37,"enti":51,"tape":85}],109:[function(require,module,exports){
+},{"../index":7,"enti":26,"tape":83}],108:[function(require,module,exports){
 var test = require('tape'),
     consoleWatch = require('console-watch'),
     Enti = require('enti'),
@@ -14047,7 +14137,7 @@ test('warns on no template', function(t){
     });
 
 });
-},{"./createFastn":99,"console-watch":42,"enti":51,"tape":85}],110:[function(require,module,exports){
+},{"./createFastn":98,"console-watch":16,"enti":26,"tape":83}],109:[function(require,module,exports){
 var test = require('tape'),
     Enti = require('enti'),
     createFastn = require('./createFastn');
@@ -14186,7 +14276,7 @@ test('auto text Date', function(t){
     parent.destroy();
 
 });
-},{"./createFastn":99,"enti":51,"tape":85}],111:[function(require,module,exports){
+},{"./createFastn":98,"enti":26,"tape":83}],110:[function(require,module,exports){
 function updateText(){
     if(!this.element){
         return;
@@ -14234,4 +14324,4 @@ textComponent.createTextNode = function(text){
 };
 
 module.exports = textComponent;
-},{}]},{},[106]);
+},{}]},{},[105]);

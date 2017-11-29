@@ -423,3 +423,45 @@ test('warns on no template', function(t){
     });
 
 });
+
+test('Lazy item templating', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn();
+
+    var items = [];
+
+    while(items.length < 100){
+        items.push(items.length);
+    }
+
+    var list = fastn('list', {
+        insertionFrameTime: 50,
+        items: items,
+        template: function(model){
+            if(model.get('item') < 10){
+                var start = new Date();
+                while(Date.now() - start < 10){}
+            }
+            return fastn.binding('item');
+        }
+    });
+
+    list.render();
+
+    document.body.appendChild(list.element);
+
+    var expectedEventualText = items.join('');
+
+    t.equal(expectedEventualText.indexOf(document.body.textContent), 0);
+    t.notEqual(document.body.textContent, expectedEventualText, 0);
+
+    setTimeout(function(){
+
+        t.equal(document.body.textContent, expectedEventualText, 0);
+
+        list.element.remove();
+        list.destroy();
+    }, 100);
+});

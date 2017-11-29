@@ -28,8 +28,10 @@
     "what-changed": "^2.2.0"
   },
   "devDependencies": {
+    "browserify": "^14.5.0",
     "console-watch": "^1.0.2",
     "dom-lite": "^0.5.1",
-    "tape": "^4.6.3"
+    "tape": "^4.6.3",
+    "watchify": "^3.9.0"
   }
 }
