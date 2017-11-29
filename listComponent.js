@@ -119,7 +119,7 @@ module.exports = function(fastn, component, type, settings, children){
                 component.insert(child, nextInsersion[2]);
             }
 
-            if(!insertQueue.length){
+            if(!insertQueue.length || component.destroyed()){
                 inserting = false;
                 return;
             }
