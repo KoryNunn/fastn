@@ -16,13 +16,14 @@
     "crel": "^2.1.5",
     "debounce": "^1.0.0",
     "doc-js": "^1.2.0",
-    "fastn": "^2.3.0",
+    "fastn": "^2.10.0",
     "flat-merge": "^1.0.0",
     "highlight": "^0.2.3",
     "laidout": "^1.0.0",
     "lzutf8": "^0.3.2"
   },
   "devDependencies": {
+    "browserify": "^14.5.0",
     "nib": "^1.1.0",
     "stylus": "^0.51.1",
     "uglifyify": "^3.0.1"

@@ -56,6 +56,14 @@ button{
     font-size: 1.1em;
     font-weight: bold;
     color: #3080dd;
+    box-shadow: 0 2px 0px -2px black;
+    transition: all 0.1s ease-out;
+}
+
+button:hover {
+    cursor: pointer;
+    box-shadow: 0 2px 10px -2px black;
+    transform: translateY(-2px);
 }
 
 input{
@@ -217,7 +225,7 @@ form button{
 .user button.remove{
     position: absolute;
     bottom: 0;
-    right:-50px;
+    right: -250px;
 }
 
 .user.selected button.remove{

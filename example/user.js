@@ -50,7 +50,7 @@ module.exports = function(selectedUser, deleteUser){
 
             ),
 
-            fastn('button', {class: 'remove'},'X')
+            fastn('button', {class: 'remove'},'Delete')
             .on('click', function(event, scope){
                 usersService.deleteUser(scope.get('.'));
             })
