@@ -251,6 +251,10 @@ var is = require('./is'),
     setPrototypeOf = require('setprototypeof'),
     same = require('same-value');
 
+function noop(x){
+    return x;
+}
+
 function fuseBinding(){
     var fastn = this,
         args = Array.prototype.slice.call(arguments);
@@ -342,6 +346,10 @@ function createBinding(path, more){
 
     if(more){ // used instead of arguments.length for performance
         return fuseBinding.apply(fastn, arguments);
+    }
+
+    if(is.binding(path)){
+        return createBinding.call(this, path, noop);
     }
 
     if(path == null){
@@ -1244,6 +1252,7 @@ module.exports = function(fastn, component, type, settings, children){
         }
 
         inserting = true;
+        component.emit('insertionStart', insertQueue.length);
 
         insertQueue.sort(function(a, b){
             return a[2] - b[2];
@@ -1260,6 +1269,9 @@ module.exports = function(fastn, component, type, settings, children){
 
             if(!insertQueue.length || component.destroyed()){
                 inserting = false;
+                if(!component.destroyed()){
+                    component.emit('insertionComplete');
+                }
                 return;
             }
 
@@ -3222,6 +3234,10 @@ module.exports = function(element){
             }
         });
 
+        if(lastClasses.join() === newClasses.join()){
+            return;
+        }
+
         currentClasses = currentClasses.concat(newClasses);
         lastClasses = newClasses;
 
@@ -4395,8 +4411,8 @@ var eventSystemVersion = 1,
         instances: []
     };
 
-var modifiedEnties = globalState.modifiedEnties = globalState.modifiedEnties || new Set(),
-    trackedObjects = globalState.trackedObjects = globalState.trackedObjects || new WeakMap();
+var modifiedEnties = globalState.modifiedEnties_v6 = globalState.modifiedEnties_v6 || new Set(),
+    trackedObjects = globalState.trackedObjects_v6 = globalState.trackedObjects_v6 || new WeakMap();
 
 function leftAndRest(path){
     var stringPath = (path + '');
@@ -4421,7 +4437,7 @@ function isFeralcardKey(key){
     return key === '**';
 }
 
-function addHandler(object, key, handler, eventName){
+function addHandler(object, key, handler){
     var trackedKeys = trackedObjects.get(object);
 
     if(trackedKeys == null){
@@ -4432,21 +4448,14 @@ function addHandler(object, key, handler, eventName){
     var handlers = trackedKeys[key];
 
     if(!handlers){
-        handlers = new Map();
+        handlers = new Set();
         trackedKeys[key] = handlers;
     }
 
-    if(handlers.has(eventName)){
-        handlers.get(eventName).add(handler);
-        return;
-    }
-
-    var handlerSet = new Set();
-    handlerSet.add(handler);
-    handlers.set(eventName, handlerSet);
+    handlers.add(handler);
 }
 
-function removeHandler(object, key, handler, eventName){
+function removeHandler(object, key, handler){
     var trackedKeys = trackedObjects.get(object);
 
     if(trackedKeys == null){
@@ -4459,13 +4468,7 @@ function removeHandler(object, key, handler, eventName){
         return;
     }
 
-    var handlerSet = handlers.get(eventName);
-
-    if(!handlerSet){
-        return
-    }
-
-    handlerSet.delete(handler);
+    handlers.delete(handler);
 }
 
 function trackObjects(eventName, tracked, handler, object, key, path){
@@ -4503,7 +4506,7 @@ function trackObject(eventName, tracked, handler, object, key, path){
             if(targetIsObject){
                 tracked.delete(target);
             }
-            removeHandler(object, eventKey, handle, eventName);
+            removeHandler(object, eventKey, handle);
             trackObjects(eventName, tracked, handler, object, key, path);
             return;
         }
@@ -4521,7 +4524,7 @@ function trackObject(eventName, tracked, handler, object, key, path){
         }
     };
 
-    addHandler(object, eventKey, handle, eventName);
+    addHandler(object, eventKey, handle);
 
     if(!targetIsObject){
         return;
@@ -4556,39 +4559,48 @@ function trackObject(eventName, tracked, handler, object, key, path){
     trackObjects(eventName, tracked, handler, target, root, rest);
 }
 
+function emitForEnti(trackedPaths, trackedObjectPaths, eventName, emitKey, event, enti){
+    if(!emitKey[eventName]){
+        emitKey[eventName] = new WeakSet();
+    }
+
+    if(emitKey[eventName].has(enti)){
+        return;
+    }
+
+    if(!trackedPaths.trackedObjects.has(enti._model)){
+        trackedPaths.entis.delete(enti);
+        if(trackedPaths.entis.size === 0){
+            delete trackedObjectPaths[eventName];
+        }
+        return;
+    }
+
+    emitKey[eventName].add(enti)
+
+    var targetKey = getTargetKey(eventName),
+        value = isWildcardPath(targetKey) ? undefined : enti.get(targetKey);
+
+    enti.emit(eventName, value, event);
+}
+
 var trackedEvents = new WeakMap();
-function createHandler(enti, trackedObjectPaths, eventName){
-    var oldModel = enti._model;
+function createHandler(enti, trackedObjectPaths, trackedPaths, eventName){
     return function(event, emitKey){
-        var trackedPaths = trackedObjectPaths[eventName];
-        trackedPaths && trackedPaths.entis.forEach(function(enti){
-            if(enti._emittedEvents[eventName] === emitKey){
-                return;
-            }
-
-            if(enti._model !== oldModel){
-                trackedPaths.entis.delete(enti);
-                if(trackedPaths.entis.size === 0){
-                    delete trackedObjectPaths[eventName];
-                    if(!Object.keys(trackedObjectPaths).length){
-                        trackedEvents.delete(oldModel);
-                    }
-                }
-                oldModel = null;
-                return;
-            }
-
-            enti._emittedEvents[eventName] = emitKey;
-
-            var targetKey = getTargetKey(eventName),
-                value = isWildcardPath(targetKey) ? undefined : enti.get(targetKey);
-
-            enti.emit(eventName, value, event);
-        });
+        trackedPaths.entis.forEach(emitForEnti.bind(null, trackedPaths, trackedObjectPaths, eventName, emitKey, event));
     };
 }
 
 function trackPath(enti, eventName){
+    if(
+        eventName === 'newListener' &&
+        enti._events &&
+        enti._events.newListener &&
+        (!Array.isArray(enti._events.newListener) || enti._events.newListener.length === 1)
+    ){
+        return;
+    }
+
     var object = enti._model,
         trackedObjectPaths = trackedEvents.get(object);
 
@@ -4611,7 +4623,7 @@ function trackPath(enti, eventName){
 
     trackedPaths.entis.add(enti);
 
-    var handler = createHandler(enti, trackedObjectPaths, eventName);
+    var handler = createHandler(enti, trackedObjectPaths, trackedPaths, eventName);
 
     trackObjects(eventName, trackedPaths.trackedObjects, handler, {model:object}, 'model', eventName);
 }
@@ -4643,10 +4655,8 @@ function emitEvent(object, key, value, emitKey){
         object: object
     };
 
-    function emitForKey(handlers){
-        handlers.forEach(function(handler){
-            handler(event, emitKey);
-        });
+    function emitForKey(handler){
+        handler(event, emitKey);
     }
 
     if(trackedKeys[key]){
@@ -4672,7 +4682,6 @@ function Enti(model){
         model = {};
     }
 
-    this._emittedEvents = {};
     if(detached){
         this._model = {};
     }else{
@@ -4926,9 +4935,11 @@ Enti.prototype = Object.create(EventEmitter.prototype);
 Enti.prototype._maxListeners = 100;
 Enti.prototype.constructor = Enti;
 Enti.prototype.attach = function(model){
-    if(this._model !== model){
-        this.detach();
+    if(this._model === model){
+        return;
     }
+
+    this.detach();
 
     if(model && !isInstance(model)){
         throw 'Entis may only be attached to an object, or null/undefined';
@@ -4940,9 +4951,11 @@ Enti.prototype.attach = function(model){
     this.emit('attach', model);
 };
 Enti.prototype.detach = function(){
+    if(!this._attached){
+        return;
+    }
     modifiedEnties.delete(this);
 
-    this._emittedEvents = {};
     this._model = {};
     this._attached = false;
     this.emit('detach');
@@ -12204,6 +12217,18 @@ test('from', function(t){
     t.equal(from1(), 10);
     t.equal(from1, binding);
     t.equal(from2(), 5);
+
+});
+
+test('binding as path', function(t){
+    t.plan(1);
+
+    var binding1 = createBinding(),
+        binding2 = createBinding(binding1);
+
+    binding1(10);
+
+    t.equal(binding2(), 10);
 
 });
 },{"../index":7,"enti":26,"tape":83}],95:[function(require,module,exports){

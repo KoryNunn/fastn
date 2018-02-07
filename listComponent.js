@@ -105,6 +105,7 @@ module.exports = function(fastn, component, type, settings, children){
         }
 
         inserting = true;
+        component.emit('insertionStart', insertQueue.length);
 
         insertQueue.sort(function(a, b){
             return a[2] - b[2];
@@ -121,6 +122,9 @@ module.exports = function(fastn, component, type, settings, children){
 
             if(!insertQueue.length || component.destroyed()){
                 inserting = false;
+                if(!component.destroyed()){
+                    component.emit('insertionComplete');
+                }
                 return;
             }
 

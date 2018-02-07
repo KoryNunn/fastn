@@ -451,3 +451,15 @@ test('from', function(t){
     t.equal(from2(), 5);
 
 });
+
+test('binding as path', function(t){
+    t.plan(1);
+
+    var binding1 = createBinding(),
+        binding2 = createBinding(binding1);
+
+    binding1(10);
+
+    t.equal(binding2(), 10);
+
+});

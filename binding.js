@@ -4,6 +4,10 @@ var is = require('./is'),
     setPrototypeOf = require('setprototypeof'),
     same = require('same-value');
 
+function noop(x){
+    return x;
+}
+
 function fuseBinding(){
     var fastn = this,
         args = Array.prototype.slice.call(arguments);
@@ -95,6 +99,10 @@ function createBinding(path, more){
 
     if(more){ // used instead of arguments.length for performance
         return fuseBinding.apply(fastn, arguments);
+    }
+
+    if(is.binding(path)){
+        return createBinding.call(this, path, noop);
     }
 
     if(path == null){
