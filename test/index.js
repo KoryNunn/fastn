@@ -13,6 +13,7 @@ function run(){
     require('./attach.js');
     require('./fancyProps.js');
     require('./customModel.js');
+    require('./strict.js');
 }
 
 if(typeof document !== 'undefined'){
