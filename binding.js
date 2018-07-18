@@ -41,9 +41,6 @@ function fuseBinding(){
     };
 
     function change(){
-        if(selfChanging){
-            return;
-        }
         resultBinding(transform.apply(null, bindings.map(function(binding){
             return binding();
         })));
@@ -55,16 +52,20 @@ function fuseBinding(){
             bindings.splice(index,1,binding);
         }
         binding.on('change', change);
-        resultBinding.on('detach', binding.detach);
+        resultBinding.on('detach', function(soft){
+            binding.detach(soft);
+            binding.removeListener('change', change);
+        });
+        resultBinding.once('destroy', binding.destroy);
     });
 
     var lastAttached;
     resultBinding.on('attach', function(object){
-        selfChanging = true;
         bindings.forEach(function(binding){
+            binding.removeListener('change', change);
             binding.attach(object, 1);
+            binding.on('change', change);
         });
-        selfChanging = false;
         if(lastAttached !== object){
             change();
         }
