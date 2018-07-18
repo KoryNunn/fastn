@@ -41,13 +41,20 @@ function fuseBinding(){
     };
 
     function change(){
-        if(selfChanging){
-            return;
-        }
         resultBinding(transform.apply(null, bindings.map(function(binding){
             return binding();
         })));
     }
+
+    var resultIsDestroyed;
+
+    resultBinding.once('destroy', function(){
+        resultIsDestroyed = true;
+        bindings.forEach(function(binding, index){
+            binding.removeListener('change', change);
+            binding.destroy();
+        });
+    });
 
     bindings.forEach(function(binding, index){
         if(!is.binding(binding)){
@@ -55,16 +62,18 @@ function fuseBinding(){
             bindings.splice(index,1,binding);
         }
         binding.on('change', change);
-        resultBinding.on('detach', binding.detach);
+        resultBinding.on('detach', function(){
+            binding.detach();
+        });
     });
 
     var lastAttached;
     resultBinding.on('attach', function(object){
-        selfChanging = true;
         bindings.forEach(function(binding){
+            binding.removeListener('change', change);
             binding.attach(object, 1);
+            binding.on('change', change);
         });
-        selfChanging = false;
         if(lastAttached !== object){
             change();
         }
