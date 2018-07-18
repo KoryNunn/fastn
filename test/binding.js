@@ -236,7 +236,7 @@ test('fuse', function(t){
     binding(3);
 });
 
-test('fuse detach', function(t){
+test('fuse destroy', function(t){
     t.plan(1);
 
     var data1 = {
@@ -261,7 +261,7 @@ test('fuse detach', function(t){
         t.fail('No event should occur since the binding is detached');
     });
 
-    binding.detach();
+    binding.destroy();
 
     Enti.set(data1, 'foo', 3);
 });

@@ -46,25 +46,17 @@ function fuseBinding(){
         })));
     }
 
-    var resultIsDestroyed;
-
-    resultBinding.once('destroy', function(){
-        resultIsDestroyed = true;
-        bindings.forEach(function(binding, index){
-            binding.removeListener('change', change);
-            binding.destroy();
-        });
-    });
-
     bindings.forEach(function(binding, index){
         if(!is.binding(binding)){
             binding = createBinding.call(fastn, binding);
             bindings.splice(index,1,binding);
         }
         binding.on('change', change);
-        resultBinding.on('detach', function(){
-            binding.detach();
+        resultBinding.on('detach', function(soft){
+            binding.detach(soft);
+            binding.removeListener('change', change);
         });
+        resultBinding.once('destroy', binding.destroy);
     });
 
     var lastAttached;

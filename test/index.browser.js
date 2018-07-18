@@ -293,25 +293,17 @@ function fuseBinding(){
         })));
     }
 
-    var resultIsDestroyed;
-
-    resultBinding.once('destroy', function(){
-        resultIsDestroyed = true;
-        bindings.forEach(function(binding, index){
-            binding.removeListener('change', change);
-            binding.destroy();
-        });
-    });
-
     bindings.forEach(function(binding, index){
         if(!is.binding(binding)){
             binding = createBinding.call(fastn, binding);
             bindings.splice(index,1,binding);
         }
         binding.on('change', change);
-        resultBinding.on('detach', function(){
-            binding.detach();
+        resultBinding.on('detach', function(soft){
+            binding.detach(soft);
+            binding.removeListener('change', change);
         });
+        resultBinding.once('destroy', binding.destroy);
     });
 
     var lastAttached;
@@ -11869,7 +11861,7 @@ test('fuse', function(t){
     binding(3);
 });
 
-test('fuse detach', function(t){
+test('fuse destroy', function(t){
     t.plan(1);
 
     var data1 = {
@@ -11894,7 +11886,7 @@ test('fuse detach', function(t){
         t.fail('No event should occur since the binding is detached');
     });
 
-    binding.detach();
+    binding.destroy();
 
     Enti.set(data1, 'foo', 3);
 });
