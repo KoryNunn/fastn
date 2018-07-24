@@ -44,7 +44,7 @@ function clone(){
     return this.fastn(this.component._type, this.component._settings, this.component._children.filter(function(child){
             return !child._templated;
         }).map(function(child){
-            return child.clone();
+            return typeof child === 'object' ? child.clone() : child;
         })
     );
 }

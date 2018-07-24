@@ -24,14 +24,6 @@ function render(){
 };
 
 function textComponent(fastn, component, type, settings, children){
-    if(settings.auto){
-        delete settings.auto;
-        if(!fastn.isBinding(children[0])){
-            return autoText(component, fastn, children[0]);
-        }
-        settings.text = children.pop();
-    }
-
     component.createTextNode = textComponent.createTextNode;
     component.render = render.bind(component);
 

@@ -41,10 +41,26 @@ function fuseBinding(){
     };
 
     function change(){
+        if(selfChanging){
+            return;
+        }
         resultBinding(transform.apply(null, bindings.map(function(binding){
             return binding();
         })));
     }
+
+    resultBinding.on('detach', function(soft){
+        bindings.forEach(function(binding, index){
+            binding.detach(soft);
+        });
+    });
+
+    resultBinding.once('destroy', function(firm){
+        bindings.forEach(function(binding, index){
+            binding.removeListener('change', change);
+            binding.destroy(firm);
+        });
+    });
 
     bindings.forEach(function(binding, index){
         if(!is.binding(binding)){
@@ -52,20 +68,15 @@ function fuseBinding(){
             bindings.splice(index,1,binding);
         }
         binding.on('change', change);
-        resultBinding.on('detach', function(soft){
-            binding.detach(soft);
-            binding.removeListener('change', change);
-        });
-        resultBinding.once('destroy', binding.destroy);
     });
 
     var lastAttached;
     resultBinding.on('attach', function(object){
+        selfChanging = true;
         bindings.forEach(function(binding){
-            binding.removeListener('change', change);
             binding.attach(object, 1);
-            binding.on('change', change);
         });
+        selfChanging = false;
         if(lastAttached !== object){
             change();
         }
@@ -95,6 +106,119 @@ function bindingTemplate(newValue){
     return this.binding;
 }
 
+function modelAttachHandler(data){
+    var bindingScope = this;
+    bindingScope.binding._model.attach(data);
+    bindingScope.binding._change(bindingScope.binding._model.get(bindingScope.path));
+    bindingScope.binding.emit('attach', data, 1);
+}
+
+function modelDetachHandler(){
+    this.binding._model.detach();
+}
+
+function attach(object, firm){
+    var bindingScope = this;
+    var binding = bindingScope.binding;
+    // If the binding is being asked to attach loosly to an object,
+    // but it has already been defined as being firmly attached, do not attach.
+    if(firmer(binding, firm)){
+        return binding;
+    }
+
+    binding._firm = firm;
+
+    var isModel = bindingScope.fastn.isModel(object);
+
+    if(isModel && bindingScope.attachedModel === object){
+        return binding;
+    }
+
+    if(bindingScope.attachedModel){
+        bindingScope.attachedModel.removeListener('attach', bindingScope.modelAttachHandler);
+        bindingScope.attachedModel.removeListener('detach', bindingScope.modelDetachHandler);
+        bindingScope.attachedModel = null;
+    }
+
+    if(isModel){
+        bindingScope.attachedModel = object;
+        bindingScope.attachedModel.on('attach', bindingScope.modelAttachHandler);
+        bindingScope.attachedModel.on('detach', bindingScope.modelDetachHandler);
+        object = object._model;
+    }
+
+    if(!(object instanceof Object)){
+        object = {};
+    }
+
+    if(binding._model._model === object){
+        return binding;
+    }
+
+    bindingScope.modelAttachHandler(object);
+
+    return binding;
+};
+
+function detach(firm){
+    if(firmer(this.binding, firm)){
+        return this.binding;
+    }
+
+    this.value = undefined;
+    if(this.binding._model.isAttached()){
+        this.binding._model.detach();
+    }
+    this.binding.emit('detach', 1);
+    return this.binding;
+}
+
+function set(newValue){
+    var bindingScope = this;
+    if(same(bindingScope.binding._model.get(bindingScope.path), newValue)){
+        return;
+    }
+    if(!bindingScope.binding._model.isAttached()){
+        bindingScope.binding._model.attach(bindingScope.binding._model.get('.'));
+    }
+    bindingScope.binding._model.set(bindingScope.path, newValue);
+}
+
+function change(newValue){
+    var bindingScope = this;
+    bindingScope.value = newValue;
+    bindingScope.binding.emit('change', bindingScope.binding());
+}
+
+function clone(keepAttachment){
+    var bindingScope = this;
+    var newBinding = createBinding.apply(bindingScope.fastn, bindingScope.binding._arguments);
+
+    if(keepAttachment){
+        newBinding.attach(bindingScope.attachedModel || bindingScope.binding._model._model, bindingScope.binding._firm);
+    }
+
+    return newBinding;
+}
+
+function destroy(soft){
+    var bindingScope = this;
+    if(bindingScope.isDestroyed){
+        return;
+    }
+    if(soft && bindingScope.binding.listeners('change').length){
+        return;
+    }
+    bindingScope.isDestroyed = true;
+    bindingScope.binding.emit('destroy');
+    bindingScope.binding.detach();
+    bindingScope.binding._model.destroy();
+}
+
+function destroyed(){
+    return this.destroyed;
+}
+
 function createBinding(path, more){
     var fastn = this;
 
@@ -110,9 +234,11 @@ function createBinding(path, more){
         return createValueBinding(fastn);
     }
 
-    var bindingScope = {},
-        binding = bindingScope.binding = bindingTemplate.bind(bindingScope),
-        destroyed;
+    var bindingScope = {
+            fastn: fastn,
+            path: path
+        },
+        binding = bindingScope.binding = bindingTemplate.bind(bindingScope);
 
     setPrototypeOf(binding, functionEmitter);
     binding.setMaxListeners(10000);
@@ -121,108 +247,16 @@ function createBinding(path, more){
     binding._fastn_binding = path;
     binding._firm = -Infinity;
 
-    function modelAttachHandler(data){
-        binding._model.attach(data);
-        binding._change(binding._model.get(path));
-        binding.emit('attach', data, 1);
-    }
+    bindingScope.modelAttachHandler = modelAttachHandler.bind(bindingScope);
+    bindingScope.modelDetachHandler = modelDetachHandler.bind(bindingScope);
 
-    function modelDetachHandler(){
-        binding._model.detach();
-    }
-
-    binding.attach = function(object, firm){
-
-        // If the binding is being asked to attach loosly to an object,
-        // but it has already been defined as being firmly attached, do not attach.
-        if(firmer(binding, firm)){
-            return binding;
-        }
-
-        binding._firm = firm;
-
-        var isModel = fastn.isModel(object);
-
-        if(isModel && bindingScope.attachedModel === object){
-            return binding;
-        }
-
-        if(bindingScope.attachedModel){
-            bindingScope.attachedModel.removeListener('attach', modelAttachHandler);
-            bindingScope.attachedModel.removeListener('detach', modelDetachHandler);
-            bindingScope.attachedModel = null;
-        }
-
-        if(isModel){
-            bindingScope.attachedModel = object;
-            bindingScope.attachedModel.on('attach', modelAttachHandler);
-            bindingScope.attachedModel.on('detach', modelDetachHandler);
-            object = object._model;
-        }
-
-        if(!(object instanceof Object)){
-            object = {};
-        }
-
-        if(binding._model._model === object){
-            return binding;
-        }
-
-        modelAttachHandler(object);
-
-        return binding;
-    };
-
-    binding.detach = function(firm){
-        if(firmer(binding, firm)){
-            return binding;
-        }
-
-        bindingScope.value = undefined;
-        if(binding._model.isAttached()){
-            binding._model.detach();
-        }
-        binding.emit('detach', 1);
-        return binding;
-    };
-    binding._set = function(newValue){
-        if(same(binding._model.get(path), newValue)){
-            return;
-        }
-        if(!binding._model.isAttached()){
-            binding._model.attach(binding._model.get('.'));
-        }
-        binding._model.set(path, newValue);
-    };
-    binding._change = function(newValue){
-        bindingScope.value = newValue;
-        binding.emit('change', binding());
-    };
-    binding.clone = function(keepAttachment){
-        var newBinding = createBinding.apply(fastn, binding._arguments);
-
-        if(keepAttachment){
-            newBinding.attach(bindingScope.attachedModel || binding._model._model, binding._firm);
-        }
-
-        return newBinding;
-    };
-    binding.destroy = function(soft){
-        if(destroyed){
-            return;
-        }
-        if(soft && binding.listeners('change').length){
-            return;
-        }
-        destroyed = true;
-        binding.emit('destroy');
-        binding.detach();
-        binding._model.destroy();
-    };
-
-    binding.destroyed = function(){
-        return destroyed;
-    };
+    binding.attach = attach.bind(bindingScope);
+    binding.detach = detach.bind(bindingScope);
+    binding._set = set.bind(bindingScope);
+    binding._change = change.bind(bindingScope);
+    binding.clone = clone.bind(bindingScope);
+    binding.destroy = destroy.bind(bindingScope);
+    binding.destroyed = destroyed.bind(bindingScope);
 
     if(path !== '.'){
         binding._model.on(path, binding._change);

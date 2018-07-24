@@ -136,3 +136,73 @@ test('auto text Date', function(t){
     parent.destroy();
 
 });
+
+
+test('clone text', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var parent = fastn('span', 'text');
+
+    parent.render();
+
+    document.body.appendChild(parent.element);
+
+    t.equal(document.body.textContent, 'text');
+
+    parent.element.remove();
+
+    var newParent = parent.clone();
+    parent.destroy();
+
+    newParent.render();
+
+    document.body.appendChild(newParent.element);
+
+    t.equal(document.body.textContent, 'text');
+
+    newParent.element.remove();
+
+    newParent.destroy();
+
+});
+
+
+test('clone text binding', function(t){
+
+    t.plan(2);
+
+    var data = {
+        foo: 'bar'
+    };
+
+    var fastn = createFastn();
+
+    var binding = fastn.binding('foo').attach(data);
+
+    var parent = fastn('span', binding);
+
+    parent.render();
+
+    document.body.appendChild(parent.element);
+
+    t.equal(document.body.textContent, 'bar');
+
+    parent.element.remove();
+
+    var newParent = parent.clone();
+    parent.destroy();
+
+    newParent.render();
+
+    document.body.appendChild(newParent.element);
+
+    t.equal(document.body.textContent, 'bar');
+
+    newParent.element.remove();
+
+    newParent.destroy();
+
+});

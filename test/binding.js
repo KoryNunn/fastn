@@ -266,6 +266,24 @@ test('fuse destroy', function(t){
     Enti.set(data1, 'foo', 3);
 });
 
+test('fuse set', function(t){
+    t.plan(1);
+
+    var data = {
+        a: 1,
+        b: 2,
+        c: 3
+    };
+
+    var binding = createBinding('a', 'b', 'c', function(a, b, c){
+        return a + b + c;
+    }, x => x).attach(data);
+
+    binding(2);
+
+    t.equal(data.a, 2);
+});
+
 test('filter', function(t){
     t.plan(2);
 

@@ -31,7 +31,7 @@ function changeChecker(current, changes){
         var changes = new WhatChanged(current, changes);
 
         return function(value){
-            return Object.keys(changes.update(value)).length > 0;
+            return changes.update(value).any;
         };
     }else{
         var lastValue = current;
@@ -169,20 +169,20 @@ function createProperty(currentValue, changes, updater){
         changes = null;
     }
 
-    var propertyScope =
-        property = propertyTemplate.bind(propertyScope)
-        propertyScope = {
+    var propertyScope = {
             fastn: this,
-            hasChanged: changeChecker(currentValue, changes),
-            valueUpdate: function(value){
-                property._value = value;
-                if(!propertyScope.hasChanged(value)){
-                    return;
-                }
-                property.emit('change', property._value);
-                property.update();
-            }
-        };
+            hasChanged: changeChecker(currentValue, changes)
+        },
+        property = propertyTemplate.bind(propertyScope);
+
+    propertyScope.valueUpdate = function(value){
+        property._value = value;
+        if(!propertyScope.hasChanged(value)){
+            return;
+        }
+        property.emit('change', property._value);
+        property.update();
+    };
 
     var property = propertyScope.property = propertyTemplate.bind(propertyScope);
 

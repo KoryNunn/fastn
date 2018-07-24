@@ -16,7 +16,7 @@
   "dependencies": {
     "classist": "^1.1.1",
     "crel": "^3.0.0",
-    "enti": "^6.0.1",
+    "enti": "^6.0.4",
     "flat-merge": "^1.0.0",
     "flatten": "1.0.2",
     "function-emitter": "^1.0.0",
@@ -25,7 +25,7 @@
     "same-value": "^1.0.2",
     "setify": "^1.0.3",
     "setprototypeof": "^1.0.2",
-    "what-changed": "^2.2.0"
+    "what-changed": "^2.3.0"
   },
   "devDependencies": {
     "browserify": "^14.5.0",

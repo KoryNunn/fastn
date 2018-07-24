@@ -437,7 +437,7 @@ test('Lazy item templating', function(t){
     }
 
     var list = fastn('list', {
-        insertionFrameTime: 50,
+        insertionFrameTime: 100,
         items: items,
         template: function(model){
             if(model.get('item') < 10){
@@ -455,11 +455,11 @@ test('Lazy item templating', function(t){
     var expectedEventualText = items.join('');
 
     t.equal(expectedEventualText.indexOf(document.body.textContent), 0);
-    t.notEqual(document.body.textContent, expectedEventualText, 0);
+    t.notEqual(document.body.textContent, expectedEventualText);
 
     setTimeout(function(){
 
-        t.equal(document.body.textContent, expectedEventualText, 0);
+        t.equal(document.body.textContent, expectedEventualText);
 
         list.element.remove();
         list.destroy();
