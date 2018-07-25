@@ -237,7 +237,7 @@ test('fuse', function(t){
 });
 
 test('fuse destroy', function(t){
-    t.plan(1);
+    t.plan(2);
 
     var data1 = {
             foo: 1
@@ -245,7 +245,8 @@ test('fuse destroy', function(t){
         data2 = {
             bar: 1
         },
-        binding = createBinding(createBinding('foo').attach(data1), 'bar', function(foo, bar){
+        innerBinding = createBinding('foo').attach(data1),
+        binding = createBinding(innerBinding, 'bar', function(foo, bar){
             return foo + bar;
         });
 
@@ -262,6 +263,47 @@ test('fuse destroy', function(t){
     });
 
     binding.destroy();
+
+    t.ok(innerBinding.destroyed(), 'unused inner binding should be destroyed');
+
+    Enti.set(data1, 'foo', 3);
+});
+
+test('fuse destroy inner used', function(t){
+    t.plan(4);
+
+    var data1 = {
+            foo: 1
+        },
+        data2 = {
+            bar: 1
+        },
+        innerBinding = createBinding('foo').attach(data1),
+        binding = createBinding(innerBinding, 'bar', function(foo, bar){
+            return foo + bar;
+        });
+
+    // Add a listener to the inner binding
+    // This should prevent destruction.
+    innerBinding.on('change', function(){
+        t.pass('Inner binding changed');
+    });
+
+    binding.attach(data2);
+
+    binding.once('change', function(value){
+        t.equal(value, 3);
+    });
+
+    Enti.set(data1, 'foo', 2);
+
+    binding.once('change', function(value){
+        t.fail('No event should occur since the binding is detached');
+    });
+
+    binding.destroy();
+
+    t.notOk(innerBinding.destroyed(), 'inner binding should not be destroyed');
 
     Enti.set(data1, 'foo', 3);
 });

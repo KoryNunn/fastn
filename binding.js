@@ -55,10 +55,10 @@ function fuseBinding(){
         });
     });
 
-    resultBinding.once('destroy', function(firm){
+    resultBinding.once('destroy', function(soft){
         bindings.forEach(function(binding, index){
             binding.removeListener('change', change);
-            binding.destroy(firm);
+            binding.destroy(soft);
         });
     });
 
@@ -210,13 +210,13 @@ function destroy(soft){
         return;
     }
     bindingScope.isDestroyed = true;
-    bindingScope.binding.emit('destroy');
+    bindingScope.binding.emit('destroy', 1);
     bindingScope.binding.detach();
     bindingScope.binding._model.destroy();
 }
 
 function destroyed(){
-    return this.destroyed;
+    return this.isDestroyed;
 }
 
 function createBinding(path, more){
