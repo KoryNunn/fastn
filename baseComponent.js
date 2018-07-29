@@ -103,7 +103,7 @@ function destroy(){
     this.component.emit('destroy');
     this.component.element = null;
     this.scope.destroy();
-    this.binding.destroy();
+    this.binding.destroy(true);
 
     return this.component;
 }

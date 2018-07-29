@@ -49,9 +49,9 @@ function fuseBinding(){
         })));
     }
 
-    resultBinding.on('detach', function(soft){
+    resultBinding.on('detach', function(firm){
         bindings.forEach(function(binding, index){
-            binding.detach(soft);
+            binding.detach(firm);
         });
     });
 
@@ -206,7 +206,7 @@ function destroy(soft){
     if(bindingScope.isDestroyed){
         return;
     }
-    if(soft && bindingScope.binding.listeners('change').length){
+    if(soft){
         return;
     }
     bindingScope.isDestroyed = true;
