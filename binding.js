@@ -210,7 +210,7 @@ function destroy(soft){
         return;
     }
     bindingScope.isDestroyed = true;
-    bindingScope.binding.emit('destroy', 1);
+    bindingScope.binding.emit('destroy', true);
     bindingScope.binding.detach();
     bindingScope.binding._model.destroy();
 }
