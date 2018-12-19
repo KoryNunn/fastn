@@ -16,7 +16,7 @@
   "dependencies": {
     "classist": "^1.1.1",
     "crel": "^3.0.0",
-    "enti": "^6.0.4",
+    "enti": "^6.1.0",
     "flat-merge": "^1.0.0",
     "flatten": "1.0.2",
     "function-emitter": "^1.0.0",
