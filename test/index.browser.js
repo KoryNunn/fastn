@@ -104,7 +104,7 @@ function destroy(){
     this.component.emit('destroy');
     this.component.element = null;
     this.scope.destroy();
-    this.binding.destroy();
+    this.binding.destroy(true);
 
     return this.component;
 }
@@ -296,9 +296,9 @@ function fuseBinding(){
         })));
     }
 
-    resultBinding.on('detach', function(soft){
+    resultBinding.on('detach', function(firm){
         bindings.forEach(function(binding, index){
-            binding.detach(soft);
+            binding.detach(firm);
         });
     });
 
@@ -453,11 +453,11 @@ function destroy(soft){
     if(bindingScope.isDestroyed){
         return;
     }
-    if(soft && bindingScope.binding.listeners('change').length){
+    if(soft){
         return;
     }
     bindingScope.isDestroyed = true;
-    bindingScope.binding.emit('destroy', 1);
+    bindingScope.binding.emit('destroy', true);
     bindingScope.binding.detach();
     bindingScope.binding._model.destroy();
 }
@@ -12551,39 +12551,6 @@ test('fuse', function(t){
     binding(3);
 });
 
-test('fuse destroy', function(t){
-    t.plan(2);
-
-    var data1 = {
-            foo: 1
-        },
-        data2 = {
-            bar: 1
-        },
-        innerBinding = createBinding('foo').attach(data1),
-        binding = createBinding(innerBinding, 'bar', function(foo, bar){
-            return foo + bar;
-        });
-
-    binding.attach(data2);
-
-    binding.once('change', function(value){
-        t.equal(value, 3);
-    });
-
-    Enti.set(data1, 'foo', 2);
-
-    binding.once('change', function(value){
-        t.fail('No event should occur since the binding is detached');
-    });
-
-    binding.destroy();
-
-    t.ok(innerBinding.destroyed(), 'unused inner binding should be destroyed');
-
-    Enti.set(data1, 'foo', 3);
-});
-
 test('fuse destroy inner used', function(t){
     t.plan(4);
 
@@ -12867,6 +12834,39 @@ test('binding as path', function(t){
 
     t.equal(binding2(), 10);
 
+});
+
+test('detach memory usage', function(t){
+    t.plan(1);
+
+    var data = {
+        foo: null
+    };
+
+    var runs = 0;
+
+    function run(){
+        var bindings = [];
+        for(var i = 0; i < 1000; i++){
+            bindings.push(createBinding('foo').attach(data));
+        }
+
+        Enti.set(data, 'foo', runs);
+
+        bindings.map(function(binding){
+            binding.detach();
+        });
+
+        setTimeout(function(){
+            if(runs++ < 10){
+                run();
+            } else {
+                t.pass();
+            }
+        });
+    }
+
+    run();
 });
 },{"../index":7,"enti":26,"tape":83}],98:[function(require,module,exports){
 var test = require('tape'),
