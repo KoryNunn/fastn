@@ -55,3 +55,35 @@ test('class 2', function(t){
     t.equal(fancyProps.class(component, span), 'bar');
     t.equal(span.className, 'majigger whatsits bar');
 });
+
+test('style string', function(t){
+
+    t.plan(4);
+
+    var component = {},
+        span = crel('span');
+
+    t.equal(fancyProps.style(component, span).background, '');
+    t.equal(span.style.background, '');
+
+    fancyProps.style(component, span, 'background: red');
+
+    t.equal(fancyProps.style(component, span).background, 'red');
+    t.equal(span.style.background, 'red');
+});
+
+test('style object', function(t){
+
+    t.plan(4);
+
+    var component = {},
+        span = crel('span');
+
+    t.equal(fancyProps.style(component, span).background, '');
+    t.equal(span.style.background, '');
+
+    fancyProps.style(component, span, { background: 'red' });
+
+    t.equal(fancyProps.style(component, span).background, 'red');
+    t.equal(span.style.background, 'red');
+});

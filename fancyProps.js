@@ -95,6 +95,10 @@ module.exports = {
             return element.style;
         }
 
+        if(typeof value === 'string'){
+            element.style = value;
+        }
+
         for(var key in value){
             element.style[key] = value[key];
         }
