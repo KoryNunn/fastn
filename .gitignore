@@ -1,2 +1,3 @@
+*.browser.js
 node_modules
 *.log
