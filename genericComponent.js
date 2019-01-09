@@ -112,7 +112,7 @@ function addDomProperty(fastn, key, property){
         }
 
         var isProperty = key in element || !('getAttribute' in element),
-            fancyProp = fancyProps[key],
+            fancyProp = component._fancyProps && component._fancyProps(key) || fancyProps[key],
             previous = fancyProp ? fancyProp(component, element) : isProperty ? element[key] : element.getAttribute(key);
 
         if(!fancyProp && !isProperty && value == null){

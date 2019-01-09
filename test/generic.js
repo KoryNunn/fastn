@@ -245,3 +245,38 @@ test('override type', function(t){
     thing.destroy();
 
 });
+
+test('custom fancyProps', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn({
+        custom: function(fastn, component, type, settings, children){
+            // Map all settings to data-{name} as an example
+            component.extend('_generic', settings, children);
+            component._fancyProps = function(attribute){
+                if(attribute === 'ignore'){
+                    return;
+                }
+
+                return function(component, element, value){
+                    if(arguments.length < 3){
+                        return element.getAttribute('data-' + attribute);
+                    }
+
+                    return element.setAttribute('data-' + attribute, value);
+                }
+            }
+            return component;
+        }
+    });
+
+    var thing = fastn('div:custom', { property: 'foo', ignore: 'bar' }).render();
+
+    t.equal(thing.element.tagName, 'DIV');
+    t.equal(thing.element.getAttribute('data-property'), 'foo');
+    t.equal(thing.element.getAttribute('ignore'), 'bar');
+
+    thing.destroy();
+
+});

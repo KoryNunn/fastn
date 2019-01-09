@@ -65,7 +65,9 @@ module.exports = function(components, debug){
             settingsChild = fastn.toComponent(args[1]);
 
         if(Array.isArray(args[1]) || settingsChild || !args[1]){
-            args[1] = settingsChild || args[1];
+            if(args.length > 1){
+                args[1] = settingsChild || args[1];
+            }
             childrenIndex--;
             settings = null;
         }
