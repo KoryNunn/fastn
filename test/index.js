@@ -15,9 +15,5 @@ function run(){
     require('./customModel.js');
 }
 
-if(typeof document !== 'undefined'){
-    window.onload = run;
-}else{
-    require('./document')();
-    run();
-}
+require('./document')();
+run();

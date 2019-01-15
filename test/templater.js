@@ -250,7 +250,7 @@ test('warns on no template', function(t){
     consoleWatch(function(getResults) {
         var list = fastn('templater');
 
-        t.deepEqual(getResults(), {warn: ['No "template" function was set for this templater component']})
+        t.deepEqual(getResults().warn, ['No "template" function was set for this templater component'])
     });
 
 });

@@ -1,1 +1,0 @@
-console.error("Error: Cannot find module 'enti' from '/home/kory/dev/fastn'");

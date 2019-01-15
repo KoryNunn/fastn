@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "browserify ./test/index.js > ./test/index.browser.js && google-chrome ./test/index.html",
+    "test": "node ./test/index.js",
     "watch": "watchify test/index.js -o test/index.browser.js -d"
   },
   "author": "",
@@ -30,7 +30,9 @@
   "devDependencies": {
     "browserify": "^14.5.0",
     "console-watch": "^1.0.2",
+    "covert": "^1.1.1",
     "dom-lite": "^0.5.1",
+    "mock-browser": "^0.92.14",
     "tape": "^4.9.1",
     "watchify": "^3.11.0"
   }

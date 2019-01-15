@@ -8,7 +8,12 @@ function createProperties(fastn, component, settings){
     for(var key in settings){
         var setting = settings[key];
 
-        if(typeof setting === 'function' && !fastn.isProperty(setting) && !fastn.isBinding(setting)){
+        if(
+            typeof setting === 'function' &&
+            !fastn.isProperty(setting) &&
+            !fastn.isBinding(setting) ||
+            fastn.isProperty(component[key])
+        ){
             continue;
         }
 
