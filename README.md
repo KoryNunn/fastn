@@ -111,12 +111,12 @@ if a string or `binding` is added as a child into a containerComponent, fastn wi
 
 ### `_generic`
 
-if the type passed to fastn does not exactly match any component it knows about, fastn will check for a `_generic` component, and pass all the settings and children through to it.
+If the type passed to fastn does not exactly match any known components, fastn will check for a `_generic` component, and pass all the settings and children through to it.
 [^ try it](http://korynunn.github.io/fastn/try/#InJldHVybiBmYXN0bignZGl2JyxcbiAgICAgICAgICAgICBcblx0ZmFzdG4oJ3NwYW4nLCAnV29vIGEgc3BhbiEnKSxcbiAgICAgICAgICAgICBcblx0ZmFzdG4oJ2JyJyksIC8vIEJyIGJlY2F1c2Ugd2UgY2FuIVxuICAgICAgICAgICAgIFxuICAgIGZhc3RuKCdhJywge2hyZWY6ICdodHRwczovL2dpdGh1Yi5jb20va29yeW51bm4vZmFzdG4nfSwgJ0FuIGFuY2hvcicpLFxuICAgICAgICAgICAgIFxuXHRmYXN0bignYnInKSwgLy8gQW5vdGhlciBiciBmb3IgcmVhc29uc1xuICAgICAgICAgICAgIFxuICAgIGZhc3RuKCdpbWcnLCB7dGl0bGU6ICdBd2Vzb21lIGxvZ28nLCBzcmM6ICdodHRwOi8va29yeW51bm4uZ2l0aHViLmlvL2Zhc3RuL3RyeS9mYXN0bi1zbWwucG5nJ30pXG4pOyI=)
 
 ## Default components
 
-fastn includes 4 extremely simple default components that render as DOM nodes. It is not necessary to use them, and you can replace them with your own to render to anything you want to.
+fastn includes 4 extremely simple default components that render as DOM nodes. It is not necessary to use them, and you can replace them with your own, enabling you to render to anything you want to.
 
 ### textComponent
 
@@ -148,12 +148,12 @@ fastn('list', {
     }
 })
 ```
-the templated components will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
+Templated components will be attached to a model that contains `key` and `item`, where `key` is the key in the set that they correspond to, and `item` is the data of the item in the set.
 
 #### Lazy templating
 
 If you need to render a huge list of items, and you're noticing a UI hang, you can choose to enable
-lazy templating, by setting a lists `insertionFrameTime` to some value:
+lazy templating by setting a lists' `insertionFrameTime` to some value:
 
 ```javascript
 fastn('list', {
@@ -194,7 +194,7 @@ var myComponent = fastn('myComponent');
 
 This will create a component registered in `components` with the key `'myComponent'`
 
-if `'myComponent'` is not found, fastn will check for a `'_generic'` constructor, and use that if defined. The generic component will create a DOM element of the given type passed in, and is likely the most common component you will create.
+If `'myComponent'` is not found, fastn will check for a `'_generic'` constructor, and use that if defined. The generic component will create a DOM element of the given type passed in, and is likely the most common component you will create.
 
 ```javascript
 var divComponent = fastn('div', {'class':'myDiv'});
@@ -250,7 +250,7 @@ someProperty.on('change', function(value){
 
 ```
 
-properties can be added to components in a number of ways:
+Properties can be added to components in a number of ways:
 
 via the settings object:
 
@@ -306,7 +306,7 @@ var anotherBinding = fastn.binding('bar', 'baz', someBinding, function(bar, baz,
 
 ### `binding.from(value)`
 
- - if value is a binding: return `value`
+ - if: value is a binding: return `value`
  - else: return a binding who's value is `value`.
 
 useful when you don't know what something is, but you need it in a binding:
