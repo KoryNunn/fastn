@@ -306,7 +306,7 @@ var anotherBinding = fastn.binding('bar', 'baz', someBinding, function(bar, baz,
 
 ### `binding.from(value)`
 
- - if: value is a binding: return `value`
+ - if value is a binding: return `value`,
  - else: return a binding who's value is `value`.
 
 useful when you don't know what something is, but you need it in a binding:
