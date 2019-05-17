@@ -5,7 +5,7 @@ function updateText(){
 
     var value = this.text();
 
-    this.element.textContent = (value == null ? '' : value);
+    this.element.data = (value == null ? '' : value);
 }
 
 function autoRender(content){
