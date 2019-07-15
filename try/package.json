@@ -10,15 +10,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "crel": "^2.1.8",
-    "fastn": "^2.10.0",
     "cpjax": "^1.0.0",
-    "debounce": "^1.0.0",
+    "crel": "^2.1.8",
+    "debounce": "^1.2.0",
     "doc-js": "^1.2.0",
+    "fastn": "^2.10.0",
     "flat-merge": "^1.0.0",
     "laidout": "^1.0.0"
   },
   "devDependencies": {
-    "uglifyify": "^3.0.1"
+    "stylus": "^0.54.5",
+    "uglifyify": "^3.0.1",
+    "watchify": "^3.11.1"
   }
 }

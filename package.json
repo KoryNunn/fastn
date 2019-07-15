@@ -26,6 +26,7 @@
     "browserify": "^14.5.0",
     "nib": "^1.1.0",
     "stylus": "^0.51.1",
-    "uglifyify": "^3.0.1"
+    "uglifyify": "^3.0.1",
+    "watchify": "^3.11.1"
   }
 }

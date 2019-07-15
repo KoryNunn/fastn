@@ -1,5 +1,6 @@
 var fastn = require('./fastn'),
     cpjax = require('cpjax'),
+    debounce = require('debounce'),
     lzutf8 = require('lzutf8'),
     compressionSuffix = '-lzutf8',
     defaultCode,
@@ -8,26 +9,36 @@ var fastn = require('./fastn'),
     },
     result = fastn.binding('result').attach(codeModel),
     errors = fastn.binding('errors').attach(codeModel),
+    requireModule = require('./requireModule')(window),
     code = fastn.binding('code').attach(codeModel)
-    .on('change', function(code){
-        var outputElement = document.createElement('div'),
-            outputComponent;
+    .on('change', debounce(function(code){
+        var outputElement = document.createElement('div');
 
-        try{
-            outputComponent = new Function('fastn', 'document', code)(fastn, {
-                body: outputElement
-            });
-            result(outputComponent || outputElement);
-            errors(null);
-        }catch(error){
-            errors(error);
+        function run(){
+            try {
+                var outputComponent = new Function('fastn', 'document', 'require', code)(fastn, {
+                    body: outputElement
+                }, requireModule.require);
+                result(outputComponent || outputElement);
+                errors(null);
+            } catch (error) {
+                if(error.message && error.message.includes(requireModule.MODULE_NOT_LOADED)){
+                    setTimeout(run, 200);
+                    errors(error.message.replace(requireModule.MODULE_NOT_LOADED, 'loading'));
+                    return;
+                }
+
+                errors(error);
+            }
         }
+
+        run();
 
         var stringifiedCode = JSON.stringify(code);
 
         localStorage.setItem('fastnTryCode', stringifiedCode);
         window.location.hash = '#' + lzutf8.compress(stringifiedCode, {outputEncoding: 'Base64'}) + compressionSuffix;
-    });
+    }, 300));
 
 var storedCode;
 
