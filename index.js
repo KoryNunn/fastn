@@ -1,7 +1,6 @@
 var createProperty = require('./property'),
     createBinding = require('./binding'),
     BaseComponent = require('./baseComponent'),
-    crel = require('crel'),
     Enti = require('enti'),
     objectAssign = require('object-assign'),
     is = require('./is');
@@ -100,10 +99,10 @@ module.exports = function(components, debug){
         if(typeof component !== 'object' || component instanceof Date){
             return fastn('text', { text: component }, component);
         }
-        if(crel.isElement(component)){
+        if(component instanceof Element){
             return fastn(component);
         }
-        if(crel.isNode(component)){
+        if(component instanceof Node){
             return fastn('text', { text: component }, component.textContent);
         }
     };

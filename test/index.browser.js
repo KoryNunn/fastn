@@ -1016,7 +1016,6 @@ module.exports = genericComponent;
 var createProperty = require('./property'),
     createBinding = require('./binding'),
     BaseComponent = require('./baseComponent'),
-    crel = require('crel'),
     Enti = require('enti'),
     objectAssign = require('object-assign'),
     is = require('./is');
@@ -1115,10 +1114,10 @@ module.exports = function(components, debug){
         if(typeof component !== 'object' || component instanceof Date){
             return fastn('text', { text: component }, component);
         }
-        if(crel.isElement(component)){
+        if(component instanceof Element){
             return fastn(component);
         }
-        if(crel.isNode(component)){
+        if(component instanceof Node){
             return fastn('text', { text: component }, component.textContent);
         }
     };
@@ -1150,7 +1149,7 @@ module.exports = function(components, debug){
     return fastn;
 };
 
-},{"./baseComponent":1,"./binding":2,"./containerComponent":3,"./is":8,"./property":92,"crel":18,"enti":26,"object-assign":51}],8:[function(require,module,exports){
+},{"./baseComponent":1,"./binding":2,"./containerComponent":3,"./is":8,"./property":92,"enti":26,"object-assign":51}],8:[function(require,module,exports){
 var FUNCTION = 'function',
     OBJECT = 'object',
     FASTNBINDING = '_fastn_binding',
@@ -3696,172 +3695,105 @@ function objectToString(o) {
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
 },{"../../is-buffer/index.js":45}],18:[function(require,module,exports){
-//Copyright (C) 2012 Kory Nunn
+/* Copyright (C) 2012 Kory Nunn
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+NOTE:
+This code is formatted for run-speed and to assist compilers.
+This might make it harder to read at times, but the code's intention should be transparent. */
 
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-/*
-
-    This code is not formatted for readability, but rather run-speed and to assist compilers.
-
-    However, the code's intention should be transparent.
-
-    *** IE SUPPORT ***
-
-    If you require this library to work in IE7, add the following after declaring crel.
-
-    var testDiv = document.createElement('div'),
-        testLabel = document.createElement('label');
-
-    testDiv.setAttribute('class', 'a');
-    testDiv['className'] !== 'a' ? crel.attrMap['class'] = 'className':undefined;
-    testDiv.setAttribute('name','a');
-    testDiv['name'] !== 'a' ? crel.attrMap['name'] = function(element, value){
-        element.id = value;
-    }:undefined;
-
-
-    testLabel.setAttribute('for', 'a');
-    testLabel['htmlFor'] !== 'a' ? crel.attrMap['for'] = 'htmlFor':undefined;
-
-
-
-*/
-
-(function (root, factory) {
-    if (typeof exports === 'object') {
-        module.exports = factory();
-    } else if (typeof define === 'function' && define.amd) {
-        define(factory);
-    } else {
-        root.crel = factory();
-    }
-}(this, function () {
-    var fn = 'function',
-        obj = 'object',
-        nodeType = 'nodeType',
-        textContent = 'textContent',
-        setAttribute = 'setAttribute',
-        attrMapString = 'attrMap',
+// IIFE our function
+((exporter) => {
+    // Define our function and its properties
+    // These strings are used multiple times, so this makes things smaller once compiled
+    const func = 'function',
         isNodeString = 'isNode',
-        isElementString = 'isElement',
-        d = typeof document === obj ? document : {},
-        isType = function(a, type){
-            return typeof a === type;
-        },
-        isNode = typeof Node === fn ? function (object) {
-            return object instanceof Node;
-        } :
-        // in IE <= 8 Node is an object, obviously..
-        function(object){
-            return object &&
-                isType(object, obj) &&
-                (nodeType in object) &&
-                isType(object.ownerDocument,obj);
-        },
-        isElement = function (object) {
-            return crel[isNodeString](object) && object[nodeType] === 1;
-        },
-        isArray = function(a){
-            return a instanceof Array;
-        },
-        appendChild = function(element, child) {
-            if (isArray(child)) {
-                child.map(function(subChild){
-                    appendChild(element, subChild);
-                });
-                return;
-            }
-            if(!crel[isNodeString](child)){
-                child = d.createTextNode(child);
-            }
-            element.appendChild(child);
-        };
-
-
-    function crel(){
-        var args = arguments, //Note: assigned to a variable to assist compilers. Saves about 40 bytes in closure compiler. Has negligable effect on performance.
-            element = args[0],
-            child,
-            settings = args[1],
-            childIndex = 2,
-            argumentsLength = args.length,
-            attributeMap = crel[attrMapString];
-
-        element = crel[isElementString](element) ? element : d.createElement(element);
-        // shortcut
-        if(argumentsLength === 1){
-            return element;
-        }
-
-        if(!isType(settings,obj) || crel[isNodeString](settings) || isArray(settings)) {
-            --childIndex;
-            settings = null;
-        }
-
-        // shortcut if there is only one child that is a string
-        if((argumentsLength - childIndex) === 1 && isType(args[childIndex], 'string') && element[textContent] !== undefined){
-            element[textContent] = args[childIndex];
-        }else{
-            for(; childIndex < argumentsLength; ++childIndex){
-                child = args[childIndex];
-
-                if(child == null){
-                    continue;
-                }
-
-                if (isArray(child)) {
-                  for (var i=0; i < child.length; ++i) {
-                    appendChild(element, child[i]);
-                  }
+        d = document,
+        // Helper functions used throughout the script
+        isType = (object, type) => typeof object === type,
+        isNode = (node) => node instanceof Node,
+        isElement = (object) => object instanceof Element,
+        // Recursively appends children to given element. As a text node if not already an element
+        appendChild = (element, child) => {
+            if (child !== null) {
+                if (Array.isArray(child)) { // Support (deeply) nested child elements
+                    child.map((subChild) => appendChild(element, subChild));
                 } else {
-                  appendChild(element, child);
+                    if (!crel[isNodeString](child)) {
+                        child = d.createTextNode(child);
+                    }
+                    element.appendChild(child);
+                }
+            }
+        };
+    //
+    function crel (element, settings) {
+        // Define all used variables / shortcuts here, to make things smaller once compiled
+        let args = arguments, // Note: assigned to a variable to assist compilers.
+            index = 1,
+            key,
+            attribute;
+        // If first argument is an element, use it as is, otherwise treat it as a tagname
+        element = crel.isElement(element) ? element : d.createElement(element);
+        // Check if second argument is a settings object. Skip it if it's:
+        // - not an object (this includes `undefined`)
+        // - a Node
+        // - an array
+        if (!(!isType(settings, 'object') || crel[isNodeString](settings) || Array.isArray(settings))) {
+            // Don't treat settings as a child
+            index++;
+            // Go through settings / attributes object, if it exists
+            for (key in settings) {
+                // Store the attribute into a variable, before we potentially modify the key
+                attribute = settings[key];
+                // Get mapped key / function, if one exists
+                key = crel.attrMap[key] || key;
+                // Note: We want to prioritise mapping over properties
+                if (isType(key, func)) {
+                    key(element, attribute);
+                } else if (isType(attribute, func)) { // ex. onClick property
+                    element[key] = attribute;
+                } else {
+                    // Set the element attribute
+                    element.setAttribute(key, attribute);
                 }
             }
         }
-
-        for(var key in settings){
-            if(!attributeMap[key]){
-                if(isType(settings[key],fn)){
-                    element[key] = settings[key];
-                }else{
-                    element[setAttribute](key, settings[key]);
-                }
-            }else{
-                var attr = attributeMap[key];
-                if(typeof attr === fn){
-                    attr(element, settings[key]);
-                }else{
-                    element[setAttribute](attr, settings[key]);
-                }
-            }
+        // Loop through all arguments, if any, and append them to our element if they're not `null`
+        for (; index < args.length; index++) {
+            appendChild(element, args[index]);
         }
 
         return element;
     }
 
-    // Used for mapping one kind of attribute to the supported version of that in bad browsers.
-    crel[attrMapString] = {};
-
-    crel[isElementString] = isElement;
-
+    // Used for mapping attribute keys to supported versions in bad browsers, or to custom functionality
+    crel.attrMap = {};
+    crel.isElement = isElement;
     crel[isNodeString] = isNode;
-
-    if(typeof Proxy !== 'undefined'){
-        crel.proxy = new Proxy(crel, {
-            get: function(target, key){
-                !(key in crel) && (crel[key] = crel.bind(null, key));
-                return crel[key];
-            }
-        });
+    // Expose proxy interface
+    crel.proxy = new Proxy(crel, {
+        get: (target, key) => {
+            !(key in crel) && (crel[key] = crel.bind(null, key));
+            return crel[key];
+        }
+    });
+    // Export crel
+    exporter(crel, func);
+})((product, func) => {
+    if (typeof exports === 'object') {
+        // Export for Browserify / CommonJS format
+        module.exports = product;
+    } else if (typeof define === func && define.amd) {
+        // Export for RequireJS / AMD format
+        define(product);
+    } else {
+        // Export as a 'global' function
+        this.crel = product;
     }
-
-    return crel;
-}));
+});
 
 },{}],19:[function(require,module,exports){
 function compare(a, b, visited){
@@ -6386,24 +6318,28 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    ctor.prototype = Object.create(superCtor.prototype, {
-      constructor: {
-        value: ctor,
-        enumerable: false,
-        writable: true,
-        configurable: true
-      }
-    });
+    if (superCtor) {
+      ctor.super_ = superCtor
+      ctor.prototype = Object.create(superCtor.prototype, {
+        constructor: {
+          value: ctor,
+          enumerable: false,
+          writable: true,
+          configurable: true
+        }
+      })
+    }
   };
 } else {
   // old school shim for old browsers
   module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    var TempCtor = function () {}
-    TempCtor.prototype = superCtor.prototype
-    ctor.prototype = new TempCtor()
-    ctor.prototype.constructor = ctor
+    if (superCtor) {
+      ctor.super_ = superCtor
+      var TempCtor = function () {}
+      TempCtor.prototype = superCtor.prototype
+      ctor.prototype = new TempCtor()
+      ctor.prototype.constructor = ctor
+    }
   }
 }
 
@@ -7543,7 +7479,8 @@ var substr = 'ab'.substr(-1) === 'b'
 (function (process){
 'use strict';
 
-if (!process.version ||
+if (typeof process === 'undefined' ||
+    !process.version ||
     process.version.indexOf('v0.') === 0 ||
     process.version.indexOf('v1.') === 0 && process.version.indexOf('v1.8.') !== 0) {
   module.exports = { nextTick: nextTick };
@@ -8978,7 +8915,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":60,"./internal/streams/BufferList":65,"./internal/streams/destroy":66,"./internal/streams/stream":67,"_process":58,"core-util-is":17,"events":36,"inherits":44,"isarray":48,"process-nextick-args":57,"safe-buffer":74,"string_decoder/":68,"util":11}],63:[function(require,module,exports){
+},{"./_stream_duplex":60,"./internal/streams/BufferList":65,"./internal/streams/destroy":66,"./internal/streams/stream":67,"_process":58,"core-util-is":17,"events":36,"inherits":44,"isarray":48,"process-nextick-args":57,"safe-buffer":68,"string_decoder/":69,"util":11}],63:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -9883,7 +9820,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"./_stream_duplex":60,"./internal/streams/destroy":66,"./internal/streams/stream":67,"_process":58,"core-util-is":17,"inherits":44,"process-nextick-args":57,"safe-buffer":74,"timers":89,"util-deprecate":90}],65:[function(require,module,exports){
+},{"./_stream_duplex":60,"./internal/streams/destroy":66,"./internal/streams/stream":67,"_process":58,"core-util-is":17,"inherits":44,"process-nextick-args":57,"safe-buffer":68,"timers":89,"util-deprecate":90}],65:[function(require,module,exports){
 'use strict';
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -9963,7 +9900,7 @@ if (util && util.inspect && util.inspect.custom) {
     return this.constructor.name + ' ' + obj;
   };
 }
-},{"safe-buffer":74,"util":11}],66:[function(require,module,exports){
+},{"safe-buffer":68,"util":11}],66:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -10042,6 +9979,70 @@ module.exports = {
 module.exports = require('events').EventEmitter;
 
 },{"events":36}],68:[function(require,module,exports){
+/* eslint-disable node/no-deprecated-api */
+var buffer = require('buffer')
+var Buffer = buffer.Buffer
+
+// alternative to using Object.keys for old browsers
+function copyProps (src, dst) {
+  for (var key in src) {
+    dst[key] = src[key]
+  }
+}
+if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
+  module.exports = buffer
+} else {
+  // Copy properties from require('buffer')
+  copyProps(buffer, exports)
+  exports.Buffer = SafeBuffer
+}
+
+function SafeBuffer (arg, encodingOrOffset, length) {
+  return Buffer(arg, encodingOrOffset, length)
+}
+
+// Copy static methods from Buffer
+copyProps(Buffer, SafeBuffer)
+
+SafeBuffer.from = function (arg, encodingOrOffset, length) {
+  if (typeof arg === 'number') {
+    throw new TypeError('Argument must not be a number')
+  }
+  return Buffer(arg, encodingOrOffset, length)
+}
+
+SafeBuffer.alloc = function (size, fill, encoding) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  var buf = Buffer(size)
+  if (fill !== undefined) {
+    if (typeof encoding === 'string') {
+      buf.fill(fill, encoding)
+    } else {
+      buf.fill(fill)
+    }
+  } else {
+    buf.fill(0)
+  }
+  return buf
+}
+
+SafeBuffer.allocUnsafe = function (size) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  return Buffer(size)
+}
+
+SafeBuffer.allocUnsafeSlow = function (size) {
+  if (typeof size !== 'number') {
+    throw new TypeError('Argument must be a number')
+  }
+  return buffer.SlowBuffer(size)
+}
+
+},{"buffer":13}],69:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -10338,10 +10339,10 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":74}],69:[function(require,module,exports){
+},{"safe-buffer":68}],70:[function(require,module,exports){
 module.exports = require('./readable').PassThrough
 
-},{"./readable":70}],70:[function(require,module,exports){
+},{"./readable":71}],71:[function(require,module,exports){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = exports;
 exports.Readable = exports;
@@ -10350,13 +10351,13 @@ exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":60,"./lib/_stream_passthrough.js":61,"./lib/_stream_readable.js":62,"./lib/_stream_transform.js":63,"./lib/_stream_writable.js":64}],71:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":60,"./lib/_stream_passthrough.js":61,"./lib/_stream_readable.js":62,"./lib/_stream_transform.js":63,"./lib/_stream_writable.js":64}],72:[function(require,module,exports){
 module.exports = require('./readable').Transform
 
-},{"./readable":70}],72:[function(require,module,exports){
+},{"./readable":71}],73:[function(require,module,exports){
 module.exports = require('./lib/_stream_writable.js');
 
-},{"./lib/_stream_writable.js":64}],73:[function(require,module,exports){
+},{"./lib/_stream_writable.js":64}],74:[function(require,module,exports){
 (function (process,setImmediate){
 var through = require('through');
 var nextTick = typeof setImmediate !== 'undefined'
@@ -10389,71 +10390,7 @@ module.exports = function (write, end) {
 };
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"_process":58,"through":88,"timers":89}],74:[function(require,module,exports){
-/* eslint-disable node/no-deprecated-api */
-var buffer = require('buffer')
-var Buffer = buffer.Buffer
-
-// alternative to using Object.keys for old browsers
-function copyProps (src, dst) {
-  for (var key in src) {
-    dst[key] = src[key]
-  }
-}
-if (Buffer.from && Buffer.alloc && Buffer.allocUnsafe && Buffer.allocUnsafeSlow) {
-  module.exports = buffer
-} else {
-  // Copy properties from require('buffer')
-  copyProps(buffer, exports)
-  exports.Buffer = SafeBuffer
-}
-
-function SafeBuffer (arg, encodingOrOffset, length) {
-  return Buffer(arg, encodingOrOffset, length)
-}
-
-// Copy static methods from Buffer
-copyProps(Buffer, SafeBuffer)
-
-SafeBuffer.from = function (arg, encodingOrOffset, length) {
-  if (typeof arg === 'number') {
-    throw new TypeError('Argument must not be a number')
-  }
-  return Buffer(arg, encodingOrOffset, length)
-}
-
-SafeBuffer.alloc = function (size, fill, encoding) {
-  if (typeof size !== 'number') {
-    throw new TypeError('Argument must be a number')
-  }
-  var buf = Buffer(size)
-  if (fill !== undefined) {
-    if (typeof encoding === 'string') {
-      buf.fill(fill, encoding)
-    } else {
-      buf.fill(fill)
-    }
-  } else {
-    buf.fill(0)
-  }
-  return buf
-}
-
-SafeBuffer.allocUnsafe = function (size) {
-  if (typeof size !== 'number') {
-    throw new TypeError('Argument must be a number')
-  }
-  return Buffer(size)
-}
-
-SafeBuffer.allocUnsafeSlow = function (size) {
-  if (typeof size !== 'number') {
-    throw new TypeError('Argument must be a number')
-  }
-  return buffer.SlowBuffer(size)
-}
-
-},{"buffer":13}],75:[function(require,module,exports){
+},{"_process":58,"through":88,"timers":89}],75:[function(require,module,exports){
 module.exports = function isSame(a, b){
     if(a === b){
         return true;
@@ -10762,7 +10699,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":36,"inherits":44,"readable-stream/duplex.js":59,"readable-stream/passthrough.js":69,"readable-stream/readable.js":70,"readable-stream/transform.js":71,"readable-stream/writable.js":72}],80:[function(require,module,exports){
+},{"events":36,"inherits":44,"readable-stream/duplex.js":59,"readable-stream/passthrough.js":70,"readable-stream/readable.js":71,"readable-stream/transform.js":72,"readable-stream/writable.js":73}],80:[function(require,module,exports){
 'use strict';
 
 var bind = require('function-bind');
@@ -10871,9 +10808,9 @@ exports = module.exports = (function () {
         return getHarness().onFailure.apply(this, arguments);
     };
 
-    lazyLoad.getHarness = getHarness
+    lazyLoad.getHarness = getHarness;
 
-    return lazyLoad
+    return lazyLoad;
 
     function getHarness(opts) {
         if (!opts) opts = {};
@@ -10892,21 +10829,19 @@ function createExitHarness(conf) {
     var stream = harness.createStream({ objectMode: conf.objectMode });
     var es = stream.pipe(conf.stream || createDefaultStream());
     if (canEmitExit) {
-        es.on('error', function (err) { harness._exitCode = 1 });
+        es.on('error', function (err) { harness._exitCode = 1; });
     }
 
     var ended = false;
-    stream.on('end', function () { ended = true });
+    stream.on('end', function () { ended = true; });
 
     if (conf.exit === false) return harness;
     if (!canEmitExit || !canExit) return harness;
 
-    var inErrorState = false;
-
     process.on('exit', function (code) {
         // let the process exit cleanly.
         if (code !== 0) {
-            return
+            return;
         }
 
         if (!ended) {
@@ -10935,7 +10870,7 @@ function createHarness(conf_) {
     if (!conf_) conf_ = {};
     var results = createResult();
     if (conf_.autoclose !== false) {
-        results.once('done', function () { results.close() });
+        results.once('done', function () { results.close(); });
     }
 
     var test = function (name, conf, cb) {
@@ -10947,7 +10882,7 @@ function createHarness(conf_) {
                 inspectCode(st_);
             });
             st.on('result', function (r) {
-                if (!r.ok && typeof r !== 'string') test._exitCode = 1
+                if (!r.todo && !r.ok && typeof r !== 'string') test._exitCode = 1;
             });
         })(t);
 
@@ -10980,7 +10915,7 @@ function createHarness(conf_) {
     };
     test._exitCode = 0;
 
-    test.close = function () { results.close() };
+    test.close = function () { results.close(); };
 
     return test;
 }
@@ -11010,10 +10945,10 @@ module.exports = function () {
     function flush() {
         if (fs.writeSync && /^win/.test(process.platform)) {
             try { fs.writeSync(1, line + '\n'); }
-            catch (e) { stream.emit('error', e) }
+            catch (e) { stream.emit('error', e); }
         } else {
-            try { console.log(line) }
-            catch (e) { stream.emit('error', e) }
+            try { console.log(line); }
+            catch (e) { stream.emit('error', e); }
         }
         line = '';
     }
@@ -11040,6 +10975,10 @@ var nextTick = typeof setImmediate !== 'undefined'
 module.exports = Results;
 inherits(Results, EventEmitter);
 
+function coalesceWhiteSpaces(str) {
+    return String(str).replace(/\s+/g, ' ');
+}
+
 function Results() {
     if (!(this instanceof Results)) return new Results;
     this.count = 0;
@@ -11065,7 +11004,9 @@ Results.prototype.createStream = function (opts) {
                 var row = {
                     type: 'test',
                     name: t.name,
-                    id: id
+                    id: id,
+                    skip: t._skip,
+                    todo: t._todo
                 };
                 if (has(extra, 'parent')) {
                     row.parent = extra.parent;
@@ -11084,7 +11025,7 @@ Results.prototype.createStream = function (opts) {
                 output.queue({ type: 'end', test: id });
             });
         });
-        self.on('done', function () { output.queue(null) });
+        self.on('done', function () { output.queue(null); });
     } else {
         output = resumer();
         output.queue('TAP version 13\n');
@@ -11119,9 +11060,12 @@ Results.prototype.only = function (t) {
 
 Results.prototype._watch = function (t) {
     var self = this;
-    var write = function (s) { self._stream.queue(s) };
+    var write = function (s) { self._stream.queue(s); };
     t.once('prerun', function () {
-        write('# ' + t.name + '\n');
+        var premsg = '';
+        if (t._skip) premsg = 'SKIP ';
+        else if (t._todo) premsg = 'TODO ';
+        write('# ' + premsg + coalesceWhiteSpaces(t.name) + '\n');
     });
 
     t.on('result', function (res) {
@@ -11132,21 +11076,21 @@ Results.prototype._watch = function (t) {
         write(encodeResult(res, self.count + 1));
         self.count ++;
 
-        if (res.ok || res.todo) self.pass ++
+        if (res.ok || res.todo) self.pass ++;
         else {
             self.fail ++;
             self.emit('fail');
         }
     });
 
-    t.on('test', function (st) { self._watch(st) });
+    t.on('test', function (st) { self._watch(st); });
 };
 
 Results.prototype.close = function () {
     var self = this;
     if (self.closed) self._stream.emit('error', new Error('ALREADY CLOSED'));
     self.closed = true;
-    var write = function (s) { self._stream.queue(s) };
+    var write = function (s) { self._stream.queue(s); };
 
     write('\n1..' + self.count + '\n');
     write('# tests ' + self.count + '\n');
@@ -11161,10 +11105,13 @@ Results.prototype.close = function () {
 function encodeResult(res, count) {
     var output = '';
     output += (res.ok ? 'ok ' : 'not ok ') + count;
-    output += res.name ? ' ' + res.name.toString().replace(/\s+/g, ' ') : '';
+    output += res.name ? ' ' + coalesceWhiteSpaces(res.name) : '';
 
-    if (res.skip) output += ' # SKIP';
-    else if (res.todo) output += ' # TODO';
+    if (res.skip) {
+        output += ' # SKIP' + ((typeof res.skip === 'string') ? ' ' + coalesceWhiteSpaces(res.skip) : '');
+    } else if (res.todo) {
+        output += ' # TODO' + ((typeof res.todo === 'string') ? ' ' + coalesceWhiteSpaces(res.todo) : '');
+    };
 
     output += '\n';
     if (res.ok) return output;
@@ -11216,7 +11163,7 @@ function getNextTest(results) {
         if (results._only === t) {
             return t;
         }
-    } while (results.tests.length !== 0)
+    } while (results.tests.length !== 0);
 }
 
 function invalidYaml(str) {
@@ -11224,7 +11171,7 @@ function invalidYaml(str) {
 }
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"_process":58,"defined":24,"events":36,"function-bind":40,"has":42,"inherits":44,"object-inspect":52,"resumer":73,"through":88,"timers":89}],87:[function(require,module,exports){
+},{"_process":58,"defined":24,"events":36,"function-bind":40,"has":42,"inherits":44,"object-inspect":52,"resumer":74,"through":88,"timers":89}],87:[function(require,module,exports){
 (function (process,setImmediate,__dirname){
 var deepEqual = require('deep-equal');
 var defined = require('defined');
@@ -11311,16 +11258,13 @@ function Test(name_, opts_, cb_) {
 }
 
 Test.prototype.run = function () {
-    if (this._skip) {
-        this.comment('SKIP ' + this.name);
-    }
+    this.emit('prerun');
     if (!this._cb || this._skip) {
         return this._end();
     }
     if (this._timeout != null) {
         this.timeoutAfter(this._timeout);
     }
-    this.emit('prerun');
     this._cb(this);
     this.emit('run');
 };
@@ -11333,7 +11277,7 @@ Test.prototype.test = function (name, opts, cb) {
     this.emit('test', t);
     t.on('prerun', function () {
         self.assertCount++;
-    })
+    });
 
     if (!self._pendingAsserts()) {
         nextTick(function () {
@@ -11370,7 +11314,7 @@ Test.prototype.timeoutAfter = function (ms) {
     this.once('end', function () {
         safeClearTimeout(timeout);
     });
-}
+};
 
 Test.prototype.end = function (err) {
     var self = this;
@@ -11389,7 +11333,7 @@ Test.prototype._end = function (err) {
     var self = this;
     if (this._progeny.length) {
         var t = this._progeny.shift();
-        t.on('end', function () { self._end() });
+        t.on('end', function () { self._end(); });
         t.run();
         return;
     }
@@ -11433,9 +11377,11 @@ Test.prototype._assert = function assert(ok, opts) {
     var self = this;
     var extra = opts.extra || {};
 
+    ok = !!ok || !!extra.skip;
+
     var res = {
         id: self.assertCount++,
-        ok: Boolean(ok),
+        ok: ok,
         skip: defined(extra.skip, opts.skip),
         todo: defined(extra.todo, opts.todo, self._todo),
         name: defined(extra.message, opts.message, '(unnamed assert)'),
@@ -11448,7 +11394,7 @@ Test.prototype._assert = function assert(ok, opts) {
     if (has(opts, 'expected') || has(extra, 'expected')) {
         res.expected = defined(extra.expected, opts.expected);
     }
-    this._ok = Boolean(this._ok && ok);
+    this._ok = !!(this._ok && ok);
 
     if (!ok && !res.todo) {
         res.error = defined(extra.error, opts.error, new Error(res.name));
@@ -11495,7 +11441,7 @@ Test.prototype._assert = function assert(ok, opts) {
 
                     /((?:\/|[a-zA-Z]:\\)[^:\)]+:(\d+)(?::(\d+))?)/
             */
-            var re = /^(?:[^\s]*\s*\bat\s+)(?:(.*)\s+\()?((?:\/|[a-zA-Z]:\\)[^:\)]+:(\d+)(?::(\d+))?)/
+            var re = /^(?:[^\s]*\s*\bat\s+)(?:(.*)\s+\()?((?:\/|[a-zA-Z]:\\)[^:\)]+:(\d+)(?::(\d+))?)/;
             var m = re.exec(err[i]);
 
             if (!m) {
@@ -11511,7 +11457,7 @@ Test.prototype._assert = function assert(ok, opts) {
 
             // Function call description may not (just) be a function name.
             // Try to extract function name by looking at first "word" only.
-            res.functionName = callDescription.split(/\s+/)[0]
+            res.functionName = callDescription.split(/\s+/)[0];
             res.file = filePath;
             res.line = Number(m[3]);
             if (m[4]) res.column = Number(m[4]);
