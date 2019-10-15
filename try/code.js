@@ -40,7 +40,7 @@ var fastn = require('./fastn'),
         window.location.hash = '#' + lzutf8.compress(stringifiedCode, {outputEncoding: 'Base64'}) + compressionSuffix;
     }, 300));
 
-var storedCode;
+var urlCode;
 
 function loadFromHash(){
     try{
@@ -53,6 +53,7 @@ function loadFromHash(){
         hashSource = JSON.parse(hashSource);
 
         if(hashSource !== code()){
+            urlCode = hashSource
             code(hashSource);
         }
     }catch(e){}
@@ -61,18 +62,12 @@ function loadFromHash(){
 window.addEventListener('hashchange', loadFromHash);
 loadFromHash();
 
-try{
-    storedCode = JSON.parse(localStorage.getItem('fastnTryCode'));
-}catch(e){}
-
-code(storedCode || '');
-
 cpjax('./demo.js', function(error, data){
     if(error){
         errors(error);
         return;
     }
-    if(!storedCode){
+    if(!urlCode){
         code(data);
     }
     defaultCode = data;

@@ -11,7 +11,5 @@ var app = fastn('div',
 app.render();
 
 window.onload = function(){
-
-
     document.body.appendChild(app.element);
 };
