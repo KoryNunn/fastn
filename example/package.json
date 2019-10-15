@@ -19,6 +19,6 @@
     "laidout": "^1.0.0"
   },
   "devDependencies": {
-    "uglifyify": "^3.0.1"
+    "uglifyify": "^5.0.2"
   }
 }
