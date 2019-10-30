@@ -152,7 +152,7 @@ module.exports = function(fastn, component, type, settings, children){
                 currentItems[currentKey] = [existingItem, item, childComponent];
             }else{
                 removeComponent(childComponent);
-                itemsMap.delete(item);
+                itemsMap.delete(item, childComponent);
             }
         });
 
