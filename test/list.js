@@ -175,6 +175,49 @@ test('bound items remove', function(t){
 
 });
 
+test('bound items remove same instance', function(t){
+
+    t.plan(3);
+
+    var fastn = createFastn();
+
+    var list = fastn('list', {
+            items: fastn.binding('items|*'),
+            template: function(model){
+                return fastn.binding('item.name');
+            }
+        }),
+        model = new Enti({
+            items: []
+        });
+
+    var testItem = {
+        name: 'foo'
+    };
+
+    model.push('items', testItem);
+    model.push('items', testItem);
+
+    list.attach(model);
+    list.render();
+
+    document.body.appendChild(list.element);
+
+    t.equal(document.body.textContent, 'foofoo');
+
+    model.remove('items.0');
+
+    t.equal(document.body.textContent, 'foo');
+
+    model.remove('items.0');
+
+    t.equal(document.body.textContent, '');
+
+    list.element.remove();
+    list.destroy();
+
+});
+
 test('null items', function(t){
 
     t.plan(1);

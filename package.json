@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "browserify ./test/index.js > ./test/index.browser.js && google-chrome ./test/index.html",
+    "test": "browserify ./test/index.js | tape-run",
     "watch": "watchify test/index.js -o test/index.browser.js -d"
   },
   "author": "",
@@ -31,6 +31,7 @@
     "crel": "^4.0.1",
     "dom-lite": "^0.5.1",
     "tape": "^4.9.1",
+    "tape-run": "^6.0.1",
     "watchify": "^3.11.0"
   }
 }
