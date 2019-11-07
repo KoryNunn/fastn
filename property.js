@@ -11,12 +11,12 @@ propertyProto._firm = 1;
 
 function propertyTemplate(value){
     if(!arguments.length){
-        return this.binding && this.binding() || this.property._value;
+        return this.observable && typeof this.observable === 'function' && this.observable() || this.property._value;
     }
 
     if(!this.destroyed){
-        if(this.binding){
-            this.binding(value);
+        if(this.observable){
+            typeof this.observable === 'function' && this.observable(value);
             return this.property;
         }
 
@@ -44,35 +44,38 @@ function changeChecker(current, changes){
     }
 }
 
-
 function propertyBinding(newBinding){
     if(!arguments.length){
-        return this.binding;
+        return this.observable;
     }
 
-    if(!this.fastn.isBinding(newBinding)){
+    if(typeof newBinding === 'string' || typeof newBinding === 'number'){
         newBinding = this.fastn.binding(newBinding);
     }
 
-    if(newBinding === this.binding){
+    if(newBinding === this.observable){
         return this.property;
     }
 
-    if(this.binding){
-        this.binding.removeListener('change', this.valueUpdate);
+    if(this.observable){
+        this.observable.removeListener('change', this.valueUpdate);
     }
 
-    this.binding = newBinding;
+    this.observable = newBinding;
 
     if(this.model){
         this.property.attach(this.model, this.property._firm);
     }
 
-    this.binding.on('change', this.valueUpdate);
-    this.valueUpdate(this.binding());
+    this.observable.on('change', this.valueUpdate);
+    if(typeof this.observable === 'function'){
+        this.valueUpdate(this.observable());
+    } else {
+        this.valueUpdate(undefined);
+    }
 
     return this.property;
-};
+}
 
 function attachProperty(object, firm){
     if(firmer(this.property, firm)){
@@ -85,9 +88,9 @@ function attachProperty(object, firm){
         object = {};
     }
 
-    if(this.binding){
+    if(this.observable){
         this.model = object;
-        this.binding.attach(object, 1);
+        this.observable.attach && this.observable.attach(object, 1);
     }
 
     if(this.property._events && 'attach' in this.property._events){
@@ -102,9 +105,9 @@ function detachProperty(firm){
         return this.property;
     }
 
-    if(this.binding){
-        this.binding.removeListener('change', this.valueUpdate);
-        this.binding.detach(1);
+    if(this.observable){
+        this.observable.removeListener('change', this.valueUpdate);
+        this.observable.detach && this.observable.detach(1);
         this.model = null;
     }
 
@@ -146,8 +149,8 @@ function destroyProperty(){
 
         this.property.emit('destroy');
         this.property.detach();
-        if(this.binding){
-            this.binding.destroy(true);
+        if(this.observable){
+            this.observable.destroy && this.observable.destroy(true);
         }
     }
     return this.property;

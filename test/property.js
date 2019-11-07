@@ -2,7 +2,8 @@ var test = require('tape'),
     fastn = require('../index')({}),
     createBinding = fastn.binding,
     createProperty = fastn.property,
-    Enti = require('enti');
+    Enti = require('enti'),
+    EventEmitter = require('events');
 
 test('simple property initialisation', function(t){
     t.plan(3);
@@ -138,4 +139,58 @@ test('cyclic value with structure changes', function(t){
     });
 
     model.set('self', model.get('.'));
+});
+
+test('bound property to EventEmitter', function(t){
+    t.plan(5);
+
+    var property = createProperty();
+
+    var observable = new EventEmitter();
+
+    t.equal(property(), undefined, 'No initial value');
+
+    property('bar');
+
+    t.equal(property(), 'bar', 'bar set');
+
+    property.binding(observable);
+
+    t.equal(property(), undefined, 'bar overridden by observable');
+
+    observable.emit('change', 'baz');
+
+    t.equal(property(), 'baz', 'baz set via observable');
+
+    property.on('change', function(value){
+        t.equal(value, 'foo', 'property changed');
+    });
+
+    observable.emit('change', 'foo');
+});
+
+test('bound property to EventEmitter with custom attach', function(t){
+    t.plan(2);
+
+    var property = createProperty();
+
+    function customObservable(path) {
+        var observable = new EventEmitter();
+        observable.attach = function(data){
+            this.emit('change', data[path])
+        };
+        return observable;
+    }
+
+    var observable = customObservable('foo')
+
+    property.binding(observable);
+
+    t.equal(property(), undefined, 'no value');
+
+    property.attach({
+        foo: 'bar'
+    })
+
+    t.equal(property(), 'bar', 'bar set via observable attach');
 });
