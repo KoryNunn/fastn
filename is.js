@@ -5,6 +5,10 @@ var FUNCTION = 'function',
     FASTNCOMPONENT = '_fastn_component',
     DEFAULTBINDING = '_default_binding';
 
+function isObservable(thing){
+    return thing && thing instanceof Object && typeof thing.on === FUNCTION;
+}
+
 function isComponent(thing){
     return thing && typeof thing === OBJECT && FASTNCOMPONENT in thing;
 }
@@ -27,6 +31,7 @@ function isDefaultBinding(thing){
 
 module.exports = {
     component: isComponent,
+    observable: isObservable,
     bindingObject: isBindingObject,
     binding: isBinding,
     defaultBinding: isDefaultBinding,

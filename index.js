@@ -20,7 +20,7 @@ function inflateProperties(component, settings){
 
         }else if(is.property(property)){
 
-            if(is.binding(setting)){
+            if(is.observable(setting)){
                 property.binding(setting);
             }else{
                 property(setting);
