@@ -39,7 +39,7 @@ function validateExpectedComponents(components, componentName, expectedComponent
     if(expectedComponents.length){
         console.warn([
             'fastn("' + componentName + '") uses some components that have not been registered with fastn',
-            'Expected conponent constructors: ' + expectedComponents.join(', ')
+            'Expected component constructors: ' + expectedComponents.join(', ')
         ].join('\n\n'));
     }
 }
@@ -53,11 +53,7 @@ module.exports = function(components, debug){
     components._container = components._container || require('./containerComponent');
 
     function fastn(type){
-
-        var args = [];
-        for(var i = 0; i < arguments.length; i++){
-            args[i] = arguments[i];
-        }
+        var args = Array.prototype.slice.call(arguments);
 
         var settings = args[1],
             childrenIndex = 2,
@@ -78,8 +74,13 @@ module.exports = function(components, debug){
             children = args.slice(childrenIndex),
             component = fastn.base(type, settings, children);
 
-        while(baseType = types.shift()){
-            component.extend(baseType, settings, children);
+        while(component && (baseType = types.shift())){
+            component = component.extend(baseType, settings, children);
+        }
+
+        if(!component){
+            // Type was not a component.
+            return;
         }
 
         component._properties = {};
@@ -90,21 +91,19 @@ module.exports = function(components, debug){
     }
 
     fastn.toComponent = function(component){
-        if(component == null){
+        if(component == null || Array.isArray(component)){
             return;
         }
+
         if(is.component(component)){
             return component;
         }
+
         if(typeof component !== 'object' || component instanceof Date){
             return fastn('text', { text: component }, component);
         }
-        if(component instanceof Element){
-            return fastn(component);
-        }
-        if(component instanceof Node){
-            return fastn('text', { text: component }, component.textContent);
-        }
+
+        return fastn(component)
     };
 
     fastn.debug = debug;

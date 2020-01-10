@@ -161,9 +161,10 @@ function createInternalScope(data, propertyTransforms){
 }
 
 function extendComponent(type, settings, children){
+    var component = this.component;
 
     if(type in this.types){
-        return this.component;
+        return component;
     }
 
     if(!(type in this.fastn.components)){
@@ -172,17 +173,21 @@ function extendComponent(type, settings, children){
             throw new Error('No component of type "' + type + '" is loaded');
         }
 
-        this.fastn.components._generic(this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
+        component = this.fastn.components._generic(this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
 
-        this.types._generic = true;
+        if(component){
+            this.types._generic = true;
+        }
     }else{
 
-        this.fastn.components[type](this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
+        component = this.fastn.components[type](this.fastn, this.component, type, settings, children, createInternalScope.bind(this));
     }
 
-    this.types[type] = true;
+    if(component){
+        this.types[type] = true;
+    }
 
-    return this.component;
+    return component;
 };
 
 function isType(type){

@@ -157,7 +157,7 @@ function onRender(){
 }
 
 function render(){
-    this.element = this.createElement(this._settings.tagName || this._tagName);
+    this.element = this.element || this.createElement(this._settings.tagName || this._tagName);
 
     if('value' in this.element){
         this._lastStates = new Array(2);
@@ -171,6 +171,19 @@ function render(){
 function genericComponent(fastn, component, type, settings, children){
     if(component.is(type)){
         return component;
+    }
+
+    if(type instanceof global.Element){
+        component.element = type;
+        type = component.element.tagName;
+    }
+
+    if(type instanceof global.Node){
+        return fastn('text', { text: type }, type.textContent);
+    }
+
+    if(typeof type !== 'string'){
+        return
     }
 
     if(type === GENERIC){

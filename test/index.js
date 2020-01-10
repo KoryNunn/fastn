@@ -1,3 +1,5 @@
+"use strict"
+
 function run(){
     document.body.innerHTML = '';
 
