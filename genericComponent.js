@@ -173,17 +173,17 @@ function genericComponent(fastn, component, type, settings, children){
         return component;
     }
 
-    if(type instanceof global.Element){
+    if(global.Element && type instanceof global.Element){
         component.element = type;
         type = component.element.tagName;
     }
 
-    if(type instanceof global.Node){
+    if(global.Node && type instanceof global.Node){
         return fastn('text', { text: type }, type.textContent);
     }
 
     if(typeof type !== 'string'){
-        return
+        return;
     }
 
     if(type === GENERIC){
