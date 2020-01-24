@@ -64,19 +64,30 @@ function addAutoHandler(component, element, key, settings){
         return;
     }
 
-    var autoEvent = settings[key].split(':'),
-        eventName = key.slice(2);
-
+    var eventName = key.slice(2);
+    var handler = settings[key];
     delete settings[key];
 
-    var handler = function(event){
-        var fancyProp = fancyProps[autoEvent[1]],
-            value = fancyProp ? fancyProp(component, element) : element[autoEvent[1]];
+    if(typeof handler === 'function'){
+        var innerHandler = handler;
+        handler = function(event){
+            trackKeyEvents(component, element, event);
+            innerHandler.call(component, event, component.scope());
+        };
+    }
 
-        trackKeyEvents(component, element, event);
+    if (typeof handler === 'string') {
+        var autoEvent = handler.split(':');
 
-        component[autoEvent[0]](value);
-    };
+        handler = function(event){
+            var fancyProp = fancyProps[autoEvent[1]],
+                value = fancyProp ? fancyProp(component, element) : element[autoEvent[1]];
+
+            trackKeyEvents(component, element, event);
+
+            component[autoEvent[0]](value);
+        };
+    }
 
     element.addEventListener(eventName, handler);
 

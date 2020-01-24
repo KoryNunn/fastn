@@ -280,3 +280,119 @@ test('custom fancyProps', function(t){
     thing.destroy();
 
 });
+
+test('event handling - auto handler', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var input = fastn('input', {
+        value: 'a',
+        onclick: 'value:value',
+    });
+
+    input.render();
+
+    document.body.appendChild(input.element);
+
+    input.element.value = 'b';
+    input.element.click();
+
+    t.equal(input.value(), 'b')
+
+    input.element.remove();
+    input.destroy();
+
+});
+
+test('event handling - function handler', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var button = fastn('button', {
+        onclick: (event, scope) => t.pass('recieved click')
+    });
+
+    button.render();
+
+    document.body.appendChild(button.element);
+
+    button.element.click();
+
+    button.element.remove();
+    button.destroy();
+
+});
+
+test('event handling - function handler - this', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var input = fastn('input', {
+        value: 'a',
+        onclick: function(event, scope){ this.value('b') }
+    });
+
+    input.render();
+
+    document.body.appendChild(input.element);
+
+    input.element.value = 'b';
+    input.element.click();
+
+    t.equal(input.value(), 'b')
+
+    input.element.remove();
+    input.destroy();
+
+});
+
+test('event handling - component handler', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var button = fastn('button')
+        .on('click', (event, scope) => t.pass('recieved click'))
+
+    button.render();
+
+    document.body.appendChild(button.element);
+
+    button.element.click();
+
+    button.element.remove();
+    button.destroy();
+
+});
+
+test('event handling - function handler - this', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var input = fastn('input', {
+        value: 'a'
+    })
+    .on('click', function(event, scope){ this.value('b') })
+
+    input.render();
+
+    document.body.appendChild(input.element);
+
+    input.element.value = 'b';
+    input.element.click();
+
+    t.equal(input.value(), 'b')
+
+    input.element.remove();
+    input.destroy();
+
+});
