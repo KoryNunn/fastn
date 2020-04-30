@@ -204,3 +204,18 @@ test('insert mixed array', function(t){
     t.equal(container.children().length, 3, 'Only values added');
 
 });
+
+test('insert destroyed component throws', function(t){
+
+    t.plan(1);
+
+    var fastn = createFastn();
+
+    var container = fastn('div');
+    var child = fastn('div');
+    child.destroy();
+
+    t.throws(function(){
+        container.insert(child);
+    }); 
+});

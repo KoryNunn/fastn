@@ -3,6 +3,10 @@ function insertChild(fastn, container, child, index){
         return;
     }
 
+    if(child.destroyed && child.destroyed()){
+        throw new Error('Attempted to mount a destroyed componet. Are you re-using a componet that you stored in a variable?')
+    }
+
     var currentIndex = container._children.indexOf(child),
         newComponent = fastn.toComponent(child);
 
