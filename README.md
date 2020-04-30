@@ -172,7 +172,7 @@ Takes a template and replaces itself with the component rendered by the template
 
 The template function will be passed the last component that was rendered by it as the third parameter.
 
-The first value received by the templator function will always be undefined.
+Note: The template function will run immediately upon component creation. This means that if your data is a binding, the first run of the template function will always receive undefined as it's item.
 
 ```javascript
 fastn('templater', {
