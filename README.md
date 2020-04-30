@@ -139,7 +139,7 @@ fastn('div') // no component is assigned to 'div', fastn will search for _generi
 
 ### listComponent
 
-takes a template and inserts children based on the result of its `items` property, e.g.:
+Takes a template and inserts children based on the result of its `items` property, e.g.:
 
 ```javascript
 fastn('list', {
@@ -168,9 +168,11 @@ fastn('list', {
 
 ### templaterComponent
 
-takes a template and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted.
+Takes a template and replaces itself with the component rendered by the template. Returning null from the template indicates that nothing should be inserted.
 
 The template function will be passed the last component that was rendered by it as the third parameter.
+
+The first value received by the templator function will always be undefined.
 
 ```javascript
 fastn('templater', {
@@ -183,6 +185,24 @@ fastn('templater', {
         }
     }
 })
+```
+
+An optional property of `attachTemplates` can be provided. When set to true (default), the children rendered from the template will be attached to a new scope that contains the templater data, under the key of `item`.
+
+When set to false, the children rendered from the template will inherit their attachment from the templator.
+
+```javascript
+var appData = {
+    foo: 'bar'
+};
+
+fastn('templater', {
+    data: binding('foo'),
+    attachTemplates: false,
+    template: function(model, scope, currentComponent){
+        // model.get('item') -> is appData
+    }
+}).attach(appData)
 ```
 
 ## A little deeper..
