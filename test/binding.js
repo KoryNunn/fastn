@@ -2,6 +2,26 @@ var test = require('tape'),
     createBinding = require('../index')({}).binding,
     Enti = require('enti');
 
+test('invalid path', function(t){
+    t.plan(5);
+
+    t.throws(function(){
+        createBinding(true);
+    });
+    t.throws(function(){
+        createBinding({});
+    });
+    t.throws(function(){
+        createBinding(function(){});
+    });
+    t.throws(function(){
+        createBinding(null);
+    });
+    t.throws(function(){
+        createBinding(undefined);
+    });
+});
+
 test('simple binding initialisation', function(t){
     t.plan(3);
 
