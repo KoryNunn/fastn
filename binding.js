@@ -229,8 +229,12 @@ function createBinding(path, more){
         return createBinding.call(this, path, noop);
     }
 
-    if(path == null){
+    if(arguments.length === 0){
         return createValueBinding(fastn);
+    }
+
+    if(!(typeof path === 'string' || typeof path === 'number')){
+        throw new Error('Invalid path for fastn.binding(String/Number), saw: ', JSON.stringify(path))
     }
 
     var bindingScope = {
