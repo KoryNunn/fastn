@@ -97,6 +97,7 @@ module.exports = {
 
         if(typeof value === 'string'){
             element.style = value;
+            return;
         }
 
         for(var key in value){

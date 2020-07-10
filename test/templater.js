@@ -25,7 +25,6 @@ test('value data', function(t){
     template.element.remove();
     template.destroy();
 
-
 });
 
 

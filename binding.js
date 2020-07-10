@@ -147,10 +147,6 @@ function attach(object, firm){
         object = object._model;
     }
 
-    if(!(object instanceof Object)){
-        object = {};
-    }
-
     if(binding._model._model === object){
         return binding;
     }
@@ -186,6 +182,9 @@ function set(newValue){
 
 function change(newValue){
     var bindingScope = this;
+    if(newValue === undefined && bindingScope.value === newValue && !bindingScope.binding._model._model){
+        return;
+    }
     bindingScope.value = newValue;
     bindingScope.binding.emit('change', bindingScope.binding());
 }

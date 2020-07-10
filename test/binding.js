@@ -21,6 +21,17 @@ test('simple binding initialisation', function(t){
     t.equal(binding(), 'bar');
 });
 
+test('initial attach doesnt cause emit', function(t){
+    t.plan(1);
+
+    var binding = createBinding('foo');
+
+    binding.on('change', () => t.pass('Recieved change'));
+
+    binding.attach();
+    binding.attach({});
+});
+
 test('simple binding set', function(t){
     t.plan(2);
 
