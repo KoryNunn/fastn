@@ -267,6 +267,23 @@ test('fuse', function(t){
     binding(3);
 });
 
+test('fuse attached to object with result', function(t){
+    t.plan(1);
+
+    var data = {
+            foo: 1,
+            bar: 2,
+            result: 'result'
+        },
+        binding = createBinding('foo', 'bar', function(foo, bar){
+            return foo + bar;
+        });
+
+    binding.on('change', value => t.equal(value, 3));
+    binding.attach(data);
+});
+
+
 test('fuse destroy inner used', function(t){
     t.plan(4);
 
@@ -408,7 +425,7 @@ test('clone fuse', function(t){
     binding.attach(data1);
 
     t.equal(binding(), 3, 'Original binding has correct data');
-
+    debugger
     var newBinding = binding.clone(true);
 
     t.equal(newBinding(), 3, 'New binding has same data');

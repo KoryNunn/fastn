@@ -15,7 +15,7 @@ function fuseBinding(){
     var bindings = args.slice(),
         transform = bindings.pop(),
         updateTransform,
-        resultBinding = createBinding.call(fastn, 'result'),
+        resultBinding = createBinding.call(fastn),
         selfChanging;
 
     resultBinding._arguments = args;
@@ -65,13 +65,13 @@ function fuseBinding(){
     bindings.forEach(function(binding, index){
         if(!is.binding(binding)){
             binding = createBinding.call(fastn, binding);
-            bindings.splice(index,1,binding);
+            bindings[index] = binding;
         }
         binding.on('change', change);
     });
 
     var lastAttached;
-    resultBinding.on('attach', function(object){
+    resultBinding.attach = function(object, firm){
         selfChanging = true;
         bindings.forEach(function(binding){
             binding.attach(object, 1);
@@ -81,7 +81,10 @@ function fuseBinding(){
             change();
         }
         lastAttached = object;
-    });
+        resultBinding._model.attach(object);
+        resultBinding.emit('attach', object, firm);
+        return resultBinding;
+    }
 
     return resultBinding;
 }
