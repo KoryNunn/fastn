@@ -441,7 +441,7 @@ test('clone fuse', function(t){
     binding.attach(data1);
 
     t.equal(binding(), 3, 'Original binding has correct data');
-    debugger
+
     var newBinding = binding.clone(true);
 
     t.equal(newBinding(), 3, 'New binding has same data');
