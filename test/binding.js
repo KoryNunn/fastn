@@ -267,6 +267,39 @@ test('fuse', function(t){
     binding(3);
 });
 
+test('fuse attached to object with result', function(t){
+    t.plan(1);
+
+    var data = {
+            foo: 1,
+            bar: 2,
+            result: 'result'
+        },
+        binding = createBinding('foo', 'bar', function(foo, bar){
+            return foo + bar;
+        });
+
+    binding.on('change', value => t.equal(value, 3));
+    binding.attach(data);
+});
+
+test('fuse firmness', function(t){
+    t.plan(1);
+
+    var data1 = {
+            foo: 1
+        },
+        binding = createBinding('foo', function(foo){
+            return foo;
+        });
+
+    binding.on('change', value => t.equal(value, 1));
+
+    binding.attach({ foo: 1 });
+
+    binding.attach({ foo: 2 }, 1);
+});
+
 test('fuse destroy inner used', function(t){
     t.plan(4);
 
