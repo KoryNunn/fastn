@@ -72,6 +72,12 @@ function fuseBinding(){
 
     var lastAttached;
     resultBinding.attach = function(object, firm){
+        if(firmer(resultBinding, firm)){
+            return resultBinding;
+        }
+
+        resultBinding._firm = firm;
+
         selfChanging = true;
         bindings.forEach(function(binding){
             binding.attach(object, 1);
