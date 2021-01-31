@@ -104,7 +104,6 @@ function addDomProperty(fastn, key, property){
     component.setProperty(key, property);
 
     function update(){
-
         var element = component.getPropertyElement(key),
             value = property();
 
@@ -122,11 +121,11 @@ function addDomProperty(fastn, key, property){
             return;
         }
 
-        var isProperty = key in element || !('getAttribute' in element),
+        var isProperty = key in element.constructor.prototype || !('getAttribute' in element),
             fancyProp = component._fancyProps && component._fancyProps(key) || fancyProps[key],
             previous = fancyProp ? fancyProp(component, element) : isProperty ? element[key] : element.getAttribute(key);
 
-        if(!fancyProp && !isProperty && value == null){
+        if(!fancyProp && !isProperty && value === null){
             value = '';
         }
 
@@ -142,7 +141,11 @@ function addDomProperty(fastn, key, property){
             }
 
             if(typeof value !== 'function' && typeof value !== 'object'){
-                element.setAttribute(key, value);
+                if(value === undefined) {
+                    element.removeAttribute(key);                    
+                } else {
+                    element.setAttribute(key, value);                    
+                }
             }
         }
     }

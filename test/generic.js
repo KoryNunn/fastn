@@ -22,6 +22,26 @@ test('div', function(t){
 
 });
 
+test('undefined attribute is removed', function(t){
+
+    t.plan(2);
+
+    var fastn = createFastn();
+
+    var div = fastn('div', { someattr: true });
+
+    div.render();
+
+    t.equal(div.element.hasAttribute('someattr'), true);
+
+    div.someattr(undefined);
+
+    t.equal(div.element.hasAttribute('someattr'), false, 'undefined attribute is removed');
+
+    div.destroy();
+});
+
+
 test('special properties - input value - undefined', function(t){
 
     t.plan(3);
@@ -130,6 +150,33 @@ test('special properties - textContent', function(t){
     label.textContent(null);
 
     t.equal(document.body.childNodes[0].textContent, '');
+
+    label.element.remove();
+    label.destroy();
+
+});
+
+test('special properties - innerHTML', function(t){
+
+    t.plan(4);
+
+    var fastn = createFastn();
+
+    var label = fastn('label', {
+        innerHTML: 'foo'
+    });
+
+    label.render();
+
+    document.body.appendChild(label.element);
+
+    t.equal(document.body.childNodes.length, 1);
+    t.equal(document.body.childNodes[0].tagName, 'LABEL');
+    t.equal(document.body.childNodes[0].innerHTML, 'foo');
+
+    label.innerHTML(null);
+
+    t.equal(document.body.childNodes[0].innerHTML, '');
 
     label.element.remove();
     label.destroy();

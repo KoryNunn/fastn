@@ -36,8 +36,6 @@ module.exports = {
             element.removeAttribute('disabled');
         }
     },
-    textContent: updateTextProperty,
-    innerText: updateTextProperty,
     innerHTML: function(generic, element, value){
         if(arguments.length === 2){
             return element.innerHTML;
